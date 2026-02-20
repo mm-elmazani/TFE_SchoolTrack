@@ -1,0 +1,39 @@
+# ============================================================
+# SchoolTrack — Dépendances Python (backend FastAPI)
+# ============================================================
+
+# API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# ORM & Migrations
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+
+# Validation
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# Auth & Sécurité
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pyotp==2.9.0
+cryptography==44.0.0
+python-multipart==0.0.20
+
+# QR Code & Email
+qrcode[pil]==8.0
+Pillow==11.1.0
+
+# Scheduling (envoi QR 48h avant voyage)
+apscheduler==3.11.0
+
+# Rate limiting
+redis==5.2.1
+
+# Tests
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-cov==6.0.0
+httpx==0.28.1
