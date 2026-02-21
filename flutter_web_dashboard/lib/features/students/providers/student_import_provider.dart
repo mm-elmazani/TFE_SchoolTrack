@@ -20,7 +20,7 @@ class ImportResult {
   factory ImportResult.fromJson(Map<String, dynamic> json) {
     final rawErrors = json['errors'] as List<dynamic>? ?? [];
     return ImportResult(
-      imported: (json['imported'] as int?) ?? 0,
+      imported: (json['inserted'] as int?) ?? 0,
       rejected: (json['rejected'] as int?) ?? 0,
       errors: rawErrors.map((e) => e.toString()).toList(),
     );
