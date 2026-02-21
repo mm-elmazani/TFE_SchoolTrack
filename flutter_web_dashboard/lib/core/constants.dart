@@ -5,7 +5,7 @@
 /// En production, Traefik route via le domaine configuré.
 const String kApiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:8001',
+  defaultValue: 'http://localhost:8000',
 );
 
 /// Taille maximale acceptée pour un fichier CSV (5 Mo)
