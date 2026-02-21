@@ -1,0 +1,35 @@
+name: flutter_web_dashboard
+description: "SchoolTrack — Dashboard web pour la direction (gestion voyages, élèves, classes)"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  provider: ^6.1.2
+
+  # Appels API REST
+  http: ^1.2.1
+
+  # Sélecteur de fichier (compatible web)
+  file_picker: ^8.1.2
+
+  # Drag & Drop (compatible web Chrome/Edge)
+  desktop_drop: ^0.4.4
+
+  # Routing entre écrans
+  go_router: ^14.6.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
