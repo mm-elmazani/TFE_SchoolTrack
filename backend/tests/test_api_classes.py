@@ -255,3 +255,50 @@ def test_assign_teachers_liste_vide(client):
         "teacher_ids": []
     })
     assert response.status_code == 422
+
+
+# ============================================================
+# GET /api/v1/classes/{class_id}/students
+# ============================================================
+
+def test_list_class_students_retourne_ids(client):
+    """Retourne la liste des UUIDs des élèves assignés à une classe."""
+    from unittest.mock import MagicMock
+    from app.database import get_db
+    from app.main import app
+
+    student_id_1 = uuid.uuid4()
+    student_id_2 = uuid.uuid4()
+
+    db_mock = MagicMock()
+    db_mock.execute.return_value.scalars.return_value.all.return_value = [
+        student_id_1, student_id_2
+    ]
+    app.dependency_overrides[get_db] = lambda: db_mock
+
+    class_id = uuid.uuid4()
+    response = client.get(f"/api/v1/classes/{class_id}/students")
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert str(student_id_1) in data
+    assert str(student_id_2) in data
+
+
+def test_list_class_students_vide(client):
+    """Retourne une liste vide si aucun élève dans la classe."""
+    from unittest.mock import MagicMock
+    from app.database import get_db
+    from app.main import app
+
+    db_mock = MagicMock()
+    db_mock.execute.return_value.scalars.return_value.all.return_value = []
+    app.dependency_overrides[get_db] = lambda: db_mock
+
+    response = client.get(f"/api/v1/classes/{uuid.uuid4()}/students")
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == []

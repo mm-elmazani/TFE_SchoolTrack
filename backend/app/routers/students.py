@@ -1,16 +1,30 @@
 """
 Router pour les élèves.
 US 1.1 : Import CSV (POST /api/v1/students/upload)
+US 1.3 : Listage élèves (GET /api/v1/students)
 """
 
+from typing import List
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas.student import StudentImportReport
+from app.models.student import Student
+from app.schemas.student import StudentImportReport, StudentResponse
 from app.services.student_import import parse_and_import_csv
 
 router = APIRouter(prefix="/api/v1/students", tags=["Élèves"])
+
+
+@router.get("", response_model=List[StudentResponse], summary="Lister tous les élèves")
+def list_students(db: Session = Depends(get_db)):
+    """Retourne tous les élèves triés alphabétiquement par nom puis prénom."""
+    students = db.execute(
+        select(Student).order_by(Student.last_name, Student.first_name)
+    ).scalars().all()
+    return students
 
 ALLOWED_CONTENT_TYPES = {"text/csv", "text/plain", "application/vnd.ms-excel"}
 MAX_FILE_SIZE_MB = 5

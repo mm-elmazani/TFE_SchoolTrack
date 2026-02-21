@@ -27,9 +27,11 @@ class _StudentImportBody extends StatelessWidget {
     final provider = context.watch<StudentImportProvider>();
     final isLoading = provider.state == ImportState.loading;
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 720),
-      child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Description
@@ -106,6 +108,7 @@ class _StudentImportBody extends StatelessWidget {
             ImportResultCard(result: provider.result!),
           ],
         ],
+        ),
       ),
     );
   }
