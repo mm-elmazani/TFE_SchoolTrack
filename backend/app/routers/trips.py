@@ -1,7 +1,8 @@
 """
-Router pour les voyages (US 1.2, US 1.6).
+Router pour les voyages (US 1.2, US 1.6, US 2.1).
 CRUD complet : création, lecture, modification, archivage.
 Envoi QR codes par email (US 1.6).
+Bundle de données offline (US 2.1).
 """
 
 import uuid
@@ -11,9 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.schemas.offline import OfflineDataBundle
 from app.schemas.qr_email import QrEmailSendResult
 from app.schemas.trip import TripCreate, TripResponse, TripUpdate
-from app.services import qr_email_service, trip_service
+from app.services import offline_service, qr_email_service, trip_service
 
 router = APIRouter(prefix="/api/v1/trips", tags=["Voyages"])
 
@@ -64,6 +66,32 @@ def archive_trip(trip_id: uuid.UUID, db: Session = Depends(get_db)):
     success = trip_service.archive_trip(db, trip_id)
     if not success:
         raise HTTPException(status_code=404, detail="Voyage introuvable.")
+
+
+@router.get(
+    "/{trip_id}/offline-data",
+    response_model=OfflineDataBundle,
+    summary="Télécharger le bundle offline d'un voyage (US 2.1)",
+)
+def get_offline_data(trip_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    Retourne le bundle complet de données nécessaire au mode offline de l'app Flutter.
+
+    Contenu :
+    - Informations du voyage (destination, date, statut)
+    - Liste des élèves inscrits avec leur assignation active (token_uid + type)
+    - Checkpoints existants triés par ordre chronologique
+
+    Ce bundle est téléchargé par Flutter avant le départ et stocké en SQLite local.
+    Ainsi l'enseignant peut scanner les présences sans réseau.
+    """
+    try:
+        return offline_service.get_offline_data(db, trip_id)
+    except ValueError as e:
+        msg = str(e)
+        if "introuvable" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
 
 
 @router.post(
