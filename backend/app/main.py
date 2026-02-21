@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.models  # noqa: F401 — enregistre tous les modèles SQLAlchemy dans les métadonnées
 from app.routers import classes, students, sync, tokens, trips
 from app.scheduler import start_scheduler, stop_scheduler
 
@@ -31,10 +32,11 @@ app = FastAPI(
 )
 
 # CORS — en dev, on autorise tout (à restreindre en production)
+# allow_credentials=False obligatoire quand allow_origins=["*"] (standard CORS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

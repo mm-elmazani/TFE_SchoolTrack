@@ -1,22 +1,26 @@
 """
 Service d'import CSV pour les élèves.
 Gère le parsing, la validation, la détection de doublons et l'insertion bulk.
+
+Colonne optionnelle `classe` : si présente, l'élève est automatiquement assigné
+à la classe correspondante (créée si elle n'existe pas encore).
 """
 
 import csv
 import io
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.school_class import ClassStudent, SchoolClass
 from app.models.student import Student
 from app.schemas.student import ImportError, StudentImportReport, StudentImportRow
 
 # Colonnes acceptées dans le CSV (noms en français, insensibles à la casse)
 REQUIRED_COLUMNS = {"nom", "prenom"}
-OPTIONAL_COLUMNS = {"email"}
+OPTIONAL_COLUMNS = {"email", "classe"}
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
 
@@ -32,6 +36,24 @@ def _detect_separator(sample: str) -> str:
     return ","
 
 
+def _get_or_create_class(db: Session, class_name: str) -> SchoolClass:
+    """
+    Retourne la classe portant ce nom (insensible à la casse),
+    ou la crée si elle n'existe pas encore.
+    """
+    existing = db.execute(
+        select(SchoolClass).where(func.lower(SchoolClass.name) == class_name.lower())
+    ).scalar_one_or_none()
+
+    if existing:
+        return existing
+
+    new_class = SchoolClass(name=class_name.strip())
+    db.add(new_class)
+    db.flush()  # obtenir l'ID sans committer
+    return new_class
+
+
 def parse_and_import_csv(
     content: bytes, db: Session
 ) -> StudentImportReport:
@@ -40,7 +62,8 @@ def parse_and_import_csv(
 
     Règles :
     - Colonnes requises : nom, prenom
-    - Colonne optionnelle : email
+    - Colonnes optionnelles : email, classe
+    - Si `classe` est présente : l'élève est assigné à cette classe (créée si nécessaire)
     - Doublon intra-fichier : même nom+prenom (insensible à la casse)
     - Doublon BDD : idem contre les élèves existants
     """
@@ -69,6 +92,8 @@ def parse_and_import_csv(
             )]
         )
 
+    has_classe_column = "classe" in normalized_fields
+
     # Construire un mapping nom_normalise → nom_original
     field_map = {_normalize_header(f): f for f in reader.fieldnames}
 
@@ -76,11 +101,13 @@ def parse_and_import_csv(
     errors: list[ImportError] = []
     seen_in_file: set[Tuple[str, str]] = set()  # (last_name_lower, first_name_lower)
     duplicates_in_file = 0
+    row_num = 1
 
     for row_num, row in enumerate(reader, start=2):  # ligne 1 = header
         raw_last = row.get(field_map["nom"], "").strip()
         raw_first = row.get(field_map["prenom"], "").strip()
         raw_email = row.get(field_map.get("email", ""), "").strip() if "email" in field_map else ""
+        raw_classe = row.get(field_map.get("classe", ""), "").strip() if has_classe_column else ""
 
         # Ligne vide
         if not raw_last and not raw_first:
@@ -120,6 +147,7 @@ def parse_and_import_csv(
             last_name=raw_last,
             first_name=raw_first,
             email=raw_email or None,
+            classe=raw_classe or None,
         ))
 
     total_rows = row_num - 1 if valid_rows or errors else 0
@@ -146,7 +174,7 @@ def parse_and_import_csv(
     ).fetchall()
     existing_set = {(row[0], row[1]) for row in existing}
 
-    to_insert: list[dict] = []
+    to_insert: list[StudentImportRow] = []
     duplicates_in_db = 0
 
     for student in valid_rows:
@@ -159,15 +187,24 @@ def parse_and_import_csv(
                 reason="Élève déjà présent en base de données"
             ))
         else:
-            to_insert.append({
-                "first_name": student.first_name,
-                "last_name": student.last_name,
-                "email": student.email,
-            })
+            to_insert.append(student)
 
-    # Insertion bulk
+    # Insertion bulk des élèves
     if to_insert:
-        db.bulk_insert_mappings(Student, to_insert)
+        db.bulk_insert_mappings(Student, [
+            {
+                "first_name": s.first_name,
+                "last_name": s.last_name,
+                "email": s.email,
+            }
+            for s in to_insert
+        ])
+        db.flush()  # obtenir les IDs avant d'assigner les classes
+
+        # Assignation aux classes si la colonne `classe` est présente
+        if has_classe_column:
+            _assign_classes(db, to_insert)
+
         db.commit()
 
     return StudentImportReport(
@@ -178,3 +215,75 @@ def parse_and_import_csv(
         duplicates_in_db=duplicates_in_db,
         errors=errors
     )
+
+
+def _assign_classes(db: Session, students: list[StudentImportRow]) -> None:
+    """
+    Assigne chaque élève à sa classe après insertion.
+    Crée la classe si elle n'existe pas encore.
+    Ignore les élèves sans classe renseignée.
+    """
+    # Regrouper les élèves par classe pour minimiser les requêtes
+    classes_map: dict[str, Optional[SchoolClass]] = {}
+
+    for student in students:
+        if not student.classe:
+            continue
+
+        class_name = student.classe.strip()
+        if class_name not in classes_map:
+            classes_map[class_name] = _get_or_create_class(db, class_name)
+
+    if not classes_map:
+        return
+
+    # Récupérer les IDs des élèves qu'on vient d'insérer
+    inserted_students = db.execute(
+        select(Student.id, func.lower(Student.last_name), func.lower(Student.first_name))
+        .where(
+            func.lower(Student.last_name).in_(
+                [s.last_name.lower() for s in students if s.classe]
+            )
+        )
+    ).fetchall()
+
+    # Construire un index (last_name_lower, first_name_lower) → student_id
+    student_id_map = {
+        (row[1], row[2]): row[0]
+        for row in inserted_students
+    }
+
+    # Récupérer les assignations existantes pour éviter les doublons
+    all_class_ids = [c.id for c in classes_map.values() if c]
+    existing_assignments = set()
+    if all_class_ids:
+        existing_rows = db.execute(
+            select(ClassStudent.class_id, ClassStudent.student_id)
+            .where(ClassStudent.class_id.in_(all_class_ids))
+        ).fetchall()
+        existing_assignments = {(row[0], row[1]) for row in existing_rows}
+
+    # Insérer les assignations manquantes
+    assignments_to_insert = []
+    for student in students:
+        if not student.classe:
+            continue
+
+        school_class = classes_map.get(student.classe.strip())
+        if not school_class:
+            continue
+
+        student_id = student_id_map.get(
+            (student.last_name.lower(), student.first_name.lower())
+        )
+        if not student_id:
+            continue
+
+        if (school_class.id, student_id) not in existing_assignments:
+            assignments_to_insert.append({
+                "class_id": school_class.id,
+                "student_id": student_id,
+            })
+
+    if assignments_to_insert:
+        db.bulk_insert_mappings(ClassStudent, assignments_to_insert)

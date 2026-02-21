@@ -11,6 +11,7 @@ class StudentImportRow(BaseModel):
     first_name: str
     last_name: str
     email: Optional[str] = None
+    classe: Optional[str] = None  # nom de la classe (optionnel, colonne CSV)
 
 
 class ImportError(BaseModel):

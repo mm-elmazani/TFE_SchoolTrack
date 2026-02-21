@@ -7,7 +7,7 @@ import uuid
 import logging
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models.school_class import ClassStudent
@@ -82,14 +82,39 @@ def get_trip(db: Session, trip_id: uuid.UUID) -> Optional[TripResponse]:
 
 
 def update_trip(db: Session, trip_id: uuid.UUID, data: TripUpdate) -> Optional[TripResponse]:
-    """Met à jour les champs modifiables d'un voyage."""
+    """
+    Met à jour les champs modifiables d'un voyage.
+    Si class_ids est fourni, les élèves du voyage sont recalculés depuis les nouvelles classes
+    (suppression des anciens + insertion des nouveaux, dédupliqués).
+    """
     trip = db.get(Trip, trip_id)
     if trip is None:
         return None
 
-    update_data = data.model_dump(exclude_unset=True)
+    # Mise à jour des champs scalaires (hors class_ids)
+    update_data = data.model_dump(exclude_unset=True, exclude={"class_ids"})
     for field, value in update_data.items():
         setattr(trip, field, value)
+
+    # Recalcul des élèves si de nouvelles classes sont fournies
+    if data.class_ids is not None:
+        # Supprimer les anciennes associations élèves
+        db.execute(
+            delete(TripStudent).where(TripStudent.trip_id == trip.id)
+        )
+
+        # Récupérer les élèves des nouvelles classes (dédupliqué)
+        student_ids = db.execute(
+            select(ClassStudent.student_id)
+            .where(ClassStudent.class_id.in_(data.class_ids))
+            .distinct()
+        ).scalars().all()
+
+        if student_ids:
+            db.bulk_insert_mappings(TripStudent, [
+                {"trip_id": trip.id, "student_id": sid}
+                for sid in student_ids
+            ])
 
     db.commit()
     db.refresh(trip)

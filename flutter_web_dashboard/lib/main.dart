@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'features/students/screens/student_import_screen.dart';
+import 'features/trips/screens/trip_list_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
 
 void main() {
@@ -50,12 +51,12 @@ final GoRouter _router = GoRouter(
       ),
     ),
 
-    // US 1.2 — Voyages (placeholder, à implémenter)
+    // US 1.2 — Voyages (liste + CRUD)
     GoRoute(
       path: '/trips',
       builder: (context, state) => AppScaffold(
-        pageTitle: 'Voyages',
-        child: const _PlaceholderScreen(title: 'Gestion des voyages'),
+        pageTitle: 'Voyages scolaires',
+        child: const TripListScreen(),
       ),
     ),
 

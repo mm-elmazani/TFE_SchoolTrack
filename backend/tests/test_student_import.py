@@ -13,6 +13,8 @@ def make_db_mock(existing_students=None):
     db = MagicMock()
     existing = existing_students or []
     db.execute.return_value.fetchall.return_value = existing
+    # scalar_one_or_none utilisé par _get_or_create_class → retourne None (classe à créer)
+    db.execute.return_value.scalar_one_or_none.return_value = None
     return db
 
 
@@ -153,4 +155,61 @@ def test_lignes_vides_ignorees():
     report = parse_and_import_csv(csv_content, db)
 
     assert report.inserted == 2
+    assert report.rejected == 0
+
+
+# --- Colonne classe (optionnelle) ---
+
+def test_import_csv_avec_colonne_classe():
+    """CSV avec colonne classe : les élèves sont importés sans erreur."""
+    csv_content = b"nom,prenom,email,classe\nDupont,Jean,jean@test.be,3A\nMartin,Marie,,3B\n"
+    db = make_db_mock()
+
+    report = parse_and_import_csv(csv_content, db)
+
+    assert report.inserted == 2
+    assert report.rejected == 0
+
+
+def test_import_csv_classe_vide_acceptee():
+    """Un élève sans classe dans la colonne classe est quand même importé."""
+    csv_content = b"nom,prenom,classe\nDupont,Jean,3A\nMartin,Marie,\n"
+    db = make_db_mock()
+
+    report = parse_and_import_csv(csv_content, db)
+
+    assert report.inserted == 2
+    assert report.rejected == 0
+
+
+def test_import_csv_sans_colonne_classe():
+    """Un CSV sans colonne classe continue de fonctionner normalement."""
+    csv_content = b"nom,prenom,email\nDupont,Jean,jean@test.be\n"
+    db = make_db_mock()
+
+    report = parse_and_import_csv(csv_content, db)
+
+    assert report.inserted == 1
+    assert report.rejected == 0
+
+
+def test_import_csv_classe_creee_si_inexistante():
+    """Si la classe n'existe pas en BDD, _get_or_create_class doit être appelé."""
+    csv_content = b"nom,prenom,classe\nDupont,Jean,3A\n"
+    db = make_db_mock()
+
+    parse_and_import_csv(csv_content, db)
+
+    # bulk_insert_mappings doit avoir été appelé (élève + assignation classe)
+    assert db.bulk_insert_mappings.called
+
+
+def test_import_csv_classe_plusieurs_eleves_meme_classe():
+    """Plusieurs élèves dans la même classe → une seule classe créée."""
+    csv_content = b"nom,prenom,classe\nDupont,Jean,3A\nMartin,Marie,3A\nLambert,Thomas,3B\n"
+    db = make_db_mock()
+
+    report = parse_and_import_csv(csv_content, db)
+
+    assert report.inserted == 3
     assert report.rejected == 0
