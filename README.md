@@ -1,6 +1,6 @@
 # SchoolTrack
 
-> **[ NOTE IMPORTANTE : CE FICHIER SERA ENTIÈREMENT COMPLÉTÉ À L'ISSUE DU DÉVELOPPEMENT (FÉVRIER 2026) ]**
+> **[ NOTE IMPORTANTE : CE FICHIER SERA ENTIÈREMENT COMPLÉTÉ À L'ISSUE DU DÉVELOPPEMENT ]**
 >
 > *Le projet est actuellement en phase de développement actif. Les instructions d'installation complètes et la documentation de déploiement seront rédigées ici lors de la phase finale du TFE.*
 
