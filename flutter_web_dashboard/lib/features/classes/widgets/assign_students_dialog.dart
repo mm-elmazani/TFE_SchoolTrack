@@ -19,7 +19,10 @@ class _StudentItem {
   String get displayName => '$lastName $firstName';
 }
 
-/// Dialog permettant de sélectionner des élèves à assigner à une classe.
+/// Dialog permettant d'ajouter ou retirer des élèves d'une classe.
+/// - Cases pré-cochées = élèves déjà dans la classe
+/// - Cocher une case non cochée → ajout
+/// - Décocher une case cochée → retrait
 class AssignStudentsDialog extends StatefulWidget {
   final String classId;
   final String className;
@@ -37,6 +40,7 @@ class AssignStudentsDialog extends StatefulWidget {
 class _AssignStudentsDialogState extends State<AssignStudentsDialog> {
   final ApiClient _api = ApiClient();
   List<_StudentItem> _students = [];
+  Set<String> _initiallyAssigned = {}; // IDs des élèves déjà dans la classe
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -60,13 +64,13 @@ class _AssignStudentsDialogState extends State<AssignStudentsDialog> {
       final assignedIds = Set<String>.from(results[1] as List<String>);
 
       setState(() {
+        _initiallyAssigned = assignedIds;
         _students = allStudents.map((s) {
           final item = _StudentItem(
             id: s['id'] as String,
             lastName: s['last_name'] as String,
             firstName: s['first_name'] as String,
           );
-          // Pré-cocher si l'élève est déjà dans la classe
           item.selected = assignedIds.contains(item.id);
           return item;
         }).toList();
@@ -83,37 +87,75 @@ class _AssignStudentsDialogState extends State<AssignStudentsDialog> {
   List<_StudentItem> get _filtered {
     if (_search.isEmpty) return _students;
     final q = _search.toLowerCase();
-    return _students
-        .where((s) => s.displayName.toLowerCase().contains(q))
-        .toList();
+    return _students.where((s) => s.displayName.toLowerCase().contains(q)).toList();
   }
 
-  Future<void> _assign() async {
-    final selected = _students.where((s) => s.selected).map((s) => s.id).toList();
-    if (selected.isEmpty) {
+  /// Calcule le diff entre l'état initial et l'état courant.
+  List<String> get _toAdd => _students
+      .where((s) => s.selected && !_initiallyAssigned.contains(s.id))
+      .map((s) => s.id)
+      .toList();
+
+  List<String> get _toRemove => _students
+      .where((s) => !s.selected && _initiallyAssigned.contains(s.id))
+      .map((s) => s.id)
+      .toList();
+
+  Future<void> _save() async {
+    final toAdd = _toAdd;
+    final toRemove = _toRemove;
+
+    // Aucun changement → fermer sans appel API
+    if (toAdd.isEmpty && toRemove.isEmpty) {
       Navigator.of(context).pop();
       return;
     }
-    setState(() => _saving = true);
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
     final provider = context.read<ClassProvider>();
-    final err = await provider.assignStudents(widget.classId, selected);
-    if (!mounted) return;
-    if (err != null) {
-      setState(() {
-        _saving = false;
-        _error = err;
-      });
-    } else {
-      Navigator.of(context).pop();
+
+    // Ajouts
+    if (toAdd.isNotEmpty) {
+      final err = await provider.assignStudents(widget.classId, toAdd);
+      if (err != null && mounted) {
+        setState(() {
+          _saving = false;
+          _error = err;
+        });
+        return;
+      }
     }
+
+    // Retraits
+    for (final studentId in toRemove) {
+      final err = await provider.removeStudent(widget.classId, studentId);
+      if (err != null && mounted) {
+        setState(() {
+          _saving = false;
+          _error = err;
+        });
+        return;
+      }
+    }
+
+    // Rechargement complet pour avoir les bons compteurs sur les cartes
+    await provider.loadClasses();
+
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedCount = _students.where((s) => s.selected).length;
+    final addCount = _toAdd.length;
+    final removeCount = _toRemove.length;
+    final hasChanges = addCount > 0 || removeCount > 0;
 
     return AlertDialog(
-      title: Text('Assigner des élèves — ${widget.className}'),
+      title: Text('Élèves — ${widget.className}'),
       content: SizedBox(
         width: 480,
         height: 480,
@@ -160,13 +202,11 @@ class _AssignStudentsDialogState extends State<AssignStudentsDialog> {
                           },
                         ),
             ),
-            if (selectedCount > 0)
+            // Résumé des changements
+            if (!_loading)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '$selectedCount élève(s) sélectionné(s)',
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
+                child: _buildChangeSummary(addCount, removeCount),
               ),
           ],
         ),
@@ -177,16 +217,35 @@ class _AssignStudentsDialogState extends State<AssignStudentsDialog> {
           child: const Text('Annuler'),
         ),
         FilledButton(
-          onPressed: _saving ? null : _assign,
+          onPressed: _saving ? null : _save,
           child: _saving
               ? const SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : Text(selectedCount == 0 ? 'Fermer' : 'Assigner ($selectedCount)'),
+              : Text(hasChanges ? 'Enregistrer' : 'Fermer'),
         ),
       ],
+    );
+  }
+
+  Widget _buildChangeSummary(int addCount, int removeCount) {
+    if (addCount == 0 && removeCount == 0) {
+      return Text(
+        '${_students.where((s) => s.selected).length} élève(s) dans la classe',
+        style: const TextStyle(color: Colors.grey),
+      );
+    }
+    final parts = <String>[];
+    if (addCount > 0) parts.add('+$addCount à ajouter');
+    if (removeCount > 0) parts.add('-$removeCount à retirer');
+    return Text(
+      parts.join('  •  '),
+      style: TextStyle(
+        fontWeight: FontWeight.w500,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     );
   }
 }

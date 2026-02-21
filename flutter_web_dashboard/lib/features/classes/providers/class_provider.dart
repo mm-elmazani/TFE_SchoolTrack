@@ -129,23 +129,11 @@ class ClassProvider extends ChangeNotifier {
     }
   }
 
-  /// Retire un élève d'une classe et recharge la liste.
+  /// Retire un élève d'une classe.
+  /// Le rechargement du compteur est délégué à [loadClasses] après toutes les opérations.
   Future<String?> removeStudent(String classId, String studentId) async {
     try {
       await _api.removeStudentFromClass(classId, studentId);
-      // Décrémente le compteur localement (rechargement complet évité)
-      final idx = _classes.indexWhere((c) => c.id == classId);
-      if (idx >= 0) {
-        final old = _classes[idx];
-        _classes[idx] = SchoolClassModel(
-          id: old.id,
-          name: old.name,
-          year: old.year,
-          nbStudents: (old.nbStudents - 1).clamp(0, 9999),
-          nbTeachers: old.nbTeachers,
-        );
-      }
-      notifyListeners();
       return null;
     } on ApiException catch (e) {
       return e.message;
