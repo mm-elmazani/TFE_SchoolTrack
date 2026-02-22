@@ -83,3 +83,25 @@ class TripAssignmentStatus(BaseModel):
     assigned_students: int
     unassigned_students: int
     assignments: List[AssignmentResponse]
+
+
+class TripStudentWithAssignment(BaseModel):
+    """Élève inscrit à un voyage avec son statut d'assignation bracelet."""
+    id: uuid.UUID
+    first_name: str
+    last_name: str
+    email: Optional[str]
+    token_uid: Optional[str] = None
+    assignment_type: Optional[str] = None
+    assigned_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class TripStudentsResponse(BaseModel):
+    """Liste complète des élèves d'un voyage avec leur statut d'assignation."""
+    trip_id: uuid.UUID
+    total: int
+    assigned: int
+    unassigned: int
+    students: List[TripStudentWithAssignment]

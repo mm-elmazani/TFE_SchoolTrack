@@ -172,6 +172,67 @@ class ApiClient {
   Future<List<dynamic>> getClasses() async {
     return (await _get('/api/v1/classes')) as List<dynamic>;
   }
+
+  // ─── US 1.3 — Liste élèves ────────────────────────────────────────────────
+
+  /// Récupère la liste de tous les élèves.
+  Future<List<dynamic>> getStudents() async {
+    return (await _get('/api/v1/students')) as List<dynamic>;
+  }
+
+  /// Récupère les IDs des élèves assignés à une classe.
+  Future<List<dynamic>> getClassStudents(String classId) async {
+    return (await _get('/api/v1/classes/$classId/students')) as List<dynamic>;
+  }
+
+  // ─── US 1.5 — Assignation bracelets ──────────────────────────────────────
+
+  /// Retourne les élèves d'un voyage avec leur statut d'assignation bracelet.
+  Future<Map<String, dynamic>> getTripStudents(String tripId) async {
+    return (await _get('/api/v1/trips/$tripId/students')) as Map<String, dynamic>;
+  }
+
+  /// Assigne un bracelet à un élève pour un voyage.
+  Future<Map<String, dynamic>> assignToken({
+    required String tokenUid,
+    required String studentId,
+    required String tripId,
+    required String assignmentType,
+  }) async {
+    return (await _post('/api/v1/tokens/assign', {
+      'token_uid': tokenUid,
+      'student_id': studentId,
+      'trip_id': tripId,
+      'assignment_type': assignmentType,
+    })) as Map<String, dynamic>;
+  }
+
+  /// Réassigne un bracelet avec justification obligatoire.
+  Future<Map<String, dynamic>> reassignToken({
+    required String tokenUid,
+    required String studentId,
+    required String tripId,
+    required String assignmentType,
+    required String justification,
+  }) async {
+    return (await _post('/api/v1/tokens/reassign', {
+      'token_uid': tokenUid,
+      'student_id': studentId,
+      'trip_id': tripId,
+      'assignment_type': assignmentType,
+      'justification': justification,
+    })) as Map<String, dynamic>;
+  }
+
+  /// Libère tous les bracelets actifs d'un voyage.
+  /// Retourne { trip_id, released_count }.
+  Future<Map<String, dynamic>> releaseTripTokens(String tripId) async {
+    return (await _post('/api/v1/trips/$tripId/release-tokens', {})) as Map<String, dynamic>;
+  }
+
+  /// Retourne l'URL d'export CSV des assignations d'un voyage.
+  String getExportUrl(String tripId) =>
+      '$baseUrl/api/v1/trips/$tripId/assignments/export';
 }
 
 /// Exception levée lors d'une erreur d'appel API.

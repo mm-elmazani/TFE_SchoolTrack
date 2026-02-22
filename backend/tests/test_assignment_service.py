@@ -10,7 +10,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.assignment import AssignmentCreate, AssignmentReassign
-from app.services.assignment_service import assign_token, reassign_token
+from app.services.assignment_service import assign_token, reassign_token, release_trip_tokens
 
 
 # --- Helpers ---
@@ -158,6 +158,124 @@ def test_assign_succes():
         mock_resp.return_value = MagicMock()
         result = assign_token(db, make_assignment_data())
 
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
+    assert result is not None
+
+
+# --- reassign_token ---
+
+def make_reassign_data(**kwargs):
+    return AssignmentReassign(
+        token_uid=kwargs.get("token_uid", "ST-002"),
+        student_id=kwargs.get("student_id", uuid.uuid4()),
+        trip_id=kwargs.get("trip_id", uuid.uuid4()),
+        assignment_type=kwargs.get("assignment_type", "NFC_PHYSICAL"),
+        justification=kwargs.get("justification", "Bracelet endommagé"),
+    )
+
+
+def test_reassign_libere_ancienne_assignation():
+    """La réassignation doit setter released_at sur l'ancienne assignation de l'élève."""
+    old_assignment = MagicMock()
+    old_assignment.released_at = None
+
+    db = MagicMock()
+    # old_token = None (même token pas encore assigné), old_student = old_assignment
+    db.execute.return_value.scalar.side_effect = [
+        None,             # old_token : ce token n'est pas actif
+        old_assignment,   # old_student : l'élève a une assignation active
+        None,             # _update_token_status
+    ]
+    db.refresh.side_effect = lambda obj: None
+
+    with patch("app.services.assignment_service.AssignmentResponse.model_validate") as mock_resp:
+        mock_resp.return_value = MagicMock()
+        reassign_token(db, make_reassign_data())
+
+    # L'ancienne assignation doit avoir released_at rempli
+    assert old_assignment.released_at is not None
+    # flush() doit être appelé avant l'INSERT pour éviter la violation de contrainte
+    db.flush.assert_called_once()
+    db.add.assert_called_once()
+    db.commit.assert_called_once()
+
+
+def test_reassign_libere_token_et_eleve_si_distincts():
+    """Si le token actif appartient à un autre élève, les deux assignations doivent être libérées."""
+    old_token_assignment = MagicMock()
+    old_token_assignment.released_at = None
+
+    old_student_assignment = MagicMock()
+    old_student_assignment.released_at = None
+
+    db = MagicMock()
+    # old_token et old_student sont deux objets distincts
+    db.execute.return_value.scalar.side_effect = [
+        old_token_assignment,   # le token est actif sur un autre élève
+        old_student_assignment, # l'élève a aussi une assignation active
+        None,                   # _update_token_status
+    ]
+    db.refresh.side_effect = lambda obj: None
+
+    with patch("app.services.assignment_service.AssignmentResponse.model_validate") as mock_resp:
+        mock_resp.return_value = MagicMock()
+        reassign_token(db, make_reassign_data())
+
+    # Les deux doivent être libérées
+    assert old_token_assignment.released_at is not None
+    assert old_student_assignment.released_at is not None
+    db.flush.assert_called_once()
+    db.add.assert_called_once()
+
+
+# --- release_trip_tokens ---
+
+def test_release_trip_tokens_aucune_assignation():
+    """Sans assignation active, retourne 0 et ne commit pas."""
+    db = MagicMock()
+    db.execute.return_value.scalars.return_value.all.return_value = []
+
+    result = release_trip_tokens(db, uuid.uuid4())
+
+    assert result == 0
+    db.commit.assert_not_called()
+
+
+def test_release_trip_tokens_libere_toutes_les_assignations():
+    """Toutes les assignations actives doivent avoir released_at rempli."""
+    a1 = MagicMock()
+    a1.released_at = None
+    a2 = MagicMock()
+    a2.released_at = None
+
+    db = MagicMock()
+    db.execute.return_value.scalars.return_value.all.return_value = [a1, a2]
+
+    result = release_trip_tokens(db, uuid.uuid4())
+
+    assert result == 2
+    assert a1.released_at is not None
+    assert a2.released_at is not None
+    # Un seul commit pour tout le batch
+    db.commit.assert_called_once()
+
+
+def test_reassign_succes_sans_ancienne_assignation():
+    """La réassignation réussit même si aucune assignation précédente n'existe."""
+    db = MagicMock()
+    db.execute.return_value.scalar.side_effect = [
+        None,  # old_token : rien
+        None,  # old_student : rien
+        None,  # _update_token_status
+    ]
+    db.refresh.side_effect = lambda obj: None
+
+    with patch("app.services.assignment_service.AssignmentResponse.model_validate") as mock_resp:
+        mock_resp.return_value = MagicMock()
+        result = reassign_token(db, make_reassign_data())
+
+    db.flush.assert_called_once()
     db.add.assert_called_once()
     db.commit.assert_called_once()
     assert result is not None

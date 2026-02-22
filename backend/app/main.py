@@ -3,14 +3,18 @@ Point d'entrée principal de l'API SchoolTrack.
 Démarrage : uvicorn app.main:app --reload
 """
 
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 import app.models  # noqa: F401 — enregistre tous les modèles SQLAlchemy dans les métadonnées
 from app.routers import classes, students, sync, tokens, trips
 from app.scheduler import start_scheduler, stop_scheduler
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -31,14 +35,15 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — en dev, on autorise tout (à restreindre en production)
-# allow_credentials=False obligatoire quand allow_origins=["*"] (standard CORS)
+# CORS — autorise tous les ports localhost en développement (à restreindre en production).
+# allow_origin_regex est nécessaire pour les requêtes preflight POST avec Content-Type JSON.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[],
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 
@@ -47,6 +52,21 @@ app.include_router(trips.router)
 app.include_router(classes.router)
 app.include_router(tokens.router)
 app.include_router(sync.router)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """
+    Intercepte toutes les exceptions non gérées pour garantir que la réponse 500
+    passe bien par CORSMiddleware (qui injecte les headers CORS).
+    Sans ce handler, ServerErrorMiddleware renvoie une réponse brute sans headers CORS,
+    ce qui provoque une erreur "Failed to fetch" côté navigateur.
+    """
+    logger.error("Exception non gérée : %s", exc, exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Une erreur interne est survenue."},
+    )
 
 
 @app.get("/api/health", tags=["Santé"])

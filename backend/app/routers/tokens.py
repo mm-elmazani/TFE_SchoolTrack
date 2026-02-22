@@ -13,6 +13,7 @@ from app.schemas.assignment import (
     AssignmentReassign,
     AssignmentResponse,
     TripAssignmentStatus,
+    TripStudentsResponse,
 )
 from app.services import assignment_service
 
@@ -58,6 +59,38 @@ def get_trip_assignments(trip_id: uuid.UUID, db: Session = Depends(get_db)):
     nombre d'élèves assignés, non assignés, et la liste complète.
     """
     return assignment_service.get_trip_assignment_status(db, trip_id)
+
+
+@router.get(
+    "/trips/{trip_id}/students",
+    response_model=TripStudentsResponse,
+    summary="Élèves du voyage avec statut d'assignation",
+)
+def get_trip_students(trip_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    Retourne la liste des élèves inscrits au voyage avec leur bracelet actif (si assigné).
+    Utilisé par le dashboard web pour la gestion des assignations (US 1.5).
+    """
+    return assignment_service.get_trip_students_with_assignments(db, trip_id)
+
+
+@router.post(
+    "/trips/{trip_id}/release-tokens",
+    status_code=200,
+    summary="Libérer manuellement tous les bracelets d'un voyage",
+)
+def release_trip_tokens(trip_id: uuid.UUID, db: Session = Depends(get_db)):
+    """
+    Libère toutes les assignations actives d'un voyage (released_at = NOW()).
+
+    Cas d'usage : libérer les bracelets sans changer le statut du voyage
+    (ex. récupération anticipée des bracelets, erreur d'assignation en masse).
+    Pour un voyage terminé normalement, préférer PUT /trips/{id} avec status=COMPLETED.
+
+    Retourne le nombre d'assignations libérées.
+    """
+    count = assignment_service.release_trip_tokens(db, trip_id)
+    return {"trip_id": str(trip_id), "released_count": count}
 
 
 @router.get("/trips/{trip_id}/assignments/export",

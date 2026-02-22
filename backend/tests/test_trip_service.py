@@ -211,3 +211,54 @@ def test_update_trip_champs_partiels():
     # Seul le statut doit avoir changé
     assert trip.status == "ACTIVE"
     assert trip.destination == original_destination
+
+
+def test_update_trip_completed_libere_bracelets():
+    """Passer un voyage à COMPLETED doit déclencher la libération des bracelets."""
+    trip = make_trip_mock(status="ACTIVE")
+    db = make_db_mock(trip=trip)
+
+    with patch("app.services.trip_service.assignment_service.release_trip_tokens") as mock_release:
+        with patch("app.services.trip_service._to_response") as mock_resp:
+            mock_resp.return_value = MagicMock()
+            update_trip(db, trip.id, TripUpdate(status="COMPLETED"))
+
+    mock_release.assert_called_once_with(db, trip.id)
+
+
+def test_update_trip_archived_libere_bracelets():
+    """Passer un voyage à ARCHIVED doit déclencher la libération des bracelets."""
+    trip = make_trip_mock(status="ACTIVE")
+    db = make_db_mock(trip=trip)
+
+    with patch("app.services.trip_service.assignment_service.release_trip_tokens") as mock_release:
+        with patch("app.services.trip_service._to_response") as mock_resp:
+            mock_resp.return_value = MagicMock()
+            update_trip(db, trip.id, TripUpdate(status="ARCHIVED"))
+
+    mock_release.assert_called_once_with(db, trip.id)
+
+
+def test_update_trip_active_ne_libere_pas():
+    """Passer à ACTIVE ou PLANNED ne doit PAS libérer les bracelets."""
+    trip = make_trip_mock(status="PLANNED")
+    db = make_db_mock(trip=trip)
+
+    with patch("app.services.trip_service.assignment_service.release_trip_tokens") as mock_release:
+        with patch("app.services.trip_service._to_response") as mock_resp:
+            mock_resp.return_value = MagicMock()
+            update_trip(db, trip.id, TripUpdate(status="ACTIVE"))
+
+    mock_release.assert_not_called()
+
+
+def test_archive_trip_libere_bracelets():
+    """archive_trip doit libérer les bracelets actifs du voyage."""
+    trip = make_trip_mock(status="ACTIVE")
+    db = make_db_mock(trip=trip)
+
+    with patch("app.services.trip_service.assignment_service.release_trip_tokens") as mock_release:
+        result = archive_trip(db, trip.id)
+
+    assert result is True
+    mock_release.assert_called_once_with(db, trip.id)

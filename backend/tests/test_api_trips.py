@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
-from app.schemas.trip import TripResponse
+from app.schemas.trip import ClassSummary, TripResponse
 
 
 # --- Helpers ---
@@ -24,6 +24,7 @@ def make_trip_response(**kwargs) -> TripResponse:
         description=kwargs.get("description", None),
         status=kwargs.get("status", "PLANNED"),
         total_students=kwargs.get("total_students", 5),
+        classes=kwargs.get("classes", [ClassSummary(name="3B", student_count=5)]),
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
