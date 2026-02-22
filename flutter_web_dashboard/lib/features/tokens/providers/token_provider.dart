@@ -186,7 +186,7 @@ class TokenProvider extends ChangeNotifier {
 
     try {
       final list = await _api.getTrips();
-      _trips = list.map(TripSummary.fromJson).toList();
+      _trips = list.cast<Map<String, dynamic>>().map(TripSummary.fromJson).toList();
       _state = TokenLoadState.idle;
     } on ApiException catch (e) {
       _errorMessage = e.message;
