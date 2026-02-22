@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'features/students/screens/student_import_screen.dart';
+import 'features/tokens/screens/token_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
 
 void main() {
@@ -68,12 +69,12 @@ final GoRouter _router = GoRouter(
       ),
     ),
 
-    // US 1.5 — Bracelets/Tokens (placeholder, à implémenter)
+    // US 1.5 — Assignation bracelets NFC/QR
     GoRoute(
       path: '/tokens',
       builder: (context, state) => AppScaffold(
         pageTitle: 'Bracelets NFC/QR',
-        child: const _PlaceholderScreen(title: 'Assignation des bracelets'),
+        child: const TokenScreen(),
       ),
     ),
   ],

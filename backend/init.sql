@@ -98,15 +98,19 @@ CREATE TABLE assignments (
     assigned_at TIMESTAMP DEFAULT NOW(),
     assigned_by UUID REFERENCES users(id),  -- Qui a fait l'assignation
     released_at TIMESTAMP,                  -- NULL = encore actif
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    UNIQUE(token_uid, trip_id),             -- 1 token = 1 élève par voyage
-    UNIQUE(student_id, trip_id)             -- 1 élève = 1 token par voyage
+    created_at TIMESTAMP DEFAULT NOW()
+    -- Note: unicité gérée par index partiels (WHERE released_at IS NULL) ci-dessous
+    -- pour permettre l'historique des réassignations sans violation de contrainte
 );
 
 CREATE INDEX idx_assignments_trip ON assignments(trip_id);
 CREATE INDEX idx_assignments_student ON assignments(student_id);
 CREATE INDEX idx_assignments_token ON assignments(token_uid);
+
+-- ⭐ v4.2: Empêcher 2 assignations actives simultanées pour même token+voyage
+CREATE UNIQUE INDEX idx_assignments_active_token_trip
+ON assignments(token_uid, trip_id)
+WHERE released_at IS NULL;
 
 -- ⭐ v4.2: Empêcher 2 assignations actives simultanées pour même élève+voyage
 CREATE UNIQUE INDEX idx_assignments_active_student_trip

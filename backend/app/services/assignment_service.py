@@ -9,16 +9,19 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.models.assignment import Assignment, Token
+from app.models.student import Student
 from app.models.trip import TripStudent
 from app.schemas.assignment import (
     AssignmentCreate,
     AssignmentReassign,
     AssignmentResponse,
     TripAssignmentStatus,
+    TripStudentWithAssignment,
+    TripStudentsResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -129,6 +132,12 @@ def reassign_token(
     if old_student and old_student is not old_token:
         old_student.released_at = datetime.now()
 
+    # Forcer l'envoi des UPDATEs à PostgreSQL AVANT l'INSERT.
+    # Sans flush(), SQLAlchemy peut envoyer l'INSERT avant les UPDATEs,
+    # ce qui viole le partial unique index (student_id, trip_id) WHERE released_at IS NULL
+    # car l'ancienne ligne a encore released_at=NULL au moment de la vérification.
+    db.flush()
+
     # Créer la nouvelle assignation
     assignment = Assignment(
         token_uid=data.token_uid,
@@ -204,6 +213,88 @@ def export_assignments_csv(db: Session, trip_id: uuid.UUID) -> str:
         ])
 
     return "\ufeff" + output.getvalue()  # BOM pour compatibilité Excel
+
+
+def get_trip_students_with_assignments(
+    db: Session, trip_id: uuid.UUID
+) -> TripStudentsResponse:
+    """
+    Retourne la liste des élèves inscrits à un voyage avec leur bracelet actif (si assigné).
+    Utilisé par le dashboard web pour l'écran d'assignation (US 1.5).
+    """
+    rows = db.execute(
+        select(Student, Assignment)
+        .join(TripStudent, TripStudent.student_id == Student.id)
+        .outerjoin(
+            Assignment,
+            and_(
+                Assignment.student_id == Student.id,
+                Assignment.trip_id == trip_id,
+                Assignment.released_at.is_(None),
+            ),
+        )
+        .where(TripStudent.trip_id == trip_id)
+        .order_by(Student.last_name, Student.first_name)
+    ).all()
+
+    students = []
+    assigned_count = 0
+    for student, assignment in rows:
+        if assignment is not None:
+            assigned_count += 1
+        students.append(
+            TripStudentWithAssignment(
+                id=student.id,
+                first_name=student.first_name,
+                last_name=student.last_name,
+                email=student.email,
+                token_uid=assignment.token_uid if assignment else None,
+                assignment_type=assignment.assignment_type if assignment else None,
+                assigned_at=assignment.assigned_at if assignment else None,
+            )
+        )
+
+    logger.info(
+        "Statut assignations voyage %s : %d/%d élèves assignés",
+        trip_id, assigned_count, len(students)
+    )
+    return TripStudentsResponse(
+        trip_id=trip_id,
+        total=len(students),
+        assigned=assigned_count,
+        unassigned=len(students) - assigned_count,
+        students=students,
+    )
+
+
+def release_trip_tokens(db: Session, trip_id: uuid.UUID) -> int:
+    """
+    Libère toutes les assignations actives d'un voyage en settant released_at = NOW().
+
+    Appelé automatiquement quand un voyage passe à COMPLETED ou ARCHIVED,
+    ou manuellement via POST /api/v1/trips/{id}/release-tokens.
+
+    Retourne le nombre d'assignations libérées (0 si aucune active).
+    """
+    assignments = db.execute(
+        select(Assignment)
+        .where(
+            Assignment.trip_id == trip_id,
+            Assignment.released_at.is_(None),
+        )
+    ).scalars().all()
+
+    count = len(assignments)
+    if count == 0:
+        return 0
+
+    now = datetime.now()
+    for a in assignments:
+        a.released_at = now
+
+    db.commit()
+    logger.info("Voyage %s : %d bracelet(s) libéré(s)", trip_id, count)
+    return count
 
 
 def _update_token_status(db: Session, token_uid: str, status: str) -> None:

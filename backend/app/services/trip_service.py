@@ -7,12 +7,13 @@ import uuid
 import logging
 from typing import Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from app.models.school_class import ClassStudent
+from app.models.school_class import ClassStudent, SchoolClass
 from app.models.trip import Trip, TripStudent
-from app.schemas.trip import TripCreate, TripResponse, TripUpdate
+from app.schemas.trip import ClassSummary, TripCreate, TripResponse, TripUpdate
+from app.services import assignment_service
 
 logger = logging.getLogger(__name__)
 
@@ -82,23 +83,34 @@ def get_trip(db: Session, trip_id: uuid.UUID) -> Optional[TripResponse]:
 
 
 def update_trip(db: Session, trip_id: uuid.UUID, data: TripUpdate) -> Optional[TripResponse]:
-    """Met à jour les champs modifiables d'un voyage."""
+    """
+    Met à jour les champs modifiables d'un voyage.
+    Si le statut passe à COMPLETED ou ARCHIVED, libère automatiquement
+    toutes les assignations de bracelets actives du voyage.
+    """
     trip = db.get(Trip, trip_id)
     if trip is None:
         return None
 
     update_data = data.model_dump(exclude_unset=True)
+    new_status = update_data.get("status")
+
     for field, value in update_data.items():
         setattr(trip, field, value)
 
     db.commit()
     db.refresh(trip)
+
+    # Libération automatique des bracelets quand le voyage est terminé ou archivé
+    if new_status in ("COMPLETED", "ARCHIVED"):
+        assignment_service.release_trip_tokens(db, trip_id)
+
     return _to_response(db, trip)
 
 
 def archive_trip(db: Session, trip_id: uuid.UUID) -> bool:
     """
-    Archive un voyage (suppression logique).
+    Archive un voyage (suppression logique) et libère les bracelets actifs.
     Retourne True si archivé, False si non trouvé.
     """
     trip = db.get(Trip, trip_id)
@@ -107,16 +119,36 @@ def archive_trip(db: Session, trip_id: uuid.UUID) -> bool:
 
     trip.status = "ARCHIVED"
     db.commit()
+
+    # Libération automatique des bracelets à l'archivage
+    assignment_service.release_trip_tokens(db, trip_id)
     return True
 
 
 def _to_response(db: Session, trip: Trip) -> TripResponse:
-    """Construit le schéma de réponse avec le total d'élèves."""
+    """Construit le schéma de réponse avec le total d'élèves et les classes représentées."""
     total = db.execute(
         select(func.count())
         .select_from(TripStudent)
         .where(TripStudent.trip_id == trip.id)
     ).scalar() or 0
+
+    # Classes représentées dans le voyage (trip_students → class_students → classes)
+    class_rows = db.execute(
+        select(SchoolClass.name, func.count(TripStudent.student_id).label("cnt"))
+        .join(ClassStudent, ClassStudent.class_id == SchoolClass.id)
+        .join(
+            TripStudent,
+            and_(
+                TripStudent.student_id == ClassStudent.student_id,
+                TripStudent.trip_id == trip.id,
+            ),
+        )
+        .group_by(SchoolClass.id, SchoolClass.name)
+        .order_by(SchoolClass.name)
+    ).all()
+
+    classes = [ClassSummary(name=row.name, student_count=row.cnt) for row in class_rows]
 
     return TripResponse(
         id=trip.id,
@@ -125,6 +157,7 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
         description=trip.description,
         status=trip.status,
         total_students=total,
+        classes=classes,
         created_at=trip.created_at,
         updated_at=trip.updated_at,
     )

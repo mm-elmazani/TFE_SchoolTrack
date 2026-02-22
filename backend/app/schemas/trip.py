@@ -9,6 +9,12 @@ from typing import List, Optional
 from pydantic import BaseModel, field_validator
 
 
+class ClassSummary(BaseModel):
+    """Résumé d'une classe dans un voyage (nom + nb élèves inscrits)."""
+    name: str
+    student_count: int
+
+
 class TripCreate(BaseModel):
     destination: str
     date: date
@@ -66,6 +72,7 @@ class TripResponse(BaseModel):
     description: Optional[str]
     status: str
     total_students: int
+    classes: List[ClassSummary] = []
     created_at: datetime
     updated_at: datetime
 
