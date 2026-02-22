@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'features/classes/screens/class_list_screen.dart';
 import 'features/students/screens/student_import_screen.dart';
+import 'features/students/screens/student_list_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
 import 'features/tokens/screens/token_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
@@ -52,6 +54,15 @@ final GoRouter _router = GoRouter(
       ),
     ),
 
+    // US 1.3 — Liste des élèves
+    GoRoute(
+      path: '/students',
+      builder: (context, state) => AppScaffold(
+        pageTitle: 'Élèves',
+        child: const StudentListScreen(),
+      ),
+    ),
+
     // US 1.2 — Voyages (liste + CRUD)
     GoRoute(
       path: '/trips',
@@ -61,12 +72,12 @@ final GoRouter _router = GoRouter(
       ),
     ),
 
-    // US 1.3 — Classes (placeholder, à implémenter)
+    // US 1.3 — Classes scolaires
     GoRoute(
       path: '/classes',
       builder: (context, state) => AppScaffold(
         pageTitle: 'Classes',
-        child: const _PlaceholderScreen(title: 'Gestion des classes'),
+        child: const ClassListScreen(),
       ),
     ),
 
@@ -80,32 +91,3 @@ final GoRouter _router = GoRouter(
     ),
   ],
 );
-
-/// Écran placeholder pour les routes non encore implémentées.
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const _PlaceholderScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.construction, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'À implémenter dans une prochaine session.',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ],
-      ),
-    );
-  }
-}

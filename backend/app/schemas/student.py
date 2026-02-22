@@ -2,8 +2,21 @@
 Schémas Pydantic pour les élèves.
 """
 
+import uuid
+from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, field_validator
+
+
+class StudentResponse(BaseModel):
+    """Schéma de réponse pour un élève (GET /students)."""
+    id: uuid.UUID
+    first_name: str
+    last_name: str
+    email: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class StudentImportRow(BaseModel):

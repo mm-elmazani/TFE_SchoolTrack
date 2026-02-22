@@ -71,6 +71,17 @@ def delete_class(class_id: uuid.UUID, db: Session = Depends(get_db)):
 
 # --- Gestion des élèves ---
 
+@router.get("/{class_id}/students", response_model=List[uuid.UUID], summary="Élèves d'une classe")
+def list_class_students(class_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Retourne les IDs des élèves assignés à une classe."""
+    from sqlalchemy import select
+    from app.models.school_class import ClassStudent
+    ids = db.execute(
+        select(ClassStudent.student_id).where(ClassStudent.class_id == class_id)
+    ).scalars().all()
+    return ids
+
+
 @router.post("/{class_id}/students", response_model=ClassResponse, summary="Assigner des élèves")
 def assign_students(class_id: uuid.UUID, data: ClassStudentsAssign, db: Session = Depends(get_db)):
     """Assigne un ou plusieurs élèves à une classe. Les doublons sont ignorés."""

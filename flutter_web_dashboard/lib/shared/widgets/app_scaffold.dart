@@ -35,13 +35,8 @@ class AppScaffold extends StatelessWidget {
                 // Barre supérieure
                 _TopBar(title: pageTitle),
 
-                // Contenu scrollable
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: child,
-                  ),
-                ),
+                // Zone de contenu (l'écran gère lui-même son scroll si besoin)
+                Expanded(child: child),
               ],
             ),
           ),
@@ -99,14 +94,19 @@ class _AppSidebar extends StatelessWidget {
       label: 'Import élèves',
     ),
     _NavItem(
-      path: '/trips',
-      icon: Icons.directions_bus,
-      label: 'Voyages',
+      path: '/students',
+      icon: Icons.people_outline,
+      label: 'Élèves',
     ),
     _NavItem(
       path: '/classes',
       icon: Icons.class_,
       label: 'Classes',
+    ),
+    _NavItem(
+      path: '/trips',
+      icon: Icons.directions_bus,
+      label: 'Voyages',
     ),
     _NavItem(
       path: '/tokens',
@@ -116,6 +116,11 @@ class _AppSidebar extends StatelessWidget {
   ];
 
   int _selectedIndex() {
+    // Vérification du chemin exact d'abord (évite que /students matche /students/import)
+    for (var i = 0; i < _navItems.length; i++) {
+      if (currentPath == _navItems[i].path) return i;
+    }
+    // Puis correspondance par préfixe (pour les sous-routes)
     for (var i = 0; i < _navItems.length; i++) {
       if (currentPath.startsWith(_navItems[i].path)) return i;
     }

@@ -71,13 +71,8 @@ class ApiClient {
         Uri.parse('$baseUrl$path'),
         headers: _jsonHeaders,
       );
-      if (response.statusCode != 200 && response.statusCode != 204) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        throw ApiException(
-          statusCode: response.statusCode,
-          message: (body['detail'] ?? 'Erreur inconnue').toString(),
-        );
-      }
+      if (response.statusCode == 200 || response.statusCode == 204) return;
+      _handleResponse(response);
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -86,16 +81,20 @@ class ApiClient {
   }
 
   /// Vérifie le code HTTP et retourne le corps décodé, ou lève une ApiException.
+  /// Gère les corps de réponse non-JSON pour les erreurs.
   dynamic _handleResponse(http.Response response) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (response.body.isEmpty) return null;
       return jsonDecode(response.body);
     }
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    throw ApiException(
-      statusCode: response.statusCode,
-      message: (body['detail'] ?? 'Erreur inconnue').toString(),
-    );
+    String detail;
+    try {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      detail = body['detail']?.toString() ?? 'Erreur inconnue';
+    } catch (_) {
+      detail = response.body.isNotEmpty ? response.body : 'Erreur inconnue';
+    }
+    throw ApiException(statusCode: response.statusCode, message: detail);
   }
 
   // ─── US 1.1 — Import CSV élèves ───────────────────────────────────────────
@@ -117,11 +116,74 @@ class ApiClient {
     }
   }
 
+  // ─── US 1.3 — Élèves ─────────────────────────────────────────────────────
+
+  /// Retourne la liste de tous les élèves (GET /api/v1/students).
+  Future<List<Map<String, dynamic>>> getStudents() async {
+    final data = await _get('/api/v1/students');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  // ─── US 1.3 — Classes ────────────────────────────────────────────────────
+
+  /// Retourne toutes les classes (GET /api/v1/classes).
+  Future<List<Map<String, dynamic>>> getClasses() async {
+    final data = await _get('/api/v1/classes');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  /// Crée une classe (POST /api/v1/classes).
+  Future<Map<String, dynamic>> createClass(String name, {String? year}) async {
+    final body = <String, dynamic>{'name': name};
+    if (year != null && year.isNotEmpty) body['year'] = year;
+    return (await _post('/api/v1/classes', body)) as Map<String, dynamic>;
+  }
+
+  /// Met à jour une classe (PUT /api/v1/classes/{id}).
+  Future<Map<String, dynamic>> updateClass(
+    String classId, {
+    String? name,
+    String? year,
+  }) async {
+    final body = <String, dynamic>{};
+    if (name != null) body['name'] = name;
+    if (year != null) body['year'] = year;
+    return (await _put('/api/v1/classes/$classId', body)) as Map<String, dynamic>;
+  }
+
+  /// Supprime une classe (DELETE /api/v1/classes/{id}).
+  Future<void> deleteClass(String classId) async {
+    await _delete('/api/v1/classes/$classId');
+  }
+
+  /// Retourne les IDs des élèves assignés à une classe (GET /api/v1/classes/{id}/students).
+  Future<List<String>> getClassStudentIds(String classId) async {
+    final data = await _get('/api/v1/classes/$classId/students');
+    return List<String>.from(data as List);
+  }
+
+  /// Assigne des élèves à une classe (POST /api/v1/classes/{id}/students).
+  Future<Map<String, dynamic>> assignStudents(
+    String classId,
+    List<String> studentIds,
+  ) async {
+    return (await _post(
+      '/api/v1/classes/$classId/students',
+      {'student_ids': studentIds},
+    )) as Map<String, dynamic>;
+  }
+
+  /// Retire un élève d'une classe (DELETE /api/v1/classes/{id}/students/{sid}).
+  Future<void> removeStudentFromClass(String classId, String studentId) async {
+    await _delete('/api/v1/classes/$classId/students/$studentId');
+  }
+
   // ─── US 1.2 — CRUD Voyages ────────────────────────────────────────────────
 
-  /// Récupère la liste de tous les voyages.
-  Future<List<dynamic>> getTrips() async {
-    return (await _get('/api/v1/trips')) as List<dynamic>;
+  /// Récupère la liste de tous les voyages (GET /api/v1/trips).
+  Future<List<Map<String, dynamic>>> getTrips() async {
+    final data = await _get('/api/v1/trips');
+    return List<Map<String, dynamic>>.from(data as List);
   }
 
   /// Crée un nouveau voyage.
@@ -161,28 +223,9 @@ class ApiClient {
     return (await _put('/api/v1/trips/$tripId', body)) as Map<String, dynamic>;
   }
 
-  /// Supprime un voyage par son ID.
+  /// Supprime (archive) un voyage par son ID.
   Future<void> deleteTrip(String tripId) async {
     await _delete('/api/v1/trips/$tripId');
-  }
-
-  // ─── Classes (nécessaire pour le formulaire voyage) ───────────────────────
-
-  /// Récupère la liste de toutes les classes (pour la sélection dans le formulaire voyage).
-  Future<List<dynamic>> getClasses() async {
-    return (await _get('/api/v1/classes')) as List<dynamic>;
-  }
-
-  // ─── US 1.3 — Liste élèves ────────────────────────────────────────────────
-
-  /// Récupère la liste de tous les élèves.
-  Future<List<dynamic>> getStudents() async {
-    return (await _get('/api/v1/students')) as List<dynamic>;
-  }
-
-  /// Récupère les IDs des élèves assignés à une classe.
-  Future<List<dynamic>> getClassStudents(String classId) async {
-    return (await _get('/api/v1/classes/$classId/students')) as List<dynamic>;
   }
 
   // ─── US 1.5 — Assignation bracelets ──────────────────────────────────────
