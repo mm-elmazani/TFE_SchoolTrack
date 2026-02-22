@@ -153,6 +153,7 @@ class TokenProvider extends ChangeNotifier {
   TripStudentsData? _studentsData;
   String? _errorMessage;
   bool _isReleasing = false;
+  bool _isSendingQr = false;
 
   // --- Getters ---
   TokenLoadState get state => _state;
@@ -161,6 +162,7 @@ class TokenProvider extends ChangeNotifier {
   TripStudentsData? get studentsData => _studentsData;
   String? get errorMessage => _errorMessage;
   bool get isReleasing => _isReleasing;
+  bool get isSendingQr => _isSendingQr;
 
   @override
   void dispose() {
@@ -259,6 +261,21 @@ class TokenProvider extends ChangeNotifier {
       return (result['released_count'] as int?) ?? 0;
     } finally {
       _isReleasing = false;
+      notifyListeners();
+    }
+  }
+
+  /// Envoie les QR codes digitaux par email pour tous les élèves du voyage sélectionné.
+  /// Retourne le résultat brut : { sent_count, already_sent_count, no_email_count, errors }.
+  /// Lance une [ApiException] en cas d'erreur réseau.
+  Future<Map<String, dynamic>> sendQrEmails() async {
+    if (_selectedTrip == null) return {};
+    _isSendingQr = true;
+    notifyListeners();
+    try {
+      return await _api.sendQrEmails(_selectedTrip!.id);
+    } finally {
+      _isSendingQr = false;
       notifyListeners();
     }
   }

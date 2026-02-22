@@ -134,6 +134,10 @@ class _TripSelectorRow extends StatelessWidget {
         ),
         const SizedBox(width: 8),
 
+        // Bouton envoyer QR codes digitaux par email (US 1.6)
+        _SendQrButton(provider: provider),
+        const SizedBox(width: 8),
+
         // Bouton libérer tous les bracelets du voyage
         _ReleaseButton(provider: provider),
       ],
@@ -493,6 +497,303 @@ class _ErrorCard extends StatelessWidget {
               style: TextStyle(color: Colors.red.shade800),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------------------
+// Bouton envoyer QR codes digitaux (US 1.6)
+// ----------------------------------------------------------------
+
+/// Bouton "Envoyer QR Codes" actif uniquement quand un voyage est sélectionné.
+class _SendQrButton extends StatelessWidget {
+  final TokenProvider provider;
+
+  const _SendQrButton({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final canSend = provider.selectedTrip != null && !provider.isSendingQr;
+
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.teal.shade700,
+        side: BorderSide(color: Colors.teal.shade300),
+      ),
+      onPressed: canSend
+          ? () => showDialog<void>(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => _SendQrDialog(provider: provider),
+              )
+          : null,
+      icon: const Icon(Icons.mark_email_read_outlined, size: 18),
+      label: const Text('Envoyer QR Codes'),
+    );
+  }
+}
+
+// ----------------------------------------------------------------
+// Dialogue d'envoi des QR codes (US 1.6)
+// ----------------------------------------------------------------
+
+/// Dialogue de confirmation puis d'affichage des résultats d'envoi des QR codes.
+class _SendQrDialog extends StatefulWidget {
+  final TokenProvider provider;
+
+  const _SendQrDialog({required this.provider});
+
+  @override
+  State<_SendQrDialog> createState() => _SendQrDialogState();
+}
+
+class _SendQrDialogState extends State<_SendQrDialog> {
+  // États : confirm → loading → result / error
+  bool _isLoading = false;
+  Map<String, dynamic>? _result;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    final destination = widget.provider.selectedTrip?.destination ?? '';
+    final total = widget.provider.studentsData?.total ?? 0;
+
+    return AlertDialog(
+      title: const Text('Envoyer les QR Codes par email'),
+      content: SizedBox(
+        width: 420,
+        child: _isLoading
+            ? const _DialogLoading(message: 'Envoi des QR codes en cours...')
+            : _result != null
+                ? _SendQrResult(result: _result!)
+                : _SendQrConfirm(destination: destination, total: total, error: _error),
+      ),
+      actions: _result != null
+          // Après envoi : seulement "Fermer"
+          ? [
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fermer'),
+              ),
+            ]
+          // Avant envoi : Annuler + Envoyer
+          : [
+              TextButton(
+                onPressed: _isLoading ? null : () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.teal.shade700,
+                ),
+                onPressed: _isLoading ? null : _send,
+                icon: const Icon(Icons.send, size: 16),
+                label: const Text('Envoyer'),
+              ),
+            ],
+    );
+  }
+
+  /// Appelle l'API et bascule en vue résultat ou erreur.
+  Future<void> _send() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await widget.provider.sendQrEmails();
+      if (mounted) setState(() => _result = result);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Erreur inattendue : $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+}
+
+/// Contenu de confirmation avant envoi.
+class _SendQrConfirm extends StatelessWidget {
+  final String destination;
+  final int total;
+  final String? error;
+
+  const _SendQrConfirm({
+    required this.destination,
+    required this.total,
+    this.error,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: TextSpan(
+            style: DefaultTextStyle.of(context).style,
+            children: [
+              const TextSpan(text: 'Un QR Code unique sera envoyé par email à '),
+              TextSpan(
+                text: 'chaque élève inscrit au voyage',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              TextSpan(text: ' « $destination » ($total élèves).'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Les élèves déjà destinataires d\'un QR Code actif ne recevront pas de doublon.',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    error!,
+                    style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Contenu des résultats après envoi.
+class _SendQrResult extends StatelessWidget {
+  final Map<String, dynamic> result;
+
+  const _SendQrResult({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    final sent = result['sent_count'] as int? ?? 0;
+    final alreadySent = result['already_sent_count'] as int? ?? 0;
+    final noEmail = result['no_email_count'] as int? ?? 0;
+    final errors = (result['errors'] as List<dynamic>? ?? []).cast<String>();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ResultRow(
+          icon: Icons.check_circle_outline,
+          color: Colors.green.shade700,
+          label: 'Emails envoyés',
+          value: '$sent',
+        ),
+        const SizedBox(height: 6),
+        _ResultRow(
+          icon: Icons.skip_next_outlined,
+          color: Colors.blueGrey.shade600,
+          label: 'Déjà envoyés (ignorés)',
+          value: '$alreadySent',
+        ),
+        const SizedBox(height: 6),
+        _ResultRow(
+          icon: Icons.email_outlined,
+          color: Colors.orange.shade700,
+          label: 'Sans adresse email',
+          value: '$noEmail',
+        ),
+        if (errors.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            'Erreurs d\'envoi (${errors.length}) :',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.red.shade700,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 4),
+          ...errors.map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '• $e',
+                style: TextStyle(fontSize: 12, color: Colors.red.shade800),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ResultRow extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+
+  const _ResultRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 14))),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DialogLoading extends StatelessWidget {
+  final String message;
+
+  const _DialogLoading({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 14),
+          Text(message, style: TextStyle(color: Colors.grey.shade700)),
         ],
       ),
     );

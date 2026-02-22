@@ -273,6 +273,12 @@ class ApiClient {
     return (await _post('/api/v1/trips/$tripId/release-tokens', {})) as Map<String, dynamic>;
   }
 
+  /// Envoie les QR codes digitaux par email pour tous les élèves d'un voyage.
+  /// Retourne { trip_id, sent_count, already_sent_count, no_email_count, errors }.
+  Future<Map<String, dynamic>> sendQrEmails(String tripId) async {
+    return (await _post('/api/v1/trips/$tripId/send-qr-emails', {})) as Map<String, dynamic>;
+  }
+
   /// Retourne l'URL d'export CSV des assignations d'un voyage.
   String getExportUrl(String tripId) =>
       '$baseUrl/api/v1/trips/$tripId/assignments/export';
