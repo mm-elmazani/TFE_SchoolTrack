@@ -1,15 +1,17 @@
-/// Base de données locale SQLite pour le mode offline (US 2.1).
+/// Base de données locale SQLite pour le mode offline (US 2.1 + US 2.2).
 ///
 /// Schéma :
-///   trips       — informations du voyage + timestamp de téléchargement
-///   students    — élèves avec leur assignation bracelet/QR
-///   checkpoints — points de contrôle du voyage
+///   trips        — informations du voyage + timestamp de téléchargement
+///   students     — élèves avec leur assignation bracelet/QR
+///   checkpoints  — points de contrôle du voyage
+///   attendances  — présences enregistrées localement (US 2.2), en attente de sync
 library;
 
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../constants.dart';
 import '../../features/trips/models/offline_bundle.dart';
+import '../../features/scan/models/attendance_record.dart';
 
 /// Singleton gérant la base de données SQLite locale.
 class LocalDb {
@@ -33,8 +35,9 @@ class LocalDb {
 
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -75,21 +78,75 @@ class LocalDb {
         PRIMARY KEY (id, trip_id)
       )
     ''');
+
+    /// Table des présences enregistrées localement (US 2.2).
+    /// Les enregistrements sont conservés jusqu'à synchronisation avec le backend.
+    await db.execute('''
+      CREATE TABLE attendances (
+        id              TEXT PRIMARY KEY,
+        trip_id         TEXT NOT NULL,
+        checkpoint_id   TEXT NOT NULL,
+        student_id      TEXT NOT NULL,
+        scanned_at      TEXT NOT NULL,
+        scan_method     TEXT NOT NULL,
+        scan_sequence   INTEGER NOT NULL DEFAULT 1,
+        is_manual       INTEGER NOT NULL DEFAULT 0,
+        justification   TEXT,
+        comment         TEXT,
+        synced_at       INTEGER
+      )
+    ''');
+
+    /// Index pour accélérer la détection de doublons et les requêtes de sync.
+    await db.execute(
+      'CREATE INDEX idx_att_checkpoint_student ON attendances(checkpoint_id, student_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_att_synced ON attendances(synced_at)',
+    );
+  }
+
+  /// Migration de version 1 → 2 : ajout de la table attendances (US 2.2).
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS attendances (
+          id              TEXT PRIMARY KEY,
+          trip_id         TEXT NOT NULL,
+          checkpoint_id   TEXT NOT NULL,
+          student_id      TEXT NOT NULL,
+          scanned_at      TEXT NOT NULL,
+          scan_method     TEXT NOT NULL,
+          scan_sequence   INTEGER NOT NULL DEFAULT 1,
+          is_manual       INTEGER NOT NULL DEFAULT 0,
+          justification   TEXT,
+          comment         TEXT,
+          synced_at       INTEGER
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_att_checkpoint_student ON attendances(checkpoint_id, student_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_att_synced ON attendances(synced_at)',
+      );
+    }
   }
 
   // ----------------------------------------------------------------
-  // Écriture
+  // Écriture — bundles offline
   // ----------------------------------------------------------------
 
   /// Sauvegarde un bundle offline complet dans SQLite.
   /// Supprime d'abord les données existantes pour ce voyage (re-téléchargement propre).
+  /// Les présences déjà enregistrées pour ce voyage sont préservées.
   Future<void> saveBundle(OfflineDataBundle bundle) async {
     final db = await database;
     final tripId = bundle.trip.id;
     final now = DateTime.now().millisecondsSinceEpoch;
 
     await db.transaction((txn) async {
-      // Nettoyer les données existantes pour ce voyage
+      // Nettoyer les données existantes pour ce voyage (sauf attendances)
       await txn.delete('checkpoints', where: 'trip_id = ?', whereArgs: [tripId]);
       await txn.delete('students', where: 'trip_id = ?', whereArgs: [tripId]);
       await txn.delete('trips', where: 'id = ?', whereArgs: [tripId]);
@@ -134,7 +191,110 @@ class LocalDb {
   }
 
   // ----------------------------------------------------------------
-  // Lecture
+  // Écriture — présences (US 2.2)
+  // ----------------------------------------------------------------
+
+  /// Enregistre une présence dans SQLite.
+  /// Retourne le numéro de séquence (1 = premier scan, 2 = deuxième scan du même élève, etc.).
+  Future<int> saveAttendance(AttendanceRecord record) async {
+    final db = await database;
+
+    // Calcul du scan_sequence : combien de fois cet élève a déjà été scanné à ce checkpoint ?
+    final existing = await db.query(
+      'attendances',
+      columns: ['id'],
+      where: 'checkpoint_id = ? AND student_id = ?',
+      whereArgs: [record.checkpointId, record.studentId],
+    );
+    final sequence = existing.length + 1;
+
+    await db.insert('attendances', {
+      'id': record.id,
+      'trip_id': record.tripId,
+      'checkpoint_id': record.checkpointId,
+      'student_id': record.studentId,
+      'scanned_at': record.scannedAt.toIso8601String(),
+      'scan_method': record.scanMethod,
+      'scan_sequence': sequence,
+      'is_manual': record.isManual ? 1 : 0,
+      'justification': record.justification,
+      'comment': record.comment,
+      'synced_at': null,
+    });
+
+    return sequence;
+  }
+
+  /// Vérifie si un élève a déjà été scanné à ce checkpoint.
+  /// Retourne le nombre de scans précédents (0 = premier scan).
+  Future<int> countAttendances(String checkpointId, String studentId) async {
+    final db = await database;
+    final rows = await db.query(
+      'attendances',
+      columns: ['id'],
+      where: 'checkpoint_id = ? AND student_id = ?',
+      whereArgs: [checkpointId, studentId],
+    );
+    return rows.length;
+  }
+
+  /// Retourne toutes les présences d'un checkpoint (triées par date de scan).
+  Future<List<AttendanceRecord>> getAttendancesByCheckpoint(
+    String checkpointId,
+  ) async {
+    final db = await database;
+    final rows = await db.query(
+      'attendances',
+      where: 'checkpoint_id = ?',
+      whereArgs: [checkpointId],
+      orderBy: 'scanned_at ASC',
+    );
+    return rows.map(_rowToAttendance).toList();
+  }
+
+  /// Retourne les présences non encore synchronisées (synced_at IS NULL).
+  Future<List<AttendanceRecord>> getPendingAttendances() async {
+    final db = await database;
+    final rows = await db.query(
+      'attendances',
+      where: 'synced_at IS NULL',
+      orderBy: 'scanned_at ASC',
+    );
+    return rows.map(_rowToAttendance).toList();
+  }
+
+  /// Marque une liste de présences comme synchronisées.
+  Future<void> markAttendancesSynced(List<String> ids) async {
+    if (ids.isEmpty) return;
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final placeholders = List.filled(ids.length, '?').join(',');
+    await db.rawUpdate(
+      'UPDATE attendances SET synced_at = ? WHERE id IN ($placeholders)',
+      [now, ...ids],
+    );
+  }
+
+  AttendanceRecord _rowToAttendance(Map<String, dynamic> r) {
+    return AttendanceRecord(
+      id: r['id'] as String,
+      tripId: r['trip_id'] as String,
+      checkpointId: r['checkpoint_id'] as String,
+      studentId: r['student_id'] as String,
+      scannedAt: DateTime.parse(r['scanned_at'] as String),
+      scanMethod: r['scan_method'] as String,
+      scanSequence: r['scan_sequence'] as int,
+      isManual: (r['is_manual'] as int) == 1,
+      justification: r['justification'] as String?,
+      comment: r['comment'] as String?,
+      syncedAt: r['synced_at'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(r['synced_at'] as int)
+          : null,
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // Lecture — voyages
   // ----------------------------------------------------------------
 
   /// Retourne true si le voyage est téléchargé et non expiré (< 7 jours).
@@ -167,6 +327,10 @@ class LocalDb {
     return DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
+  // ----------------------------------------------------------------
+  // Lecture — élèves
+  // ----------------------------------------------------------------
+
   /// Récupère les élèves d'un voyage depuis la DB locale.
   Future<List<OfflineStudent>> getStudents(String tripId) async {
     final db = await database;
@@ -190,6 +354,32 @@ class LocalDb {
             ))
         .toList();
   }
+
+  /// Résout un UID de token en OfflineStudent pour un voyage donné.
+  /// Utilisé par HybridIdentityReader après scan NFC/QR.
+  Future<OfflineStudent?> resolveUid(String uid, String tripId) async {
+    final db = await database;
+    final rows = await db.query(
+      'students',
+      where: 'token_uid = ? AND trip_id = ?',
+      whereArgs: [uid, tripId],
+    );
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    return OfflineStudent(
+      id: r['id'] as String,
+      firstName: r['first_name'] as String,
+      lastName: r['last_name'] as String,
+      assignment: OfflineAssignment(
+        tokenUid: r['token_uid'] as String,
+        assignmentType: r['assignment_type'] as String,
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // Lecture — checkpoints
+  // ----------------------------------------------------------------
 
   /// Récupère les checkpoints d'un voyage depuis la DB locale.
   Future<List<OfflineCheckpoint>> getCheckpoints(String tripId) async {

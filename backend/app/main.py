@@ -35,12 +35,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — autorise tous les ports localhost en développement (à restreindre en production).
+# CORS — autorise localhost + réseau local 192.168.x.x en développement (à restreindre en production).
 # allow_origin_regex est nécessaire pour les requêtes preflight POST avec Content-Type JSON.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[],
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+)(:\d+)?",
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "Accept"],

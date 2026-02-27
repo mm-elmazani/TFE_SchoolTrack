@@ -27,7 +27,8 @@ class TripSummary {
         destination: j['destination'] as String,
         date: j['date'] as String,
         status: j['status'] as String,
-        studentCount: j['student_count'] as int? ?? 0,
+        // Le backend renvoie total_students (TripResponse)
+        studentCount: j['total_students'] as int? ?? j['student_count'] as int? ?? 0,
       );
 }
 

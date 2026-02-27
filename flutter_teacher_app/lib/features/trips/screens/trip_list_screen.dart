@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../providers/trip_provider.dart';
 import '../models/offline_bundle.dart';
@@ -164,6 +165,28 @@ class _TripCard extends StatelessWidget {
               state: state,
               isReady: isReady,
             ),
+
+            // Bouton scanner — visible uniquement si le voyage est prêt hors-ligne
+            if (isReady) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F9D58),
+                  ),
+                  onPressed: () => context.push(
+                    '/checkpoints',
+                    extra: {
+                      'tripId': trip.id,
+                      'tripDestination': trip.destination,
+                    },
+                  ),
+                  icon: const Icon(Icons.qr_code_scanner, size: 18),
+                  label: const Text('Scanner les présences'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

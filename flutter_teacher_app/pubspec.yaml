@@ -28,6 +28,13 @@ dependencies:
   # Détection connectivité réseau (US 3.1)
   connectivity_plus: ^6.1.4
 
+  # Scan hybride QR + NFC (US 2.2)
+  mobile_scanner: ^6.0.0       # Scanner QR physique + digital (successeur de qr_code_scanner)
+  nfc_manager: ^4.1.1          # Lecture NFC (bracelet NTAG213)
+  audioplayers: ^6.1.0         # Feedback sonore (bip succès/erreur)
+  lottie: ^3.1.0               # Animations visuelles (succès/erreur)
+  uuid: ^4.5.1                 # Génération client_uuid pour idempotence sync
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
@@ -37,3 +44,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/sounds/
+    - assets/animations/

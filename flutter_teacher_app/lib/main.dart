@@ -5,6 +5,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'features/trips/screens/trip_list_screen.dart';
+import 'features/scan/screens/checkpoint_selection_screen.dart';
+import 'features/scan/screens/scan_screen.dart';
 
 void main() {
   runApp(const SchoolTrackApp());
@@ -20,7 +22,30 @@ final _router = GoRouter(
       path: '/',
       builder: (context, state) => const TripListScreen(),
     ),
-    // US 2.2+ : écrans de scan et présences (à ajouter)
+
+    // US 2.2 : sélection checkpoint puis scan
+    GoRoute(
+      path: '/checkpoints',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, String>;
+        return CheckpointSelectionScreen(
+          tripId: extra['tripId']!,
+          tripDestination: extra['tripDestination']!,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/scan',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, String>;
+        return ScanScreen(
+          tripId: extra['tripId']!,
+          tripDestination: extra['tripDestination']!,
+          checkpointId: extra['checkpointId']!,
+          checkpointName: extra['checkpointName']!,
+        );
+      },
+    ),
   ],
 );
 
