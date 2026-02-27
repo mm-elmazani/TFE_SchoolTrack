@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'features/trips/screens/trip_list_screen.dart';
 import 'features/scan/screens/checkpoint_selection_screen.dart';
 import 'features/scan/screens/scan_screen.dart';
+import 'features/scan/screens/attendance_list_screen.dart';
+import 'features/scan/providers/scan_provider.dart';
 
 void main() {
   runApp(const SchoolTrackApp());
@@ -43,6 +45,19 @@ final _router = GoRouter(
           tripDestination: extra['tripDestination']!,
           checkpointId: extra['checkpointId']!,
           checkpointName: extra['checkpointName']!,
+        );
+      },
+    ),
+
+    // US 2.3 : suivi temps réel présents/manquants
+    GoRoute(
+      path: '/attendance',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return AttendanceListScreen(
+          provider: extra['provider'] as ScanProvider,
+          checkpointName: extra['checkpointName'] as String,
+          tripDestination: extra['tripDestination'] as String,
         );
       },
     ),

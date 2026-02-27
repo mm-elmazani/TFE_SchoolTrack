@@ -8,6 +8,7 @@ library;
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -138,6 +139,16 @@ class _ScanScreenState extends State<ScanScreen> {
       backgroundColor: Theme.of(context).colorScheme.primary,
       foregroundColor: Theme.of(context).colorScheme.onPrimary,
       actions: [
+        // Bouton suivi présences (US 2.3)
+        IconButton(
+          icon: const Icon(Icons.people),
+          tooltip: 'Voir les présences',
+          onPressed: () => context.push('/attendance', extra: {
+            'provider': _provider,
+            'checkpointName': widget.checkpointName,
+            'tripDestination': widget.tripDestination,
+          }),
+        ),
         // Indicateur NFC
         Padding(
           padding: const EdgeInsets.only(right: 12),

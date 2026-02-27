@@ -1,4 +1,4 @@
-/// Provider gérant l'état de la session de scan (US 2.2).
+/// Provider gérant l'état de la session de scan (US 2.2 + US 2.3).
 library;
 
 import 'package:audioplayers/audioplayers.dart';
@@ -9,6 +9,14 @@ import '../../../features/trips/models/offline_bundle.dart';
 
 /// État de l'écran de scan.
 enum ScanState { idle, scanning, success, duplicate, error }
+
+/// Informations du dernier scan réussi d'un élève (US 2.3 — liste temps réel).
+class StudentScanInfo {
+  final String scanMethod;
+  final DateTime scannedAt;
+
+  const StudentScanInfo({required this.scanMethod, required this.scannedAt});
+}
 
 /// Résumé d'un élève après scan (affiché dans l'écran de résultat).
 class ScannedStudentInfo {
@@ -61,6 +69,10 @@ class ScanProvider extends ChangeNotifier {
   int _presentCount = 0;
   int _totalStudents = 0;
 
+  // US 2.3 — suivi temps réel par élève
+  List<OfflineStudent> _students = [];
+  final Map<String, StudentScanInfo> _presentMap = {};
+
   // ----------------------------------------------------------------
   // Getters
   // ----------------------------------------------------------------
@@ -74,6 +86,22 @@ class ScanProvider extends ChangeNotifier {
   int get presentCount => _presentCount;
   int get totalStudents => _totalStudents;
   int get missingCount => _totalStudents - _presentCount;
+
+  // US 2.3 — listes temps réel
+  /// Élèves déjà scannés, triés par heure de scan DESC (plus récent en premier).
+  List<OfflineStudent> get presentStudents {
+    final list = _students.where((s) => _presentMap.containsKey(s.id)).toList();
+    list.sort((a, b) =>
+        _presentMap[b.id]!.scannedAt.compareTo(_presentMap[a.id]!.scannedAt));
+    return list;
+  }
+
+  /// Élèves non encore scannés, triés par nom ASC.
+  List<OfflineStudent> get missingStudents =>
+      _students.where((s) => !_presentMap.containsKey(s.id)).toList();
+
+  /// Informations du scan d'un élève donné (null si non scanné).
+  StudentScanInfo? scanInfoOf(String studentId) => _presentMap[studentId];
 
   @override
   void dispose() {
@@ -94,15 +122,24 @@ class ScanProvider extends ChangeNotifier {
 
   /// Démarre la session de scan : NFC + chargement des compteurs.
   Future<void> startSession(List<OfflineStudent> students) async {
+    _students = List.unmodifiable(students);
     _totalStudents = students.length;
 
-    // Charger le nombre de présences déjà enregistrées pour ce checkpoint
+    // Charger les présences déjà enregistrées pour ce checkpoint
     final attendances = await LocalDb.instance.getAttendancesByCheckpoint(
       checkpointId,
     );
-    // Compter les élèves distincts scannés (pas les doublons)
-    final uniqueStudents = attendances.map((a) => a.studentId).toSet();
-    _presentCount = uniqueStudents.length;
+    // Triées ASC → putIfAbsent garde le premier scan (le plus ancien)
+    for (final att in attendances) {
+      _presentMap.putIfAbsent(
+        att.studentId,
+        () => StudentScanInfo(
+          scanMethod: att.scanMethod,
+          scannedAt: att.scannedAt,
+        ),
+      );
+    }
+    _presentCount = _presentMap.length;
 
     // Démarrer le NFC
     _nfcAvailable = await _reader.startNfc(_onScanResult);
@@ -137,9 +174,13 @@ class ScanProvider extends ChangeNotifier {
   }
 
   void _handleSuccess(ScanSuccess result) {
-    // Mettre à jour les compteurs (seulement si premier scan de cet élève)
+    // Mettre à jour les compteurs et la map (seulement si premier scan)
     if (!result.isDuplicate) {
       _presentCount++;
+      _presentMap[result.student.id] = StudentScanInfo(
+        scanMethod: result.scanMethod,
+        scannedAt: DateTime.now(),
+      );
     }
 
     _lastResult = ScannedStudentInfo(

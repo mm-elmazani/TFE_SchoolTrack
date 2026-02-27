@@ -15,7 +15,7 @@ void main() {
   });
 
   group('AttendanceRecord', () {
-    AttendanceRecord _make({
+    AttendanceRecord make({
       int scanSequence = 1,
       DateTime? syncedAt,
       bool isManual = false,
@@ -33,32 +33,32 @@ void main() {
         );
 
     test('isSynced retourne false si syncedAt est null', () {
-      expect(_make().isSynced, isFalse);
+      expect(make().isSynced, isFalse);
     });
 
     test('isSynced retourne true si syncedAt est défini', () {
-      expect(_make(syncedAt: DateTime(2026, 6, 15, 11, 0)).isSynced, isTrue);
+      expect(make(syncedAt: DateTime(2026, 6, 15, 11, 0)).isSynced, isTrue);
     });
 
     test('isDuplicate retourne false si scanSequence = 1', () {
-      expect(_make(scanSequence: 1).isDuplicate, isFalse);
+      expect(make(scanSequence: 1).isDuplicate, isFalse);
     });
 
     test('isDuplicate retourne true si scanSequence > 1', () {
-      expect(_make(scanSequence: 2).isDuplicate, isTrue);
-      expect(_make(scanSequence: 3).isDuplicate, isTrue);
+      expect(make(scanSequence: 2).isDuplicate, isTrue);
+      expect(make(scanSequence: 3).isDuplicate, isTrue);
     });
 
     test('scanSequence par défaut est 1', () {
-      expect(_make().scanSequence, 1);
+      expect(make().scanSequence, 1);
     });
 
     test('isManual par défaut est false', () {
-      expect(_make().isManual, isFalse);
+      expect(make().isManual, isFalse);
     });
 
     test('champs optionnels sont null par défaut', () {
-      final r = _make();
+      final r = make();
       expect(r.justification, isNull);
       expect(r.comment, isNull);
       expect(r.syncedAt, isNull);
