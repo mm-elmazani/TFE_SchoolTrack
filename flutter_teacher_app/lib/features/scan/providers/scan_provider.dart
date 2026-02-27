@@ -32,10 +32,18 @@ class ScanProvider extends ChangeNotifier {
   final String tripId;
   final String checkpointId;
   final HybridIdentityReader _reader;
-  final AudioPlayer _audio = AudioPlayer();
 
-  ScanProvider({required this.tripId, required this.checkpointId})
-      : _reader = HybridIdentityReader(
+  /// null = mode silencieux (tests unitaires).
+  final AudioPlayer? _audio;
+
+  /// [audioPlayer] peut être injecté pour les tests (évite les appels platform channel).
+  /// En production, passer explicitement [AudioPlayer()].
+  ScanProvider({
+    required this.tripId,
+    required this.checkpointId,
+    AudioPlayer? audioPlayer,
+  })  : _audio = audioPlayer,
+        _reader = HybridIdentityReader(
           tripId: tripId,
           checkpointId: checkpointId,
         );
@@ -71,7 +79,7 @@ class ScanProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _reader.dispose();
-    _audio.dispose();
+    _audio?.dispose();
     super.dispose();
   }
 
@@ -178,6 +186,7 @@ class ScanProvider extends ChangeNotifier {
   // ----------------------------------------------------------------
 
   Future<void> _playSuccessSound(bool isDuplicate) async {
+    if (_audio == null) return;
     try {
       if (isDuplicate) {
         // Bip court double pour doublon
@@ -191,6 +200,7 @@ class ScanProvider extends ChangeNotifier {
   }
 
   Future<void> _playErrorSound() async {
+    if (_audio == null) return;
     try {
       await _audio.play(AssetSource('sounds/beep_error.mp3'));
     } catch (_) {

@@ -6,6 +6,7 @@
 library;
 
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -44,6 +45,7 @@ class _ScanScreenState extends State<ScanScreen> {
     _provider = ScanProvider(
       tripId: widget.tripId,
       checkpointId: widget.checkpointId,
+      audioPlayer: AudioPlayer(),
     );
     _initSession();
   }

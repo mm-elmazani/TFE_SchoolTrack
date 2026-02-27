@@ -41,6 +41,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.4   # SQLite en mémoire pour les tests unitaires
+  http: ^1.2.2                 # MockClient pour les tests ApiClient
 
 flutter:
   uses-material-design: true

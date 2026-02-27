@@ -7,6 +7,7 @@
 ///   attendances  — présences enregistrées localement (US 2.2), en attente de sync
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import '../constants.dart';
@@ -20,6 +21,11 @@ class LocalDb {
 
   Database? _db;
 
+  /// Chemin personnalisé pour les tests (ex. inMemoryDatabasePath).
+  /// Doit être défini avant d'accéder à [database].
+  @visibleForTesting
+  static String? testDatabasePath;
+
   // ----------------------------------------------------------------
   // Initialisation
   // ----------------------------------------------------------------
@@ -30,8 +36,8 @@ class LocalDb {
   }
 
   Future<Database> _open() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'schooltrack.db');
+    final path = testDatabasePath ??
+        join(await getDatabasesPath(), 'schooltrack.db');
 
     return openDatabase(
       path,
@@ -39,6 +45,14 @@ class LocalDb {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+  }
+
+  /// Ferme la base de données et réinitialise le singleton (usage tests uniquement).
+  @visibleForTesting
+  Future<void> closeForTest() async {
+    await _db?.close();
+    _db = null;
+    testDatabasePath = null;
   }
 
   Future<void> _onCreate(Database db, int version) async {
