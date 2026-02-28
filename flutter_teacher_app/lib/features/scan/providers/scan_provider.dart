@@ -77,6 +77,9 @@ class ScanProvider extends ChangeNotifier {
   List<OfflineStudent> _students = [];
   final Map<String, StudentScanInfo> _presentMap = {};
 
+  // US 2.5 — statut du checkpoint courant (DRAFT→ACTIVE au 1er scan)
+  String _checkpointStatus = 'ACTIVE'; // défaut sécurisé
+
   // ----------------------------------------------------------------
   // Getters
   // ----------------------------------------------------------------
@@ -90,6 +93,7 @@ class ScanProvider extends ChangeNotifier {
   int get presentCount => _presentCount;
   int get totalStudents => _totalStudents;
   int get missingCount => _totalStudents - _presentCount;
+  String get checkpointStatus => _checkpointStatus;
 
   // US 2.3 — listes temps réel
   /// Élèves déjà scannés, triés par heure de scan DESC (plus récent en premier).
@@ -128,6 +132,10 @@ class ScanProvider extends ChangeNotifier {
   Future<void> startSession(List<OfflineStudent> students) async {
     _students = List.unmodifiable(students);
     _totalStudents = students.length;
+
+    // Charger le statut du checkpoint pour la transition DRAFT→ACTIVE (US 2.5)
+    final checkpoint = await LocalDb.instance.getCheckpointById(checkpointId);
+    if (checkpoint != null) _checkpointStatus = checkpoint.status;
 
     // Charger les présences déjà enregistrées pour ce checkpoint
     final attendances = await LocalDb.instance.getAttendancesByCheckpoint(
@@ -185,6 +193,12 @@ class ScanProvider extends ChangeNotifier {
         scanMethod: result.scanMethod,
         scannedAt: DateTime.now(),
       );
+
+      // Transition DRAFT→ACTIVE au premier scan réussi (US 2.5)
+      if (_checkpointStatus == 'DRAFT') {
+        _checkpointStatus = 'ACTIVE';
+        LocalDb.instance.activateCheckpoint(checkpointId);
+      }
     }
 
     _lastResult = ScannedStudentInfo(
@@ -263,6 +277,12 @@ class ScanProvider extends ChangeNotifier {
         scanMethod: ScanMethod.manual,
         scannedAt: now,
       );
+
+      // Transition DRAFT→ACTIVE au premier marquage (US 2.5)
+      if (_checkpointStatus == 'DRAFT') {
+        _checkpointStatus = 'ACTIVE';
+        LocalDb.instance.activateCheckpoint(checkpointId);
+      }
     }
 
     notifyListeners();

@@ -1,18 +1,21 @@
-/// Base de données locale SQLite pour le mode offline (US 2.1 + US 2.2).
+/// Base de données locale SQLite pour le mode offline (US 2.1 + US 2.2 + US 2.5).
 ///
 /// Schéma :
 ///   trips        — informations du voyage + timestamp de téléchargement
 ///   students     — élèves avec leur assignation bracelet/QR
-///   checkpoints  — points de contrôle du voyage
+///   checkpoints  — points de contrôle du voyage (créés offline, US 2.5)
 ///   attendances  — présences enregistrées localement (US 2.2), en attente de sync
 library;
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 import '../constants.dart';
 import '../../features/trips/models/offline_bundle.dart';
 import '../../features/scan/models/attendance_record.dart';
+
+const _uuid = Uuid();
 
 /// Singleton gérant la base de données SQLite locale.
 class LocalDb {
@@ -401,13 +404,86 @@ class LocalDb {
       whereArgs: [tripId],
       orderBy: 'sequence_order ASC',
     );
-    return rows
-        .map((r) => OfflineCheckpoint(
-              id: r['id'] as String,
-              name: r['name'] as String,
-              sequenceOrder: r['sequence_order'] as int,
-              status: r['status'] as String,
-            ))
-        .toList();
+    return rows.map(_rowToCheckpoint).toList();
+  }
+
+  /// Récupère un checkpoint par son ID (null si absent).
+  Future<OfflineCheckpoint?> getCheckpointById(String checkpointId) async {
+    final db = await database;
+    final rows = await db.query(
+      'checkpoints',
+      where: 'id = ?',
+      whereArgs: [checkpointId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return _rowToCheckpoint(rows.first);
+  }
+
+  // ----------------------------------------------------------------
+  // Écriture — checkpoints terrain (US 2.5)
+  // ----------------------------------------------------------------
+
+  /// Crée un nouveau checkpoint en SQLite local avec statut DRAFT.
+  ///
+  /// Génère un UUID client, calcule le prochain sequence_order,
+  /// et retourne l'objet créé. Offline-first : la synchronisation
+  /// avec le backend se fera via US 3.1.
+  Future<OfflineCheckpoint> createCheckpoint({
+    required String tripId,
+    required String name,
+  }) async {
+    final db = await database;
+    final id = _uuid.v4();
+
+    // Calcul du prochain sequence_order pour ce voyage
+    final rows = await db.query(
+      'checkpoints',
+      columns: ['sequence_order'],
+      where: 'trip_id = ?',
+      whereArgs: [tripId],
+      orderBy: 'sequence_order DESC',
+      limit: 1,
+    );
+    final nextOrder =
+        rows.isEmpty ? 1 : (rows.first['sequence_order'] as int) + 1;
+
+    await db.insert('checkpoints', {
+      'id': id,
+      'trip_id': tripId,
+      'name': name,
+      'sequence_order': nextOrder,
+      'status': 'DRAFT',
+    });
+
+    return OfflineCheckpoint(
+      id: id,
+      name: name,
+      sequenceOrder: nextOrder,
+      status: 'DRAFT',
+    );
+  }
+
+  /// Passe le statut d'un checkpoint de DRAFT à ACTIVE dans SQLite local.
+  ///
+  /// Appelé au premier scan réussi (US 2.5). La mise à jour sera
+  /// synchronisée avec le backend lors de la synchronisation (US 3.1).
+  Future<void> activateCheckpoint(String checkpointId) async {
+    final db = await database;
+    await db.update(
+      'checkpoints',
+      {'status': 'ACTIVE'},
+      where: 'id = ?',
+      whereArgs: [checkpointId],
+    );
+  }
+
+  OfflineCheckpoint _rowToCheckpoint(Map<String, dynamic> r) {
+    return OfflineCheckpoint(
+      id: r['id'] as String,
+      name: r['name'] as String,
+      sequenceOrder: r['sequence_order'] as int,
+      status: r['status'] as String,
+    );
   }
 }

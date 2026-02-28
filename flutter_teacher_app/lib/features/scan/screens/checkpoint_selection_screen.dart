@@ -1,11 +1,13 @@
-/// Écran de sélection d'un checkpoint avant de démarrer le scan (US 2.2).
+/// Écran de sélection d'un checkpoint avant de démarrer le scan (US 2.2 + US 2.5).
 ///
-/// L'enseignant doit sélectionner un checkpoint actif (DRAFT ou ACTIVE) avant
-/// de pouvoir scanner. Le checkpoint sera passé à l'écran de scan.
+/// L'enseignant sélectionne un checkpoint existant ou en crée un nouveau (bouton +).
+/// Le checkpoint créé est d'abord sauvegardé localement en SQLite (DRAFT),
+/// puis une tentative de création sur le backend est faite en best-effort.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/database/local_db.dart';
 import '../../../features/trips/models/offline_bundle.dart';
 
@@ -29,6 +31,7 @@ class _CheckpointSelectionScreenState
     extends State<CheckpointSelectionScreen> {
   List<OfflineCheckpoint>? _checkpoints;
   String? _error;
+  final _apiClient = ApiClient();
 
   @override
   void initState() {
@@ -45,9 +48,36 @@ class _CheckpointSelectionScreenState
     }
   }
 
+  /// Ouvre le dialog de création d'un checkpoint (US 2.5).
+  Future<void> _showCreateDialog() async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => const _CreateCheckpointDialog(),
+    );
+    if (name == null || name.isEmpty) return;
+
+    // 1. Créer localement en SQLite (offline-first)
+    final created = await LocalDb.instance.createCheckpoint(
+      tripId: widget.tripId,
+      name: name,
+    );
+
+    // 2. Tenter la création sur le backend (best-effort)
+    _apiClient.createCheckpoint(widget.tripId, name);
+
+    // 3. Rafraîchir la liste et sélectionner directement le nouveau checkpoint
+    await _load();
+    if (mounted) _onCheckpointSelected(created);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showCreateDialog,
+        icon: const Icon(Icons.add_location_alt_outlined),
+        label: const Text('Nouveau checkpoint'),
+      ),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -264,7 +294,7 @@ class _EmptyCheckpoints extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.location_off_outlined,
+        Icon(Icons.add_location_alt_outlined,
             size: 56, color: Colors.grey.shade400),
         const SizedBox(height: 16),
         Text(
@@ -274,12 +304,71 @@ class _EmptyCheckpoints extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Les checkpoints sont créés depuis le tableau de bord avant le départ.',
+          'Appuyez sur "+ Nouveau checkpoint" pour en créer un.',
           style: Theme.of(context)
               .textTheme
               .bodyMedium
               ?.copyWith(color: Colors.grey.shade600),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
+// ----------------------------------------------------------------
+// Dialog de création d'un checkpoint (US 2.5)
+// ----------------------------------------------------------------
+
+class _CreateCheckpointDialog extends StatefulWidget {
+  const _CreateCheckpointDialog();
+
+  @override
+  State<_CreateCheckpointDialog> createState() =>
+      _CreateCheckpointDialogState();
+}
+
+class _CreateCheckpointDialogState extends State<_CreateCheckpointDialog> {
+  final _controller = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nouveau checkpoint'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Nom du checkpoint',
+            hintText: 'ex : Arrêt bus, Entrée musée…',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.sentences,
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Nom obligatoire' : null,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.of(context).pop(_controller.text.trim());
+            }
+          },
+          child: const Text('Créer'),
         ),
       ],
     );

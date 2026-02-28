@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
 import '../../features/trips/models/offline_bundle.dart';
+import '../../features/scan/models/checkpoint_create_result.dart';
 
 /// Exception levée lors d'une erreur API (HTTP ou réseau).
 class ApiException implements Exception {
@@ -52,6 +53,42 @@ class ApiClient {
       rethrow;
     } catch (e) {
       throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Checkpoints terrain (US 2.5)
+  // ----------------------------------------------------------------
+
+  /// Crée un checkpoint sur le backend (best-effort — retourne null si hors-ligne).
+  ///
+  /// Le checkpoint est d'abord créé localement en SQLite avant cet appel.
+  /// Si le réseau est indisponible ou l'API répond avec une erreur, null est
+  /// retourné silencieusement (l'appli continue en mode offline).
+  Future<CheckpointCreateResult?> createCheckpoint(
+    String tripId,
+    String name,
+  ) async {
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/trips/$tripId/checkpoints'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'name': name}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return CheckpointCreateResult(
+          serverId: data['id'] as String,
+          sequenceOrder: data['sequence_order'] as int,
+        );
+      }
+      return null;
+    } catch (_) {
+      // Hors-ligne ou erreur réseau — mode offline, on continue sans erreur
+      return null;
     }
   }
 
