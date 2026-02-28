@@ -1,11 +1,15 @@
-/// Provider gérant l'état de la session de scan (US 2.2 + US 2.3).
+/// Provider gérant l'état de la session de scan (US 2.2 + US 2.3 + US 2.4).
 library;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/database/local_db.dart';
 import '../../../core/services/hybrid_identity_reader.dart';
+import '../../../features/scan/models/attendance_record.dart';
 import '../../../features/trips/models/offline_bundle.dart';
+
+const _uuid = Uuid();
 
 /// État de l'écran de scan.
 enum ScanState { idle, scanning, success, duplicate, error }
@@ -211,6 +215,58 @@ class ScanProvider extends ChangeNotifier {
   // ----------------------------------------------------------------
   // Remise à l'état idle (après affichage du résultat)
   // ----------------------------------------------------------------
+
+  // ----------------------------------------------------------------
+  // Marquage manuel (US 2.4)
+  // ----------------------------------------------------------------
+
+  /// Codes de justification pour un marquage manuel.
+  static const List<(String, String)> justificationOptions = [
+    ('BADGE_MISSING', 'Badge / bracelet manquant'),
+    ('BADGE_DAMAGED', 'Badge / bracelet endommagé'),
+    ('SCANNER_FAILURE', 'Scanner défaillant'),
+    ('TEACHER_CONFIRMATION', 'Présence confirmée par l\'enseignant'),
+    ('OTHER', 'Autre'),
+  ];
+
+  /// Marque manuellement un élève comme présent avec une justification (US 2.4).
+  ///
+  /// Enregistre la présence en SQLite (is_manual=1, scan_method='MANUAL')
+  /// et met à jour la liste temps réel. Si l'élève est déjà présent,
+  /// l'enregistrement est sauvegardé (historique) mais le compteur ne change pas.
+  Future<void> markManually({
+    required OfflineStudent student,
+    required String justification,
+    String? comment,
+  }) async {
+    if (_disposed) return;
+
+    final now = DateTime.now();
+    final record = AttendanceRecord(
+      id: _uuid.v4(),
+      tripId: tripId,
+      checkpointId: checkpointId,
+      studentId: student.id,
+      scannedAt: now,
+      scanMethod: ScanMethod.manual,
+      isManual: true,
+      justification: justification,
+      comment: comment,
+    );
+
+    await LocalDb.instance.saveAttendance(record);
+
+    // Mise à jour de la map seulement si l'élève n'était pas encore présent
+    if (!_presentMap.containsKey(student.id)) {
+      _presentCount++;
+      _presentMap[student.id] = StudentScanInfo(
+        scanMethod: ScanMethod.manual,
+        scannedAt: now,
+      );
+    }
+
+    notifyListeners();
+  }
 
   /// Remet le scanner en mode attente (après 2s d'affichage du résultat).
   void resumeScanning() {
