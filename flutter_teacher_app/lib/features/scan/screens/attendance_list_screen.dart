@@ -400,7 +400,7 @@ class _ManualMarkDialogState extends State<_ManualMarkDialog> {
           ),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            value: _selectedJustification,
+            initialValue: _selectedJustification,
             isExpanded: true,
             items: ScanProvider.justificationOptions
                 .map((e) => DropdownMenuItem(

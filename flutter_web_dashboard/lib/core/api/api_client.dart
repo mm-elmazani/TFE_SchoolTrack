@@ -124,6 +124,40 @@ class ApiClient {
     return List<Map<String, dynamic>>.from(data as List);
   }
 
+  /// Crée un élève manuellement (POST /api/v1/students).
+  Future<Map<String, dynamic>> createStudent({
+    required String firstName,
+    required String lastName,
+    String? email,
+  }) async {
+    final body = <String, dynamic>{
+      'first_name': firstName,
+      'last_name': lastName,
+      if (email != null && email.isNotEmpty) 'email': email,
+    };
+    return (await _post('/api/v1/students', body)) as Map<String, dynamic>;
+  }
+
+  /// Met à jour un élève (PUT /api/v1/students/{id}).
+  Future<Map<String, dynamic>> updateStudent(
+    String studentId, {
+    String? firstName,
+    String? lastName,
+    String? email,
+  }) async {
+    final body = <String, dynamic>{
+      if (firstName != null) 'first_name': firstName,
+      if (lastName != null) 'last_name': lastName,
+      'email': email, // null autorisé (efface l'email)
+    };
+    return (await _put('/api/v1/students/$studentId', body)) as Map<String, dynamic>;
+  }
+
+  /// Supprime un élève (DELETE /api/v1/students/{id}).
+  Future<void> deleteStudent(String studentId) async {
+    await _delete('/api/v1/students/$studentId');
+  }
+
   // ─── US 1.3 — Classes ────────────────────────────────────────────────────
 
   /// Retourne toutes les classes (GET /api/v1/classes).

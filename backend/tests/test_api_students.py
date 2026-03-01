@@ -99,7 +99,7 @@ class TestListStudents:
         assert resp.status_code == 200
         assert resp.json()[0]["email"] is None
 
-    def test_methode_post_non_autorisee(self, client):
-        """POST sur /students (sans /upload) retourne 405."""
+    def test_post_body_vide_retourne_422(self, client):
+        """POST sur /students avec body vide → 422 (champs obligatoires manquants)."""
         resp = client.post("/api/v1/students", json={})
-        assert resp.status_code == 405
+        assert resp.status_code == 422

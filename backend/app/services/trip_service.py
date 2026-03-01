@@ -64,11 +64,11 @@ def create_trip(db: Session, data: TripCreate, created_by: Optional[uuid.UUID] =
 
 
 def get_trips(db: Session) -> list[TripResponse]:
-    """Retourne tous les voyages non supprimés, du plus récent au plus ancien."""
+    """Retourne tous les voyages non supprimés, du plus proche au plus loin."""
     trips = db.execute(
         select(Trip)
         .where(Trip.status != "ARCHIVED")
-        .order_by(Trip.date.desc())
+        .order_by(Trip.date.asc())
     ).scalars().all()
 
     return [_to_response(db, t) for t in trips]

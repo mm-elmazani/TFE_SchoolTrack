@@ -125,7 +125,7 @@ void main() {
       expect(provider.listError, isNull);
     });
 
-    test('passe à error si ApiException', () async {
+    test('fallback SQLite vide → error si ApiException et aucun cache', () async {
       final provider = TripProvider(
         api: FakeApiClient(
           error: const ApiException('Serveur inaccessible', statusCode: 503),
@@ -135,9 +135,35 @@ void main() {
 
       await provider.loadTrips();
 
+      // SQLite vide → error avec message offline
       expect(provider.listState, TripListState.error);
-      expect(provider.listError, contains('Serveur inaccessible'));
+      expect(provider.listError, contains('Réseau indisponible'));
       expect(provider.trips, isEmpty);
+      expect(provider.isOffline, isFalse);
+    });
+
+    test('fallback SQLite → ready + isOffline si ApiException et cache présent', () async {
+      // Pré-remplir SQLite avec un voyage
+      final providerOnline = TripProvider(
+        api: FakeApiClient(tripsResult: _trips, bundleResult: _bundle),
+        db: LocalDb.instance,
+      );
+      await providerOnline.loadTrips();
+      await providerOnline.downloadBundle('trip-001');
+
+      // Simuler une perte réseau
+      final providerOffline = TripProvider(
+        api: FakeApiClient(
+          error: const ApiException('Réseau indisponible', statusCode: 503),
+        ),
+        db: LocalDb.instance,
+      );
+
+      await providerOffline.loadTrips();
+
+      expect(providerOffline.listState, TripListState.ready);
+      expect(providerOffline.isOffline, isTrue);
+      expect(providerOffline.trips, isNotEmpty);
     });
 
     test('isReady retourne false pour voyage non téléchargé', () async {

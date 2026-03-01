@@ -26,7 +26,7 @@ class _StudentItem {
 }
 
 /// Écran de listage des élèves (US 1.3 — vue élèves).
-/// Affiche tous les élèves avec recherche par nom.
+/// Affiche tous les élèves avec recherche, ajout, modification et suppression.
 class StudentListScreen extends StatefulWidget {
   const StudentListScreen({super.key});
 
@@ -77,6 +77,181 @@ class _StudentListScreenState extends State<StudentListScreen> {
     return _students.where((s) => s.displayName.toLowerCase().contains(q)).toList();
   }
 
+  // ── Dialogs ───────────────────────────────────────────────────────────────
+
+  /// Ouvre le dialog de création ou de modification d'un élève.
+  /// [student] est null pour une création, non-null pour une modification.
+  Future<void> _showStudentDialog([_StudentItem? student]) async {
+    final firstNameCtrl = TextEditingController(text: student?.firstName ?? '');
+    final lastNameCtrl = TextEditingController(text: student?.lastName ?? '');
+    final emailCtrl = TextEditingController(text: student?.email ?? '');
+    final formKey = GlobalKey<FormState>();
+    bool saving = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(student == null ? 'Ajouter un élève' : 'Modifier l\'élève'),
+          content: SizedBox(
+            width: 400,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: lastNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom *',
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Le nom est obligatoire.' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: firstNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Prénom *',
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Le prénom est obligatoire.' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: emailCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Email (optionnel)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.of(ctx).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setLocal(() => saving = true);
+                      try {
+                        final email = emailCtrl.text.trim().isEmpty
+                            ? null
+                            : emailCtrl.text.trim();
+                        if (student == null) {
+                          await _api.createStudent(
+                            firstName: firstNameCtrl.text.trim(),
+                            lastName: lastNameCtrl.text.trim(),
+                            email: email,
+                          );
+                        } else {
+                          await _api.updateStudent(
+                            student.id,
+                            firstName: firstNameCtrl.text.trim(),
+                            lastName: lastNameCtrl.text.trim(),
+                            email: email,
+                          );
+                        }
+                        if (ctx.mounted) Navigator.of(ctx).pop(true);
+                      } on ApiException catch (e) {
+                        setLocal(() => saving = false);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(
+                              content: Text('Erreur : ${e.message}'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(student == null ? 'Ajouter' : 'Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      _load();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(student == null ? 'Élève ajouté.' : 'Élève mis à jour.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  /// Affiche un dialog de confirmation avant suppression.
+  Future<void> _deleteStudent(_StudentItem student) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer l\'élève ?'),
+        content: Text(
+          'Voulez-vous supprimer définitivement ${student.displayName} ?\n\n'
+          'Cette action est irréversible.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await _api.deleteStudent(student.id);
+        _load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Élève supprimé.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } on ApiException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur : ${e.message}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -102,6 +277,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 onPressed: _load,
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Actualiser',
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: () => _showStudentDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Ajouter'),
               ),
             ],
           ),
@@ -132,8 +313,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
               : _error != null
                   ? _ErrorView(message: _error!, onRetry: _load)
                   : _students.isEmpty
-                      ? _EmptyView()
-                      : _StudentList(students: _filtered),
+                      ? _EmptyView(onAdd: () => _showStudentDialog())
+                      : _StudentList(
+                          students: _filtered,
+                          onEdit: _showStudentDialog,
+                          onDelete: _deleteStudent,
+                        ),
         ),
       ],
     );
@@ -146,8 +331,14 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
 class _StudentList extends StatelessWidget {
   final List<_StudentItem> students;
+  final void Function(_StudentItem) onEdit;
+  final void Function(_StudentItem) onDelete;
 
-  const _StudentList({required this.students});
+  const _StudentList({
+    required this.students,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +364,21 @@ class _StudentList extends StatelessWidget {
           ),
           title: Text(s.displayName),
           subtitle: s.email != null ? Text(s.email!) : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                tooltip: 'Modifier',
+                onPressed: () => onEdit(s),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                tooltip: 'Supprimer',
+                onPressed: () => onDelete(s),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -184,6 +390,10 @@ class _StudentList extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _EmptyView extends StatelessWidget {
+  final VoidCallback onAdd;
+
+  const _EmptyView({required this.onAdd});
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -197,7 +407,13 @@ class _EmptyView extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          const Text('Importez des élèves via le menu "Import élèves".'),
+          const Text('Importez des élèves via le menu "Import élèves" ou ajoutez-en manuellement.'),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add),
+            label: const Text('Ajouter un élève'),
+          ),
         ],
       ),
     );

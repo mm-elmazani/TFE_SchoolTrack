@@ -67,6 +67,8 @@ class _ScanScreenState extends State<ScanScreen> {
 
   /// Affiche le dialog de confirmation de clôture du checkpoint (US 2.7).
   Future<void> _showCloseDialog(BuildContext context) async {
+    // Capturer le navigator avant tout await pour éviter l'accès async au context.
+    final nav = Navigator.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -77,12 +79,12 @@ class _ScanScreenState extends State<ScanScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => nav.pop(false),
             child: const Text('Annuler'),
           ),
           FilledButton.icon(
             style: FilledButton.styleFrom(backgroundColor: Colors.orange),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => nav.pop(true),
             icon: const Icon(Icons.lock_outline, size: 18),
             label: const Text('Clôturer'),
           ),
@@ -92,7 +94,7 @@ class _ScanScreenState extends State<ScanScreen> {
 
     if (confirmed == true && mounted) {
       await _provider.closeCheckpoint();
-      if (mounted) context.pop(); // Retour à la sélection des checkpoints
+      if (mounted) nav.pop(); // Retour à la sélection des checkpoints
     }
   }
 

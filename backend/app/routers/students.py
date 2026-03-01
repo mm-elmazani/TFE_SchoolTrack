@@ -2,8 +2,12 @@
 Router pour les élèves.
 US 1.1 : Import CSV (POST /api/v1/students/upload)
 US 1.3 : Listage élèves (GET /api/v1/students)
+         Création manuelle (POST /api/v1/students)
+         Mise à jour (PUT /api/v1/students/{id})
+         Suppression (DELETE /api/v1/students/{id})
 """
 
+import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -12,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.student import Student
-from app.schemas.student import StudentImportReport, StudentResponse
+from app.schemas.student import StudentCreate, StudentImportReport, StudentResponse, StudentUpdate
 from app.services.student_import import parse_and_import_csv
 
 router = APIRouter(prefix="/api/v1/students", tags=["Élèves"])
@@ -25,6 +29,48 @@ def list_students(db: Session = Depends(get_db)):
         select(Student).order_by(Student.last_name, Student.first_name)
     ).scalars().all()
     return students
+
+
+@router.post("", response_model=StudentResponse, status_code=201, summary="Créer un élève manuellement")
+def create_student(data: StudentCreate, db: Session = Depends(get_db)):
+    """Crée un élève manuellement (hors import CSV)."""
+    student = Student(
+        first_name=data.first_name,
+        last_name=data.last_name,
+        email=data.email,
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.put("/{student_id}", response_model=StudentResponse, summary="Modifier un élève")
+def update_student(student_id: uuid.UUID, data: StudentUpdate, db: Session = Depends(get_db)):
+    """Met à jour les champs fournis d'un élève. Les champs absents ne sont pas modifiés."""
+    student = db.get(Student, student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="Élève introuvable.")
+
+    update_data = data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(student, field, value)
+
+    db.commit()
+    db.refresh(student)
+    return student
+
+
+@router.delete("/{student_id}", status_code=204, summary="Supprimer un élève")
+def delete_student(student_id: uuid.UUID, db: Session = Depends(get_db)):
+    """Supprime définitivement un élève. Les présences et assignations liées sont supprimées en cascade."""
+    student = db.get(Student, student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="Élève introuvable.")
+
+    db.delete(student)
+    db.commit()
+
 
 ALLOWED_CONTENT_TYPES = {"text/csv", "text/plain", "application/vnd.ms-excel"}
 MAX_FILE_SIZE_MB = 5

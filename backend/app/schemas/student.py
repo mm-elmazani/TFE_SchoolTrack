@@ -8,6 +8,34 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr, field_validator
 
 
+class StudentCreate(BaseModel):
+    """Schéma de création manuelle d'un élève (POST /students)."""
+    first_name: str
+    last_name: str
+    email: Optional[EmailStr] = None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Le champ ne peut pas être vide.")
+        return v.strip()
+
+
+class StudentUpdate(BaseModel):
+    """Schéma de mise à jour d'un élève (PUT /students/{id})."""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("Le champ ne peut pas être vide.")
+        return v.strip() if v else v
+
+
 class StudentResponse(BaseModel):
     """Schéma de réponse pour un élève (GET /students)."""
     id: uuid.UUID
