@@ -52,14 +52,39 @@ class _TripListBody extends StatelessWidget {
           ),
         ],
       ),
-      body: switch (provider.listState) {
-        TripListState.loading => const _LoadingView(),
-        TripListState.error =>
-          _ErrorView(message: provider.listError ?? 'Erreur inconnue'),
-        _ => provider.trips.isEmpty
-            ? const _EmptyView()
-            : _TripList(trips: provider.trips),
-      },
+      body: Column(
+        children: [
+          if (provider.isOffline)
+            MaterialBanner(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              content: const Text(
+                'Mode hors-ligne — voyages en cache affichés',
+                style: TextStyle(color: Colors.white),
+              ),
+              leading: const Icon(Icons.wifi_off, color: Colors.white),
+              backgroundColor: Colors.orange.shade700,
+              actions: [
+                TextButton(
+                  onPressed: () => context.read<TripProvider>().loadTrips(),
+                  child: const Text(
+                    'Réessayer',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          Expanded(
+            child: switch (provider.listState) {
+              TripListState.loading => const _LoadingView(),
+              TripListState.error =>
+                _ErrorView(message: provider.listError ?? 'Erreur inconnue'),
+              _ => provider.trips.isEmpty
+                  ? const _EmptyView()
+                  : _TripList(trips: provider.trips),
+            },
+          ),
+        ],
+      ),
     );
   }
 }

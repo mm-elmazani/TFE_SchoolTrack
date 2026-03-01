@@ -128,11 +128,34 @@ def test_eleve_sans_email():
 
 
 def test_eleve_deja_assigne():
-    """Élève avec QR_DIGITAL actif existant → already_sent_count incrémenté, aucun nouvel envoi."""
+    """Élève avec assignation active (QR_DIGITAL) → already_sent_count incrémenté, aucun nouvel envoi."""
     trip = make_trip()
     student = make_student()
     existing = MagicMock(spec=Assignment)
     db = make_db(trip=trip, students=[student], existing_assignments=[existing])
+
+    with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
+        result = send_qr_emails_for_trip(db, trip.id)
+
+    assert result.already_sent_count == 1
+    assert result.sent_count == 0
+    assert result.errors == []
+    mock_send.assert_not_called()
+
+
+def test_eleve_avec_bracelet_nfc_saute():
+    """
+    Élève avec bracelet NFC actif → already_sent_count incrémenté, aucun QR_DIGITAL créé.
+
+    Avant le fix, le service ne vérifiait que les assignations QR_DIGITAL. Un élève avec
+    NFC_PHYSICAL était traité comme s'il n'avait rien → tentative d'INSERT QR_DIGITAL →
+    violation de idx_assignments_active_student_trip → rollback global de tous les QR du batch.
+    """
+    trip = make_trip()
+    student = make_student()
+    nfc_assignment = MagicMock(spec=Assignment)
+    nfc_assignment.assignment_type = "NFC_PHYSICAL"
+    db = make_db(trip=trip, students=[student], existing_assignments=[nfc_assignment])
 
     with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
         result = send_qr_emails_for_trip(db, trip.id)

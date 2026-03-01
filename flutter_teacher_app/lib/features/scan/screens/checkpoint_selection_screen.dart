@@ -191,7 +191,7 @@ class _CheckpointCard extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        onTap: isClosed ? null : onTap,
+        onTap: onTap, // La logique CLOSED est gérée dans _onCheckpointSelected
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),

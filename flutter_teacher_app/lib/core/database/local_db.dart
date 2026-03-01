@@ -175,17 +175,21 @@ class LocalDb {
         'downloaded_at': now,
       });
 
-      // Insérer les élèves en batch
+      // Insérer les élèves en batch (REPLACE pour idempotence — cas de re-téléchargement)
       final studentBatch = txn.batch();
       for (final s in bundle.students) {
-        studentBatch.insert('students', {
-          'id': s.id,
-          'trip_id': tripId,
-          'first_name': s.firstName,
-          'last_name': s.lastName,
-          'token_uid': s.assignment?.tokenUid,
-          'assignment_type': s.assignment?.assignmentType,
-        });
+        studentBatch.insert(
+          'students',
+          {
+            'id': s.id,
+            'trip_id': tripId,
+            'first_name': s.firstName,
+            'last_name': s.lastName,
+            'token_uid': s.assignment?.tokenUid,
+            'assignment_type': s.assignment?.assignmentType,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
       await studentBatch.commit(noResult: true);
 
@@ -311,6 +315,22 @@ class LocalDb {
   // Lecture — voyages
   // ----------------------------------------------------------------
 
+  /// Retourne les voyages stockés localement (fallback offline).
+  /// Utilisé quand le réseau est indisponible au démarrage.
+  Future<List<TripSummary>> getLocalTrips() async {
+    final db = await database;
+    final rows = await db.query('trips', orderBy: 'date ASC');
+    return rows
+        .map((r) => TripSummary(
+              id: r['id'] as String,
+              destination: r['destination'] as String,
+              date: r['date'] as String,
+              status: r['status'] as String,
+              studentCount: 0, // non stocké localement
+            ))
+        .toList();
+  }
+
   /// Retourne true si le voyage est téléchargé et non expiré (< 7 jours).
   Future<bool> isTripReady(String tripId) async {
     final db = await database;
@@ -367,6 +387,31 @@ class LocalDb {
                   : null,
             ))
         .toList();
+  }
+
+  /// Résout un UUID d'élève en OfflineStudent pour un voyage donné.
+  /// Utilisé par HybridIdentityReader pour les QR codes digitaux (préfixe QRD-).
+  Future<OfflineStudent?> resolveStudentById(
+      String studentId, String tripId) async {
+    final db = await database;
+    final rows = await db.query(
+      'students',
+      where: 'id = ? AND trip_id = ?',
+      whereArgs: [studentId, tripId],
+    );
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    return OfflineStudent(
+      id: r['id'] as String,
+      firstName: r['first_name'] as String,
+      lastName: r['last_name'] as String,
+      assignment: r['token_uid'] != null
+          ? OfflineAssignment(
+              tokenUid: r['token_uid'] as String,
+              assignmentType: r['assignment_type'] as String,
+            )
+          : null,
+    );
   }
 
   /// Résout un UID de token en OfflineStudent pour un voyage donné.

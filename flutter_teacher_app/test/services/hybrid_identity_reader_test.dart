@@ -37,7 +37,7 @@ OfflineDataBundle _makeBundle() => OfflineDataBundle(
           firstName: 'Marie',
           lastName: 'Martin',
           assignment: OfflineAssignment(
-            tokenUid: 'MARIE-QR-001',
+            tokenUid: 'QRD-MARIE01',   // token_uid réel d'un QR digital (inclut le préfixe)
             assignmentType: 'QR_DIGITAL',
           ),
         ),
@@ -105,8 +105,8 @@ void main() {
 
       final result = await _makeReader().processQrCode('QRD-INCONNU');
       expect(result, isA<ScanError>());
-      // UID normalisé (sans préfixe) dans le message d'erreur
-      expect((result as ScanError).uid, 'INCONNU');
+      // Le préfixe QRD- est conservé dans le lookup → uid complet retourné
+      expect((result as ScanError).uid, 'QRD-INCONNU');
     });
   });
 
@@ -118,8 +118,8 @@ void main() {
     test('préfixe QRD- → méthode QR_DIGITAL', () async {
       await LocalDb.instance.saveBundle(_makeBundle());
 
-      // QRD-AA:BB:CC:DD → normalise en AA:BB:CC:DD, cherche l'élève
-      final result = await _makeReader().processQrCode('QRD-AA:BB:CC:DD');
+      // QRD-MARIE01 = token_uid complet de student-002 en SQLite → resolveUid → succès
+      final result = await _makeReader().processQrCode('QRD-MARIE01');
       expect(result, isA<ScanSuccess>());
       expect((result as ScanSuccess).scanMethod, ScanMethod.qrDigital);
     });
@@ -213,7 +213,7 @@ void main() {
       final reader = _makeReader();
 
       final r1 = await reader.processQrCode('AA:BB:CC:DD');
-      final r2 = await reader.processQrCode('MARIE-QR-001');
+      final r2 = await reader.processQrCode('QRD-MARIE01'); // token_uid complet de student-002
 
       expect((r1 as ScanSuccess).isDuplicate, isFalse);
       expect((r2 as ScanSuccess).isDuplicate, isFalse);

@@ -125,10 +125,12 @@ class HybridIdentityReader {
         ? ScanMethod.qrDigital
         : ScanMethod.qrPhysical;
 
-    // Normaliser l'UID (enlever préfixe si présent)
-    final normalizedUid = uid.startsWith('QRD-') || uid.startsWith('QRP-')
-        ? uid.substring(4)
-        : uid;
+    // QR digital : le token_uid en SQLite INCLUT le préfixe "QRD-" (ex: "QRD-A1B2C3D4")
+    //              → ne pas stripper, chercher le token_uid complet.
+    // QR physique avec préfixe "QRP-" : le token_uid en DB n'a PAS de préfixe
+    //              → stripper "QRP-" avant la recherche.
+    // QR physique sans préfixe : token_uid brut tel quel.
+    final normalizedUid = uid.startsWith('QRP-') ? uid.substring(4) : uid;
 
     return _resolveAndRecord(normalizedUid, method);
   }
@@ -138,8 +140,11 @@ class HybridIdentityReader {
   // ----------------------------------------------------------------
 
   Future<ScanResult> _resolveAndRecord(String uid, String method) async {
-    // 1. Résoudre l'UID en élève via SQLite
+    // 1. Résoudre l'UID en élève via SQLite.
+    // QR digital (QRD-) : uid = "QRD-XXXXXXXX" → token_uid complet en DB (préfixe inclus)
+    // NFC / QR physique  : uid = token_uid nu → token_uid exact en DB
     final student = await LocalDb.instance.resolveUid(uid, tripId);
+
     if (student == null) {
       return ScanError(
         message: 'Badge non reconnu. L\'élève n\'est pas assigné à ce voyage.',

@@ -51,8 +51,8 @@ OfflineDataBundle _makeBundle() => OfflineDataBundle(
           firstName: 'Alice',
           lastName: 'Bernard',
           assignment: OfflineAssignment(
-            tokenUid: 'CC:CC:CC:CC',
-            assignmentType: 'QR_PHYSICAL',
+            tokenUid: 'QRD-ALICE01',   // token_uid réel d'un QR digital (inclut le préfixe)
+            assignmentType: 'QR_DIGITAL',
           ),
         ),
       ],
@@ -321,7 +321,7 @@ void main() {
       provider.resumeScanning();
       await provider.onQrDetected('BB:BB:BB:BB');
       provider.resumeScanning();
-      await provider.onQrDetected('CC:CC:CC:CC');
+      await provider.onQrDetected('QRD-ALICE01'); // token_uid complet de student-003
 
       expect(provider.missingStudents, isEmpty);
       expect(provider.presentStudents.length, 3);
@@ -365,9 +365,9 @@ void main() {
       final provider = _makeProvider();
       await _startSession(provider, students);
 
-      await provider.onQrDetected('QRD-AA:BB:CC:DD'); // QR_DIGITAL
+      await provider.onQrDetected('QRD-ALICE01'); // token_uid complet de student-003
 
-      final info = provider.scanInfoOf('student-001');
+      final info = provider.scanInfoOf('student-003');
       expect(info, isNotNull);
       expect(info!.scanMethod, ScanMethod.qrDigital);
       provider.dispose();
@@ -395,14 +395,14 @@ void main() {
       final provider = _makeProvider();
       await _startSession(provider, students);
 
-      // Premier scan : QR digital
-      await provider.onQrDetected('QRD-AA:BB:CC:DD');
+      // Premier scan : QR digital (token_uid complet de student-003)
+      await provider.onQrDetected('QRD-ALICE01');
       provider.resumeScanning();
-      // Doublon avec méthode différente (QR physique sans préfixe)
-      await provider.onQrDetected('AA:BB:CC:DD');
+      // Doublon : même token rescané
+      await provider.onQrDetected('QRD-ALICE01');
 
       // La méthode du premier scan est conservée (no update on duplicate)
-      expect(provider.scanInfoOf('student-001')!.scanMethod, ScanMethod.qrDigital);
+      expect(provider.scanInfoOf('student-003')!.scanMethod, ScanMethod.qrDigital);
       provider.dispose();
     });
   });

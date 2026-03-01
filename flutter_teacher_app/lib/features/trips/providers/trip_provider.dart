@@ -26,6 +26,7 @@ class TripProvider extends ChangeNotifier {
   TripListState _listState = TripListState.idle;
   List<TripSummary> _trips = [];
   String? _listError;
+  bool _isOffline = false;
 
   // État de téléchargement par trip_id
   final Map<String, DownloadState> _downloadStates = {};
@@ -40,6 +41,7 @@ class TripProvider extends ChangeNotifier {
   TripListState get listState => _listState;
   List<TripSummary> get trips => _trips;
   String? get listError => _listError;
+  bool get isOffline => _isOffline;
 
   DownloadState downloadStateOf(String tripId) =>
       _downloadStates[tripId] ?? DownloadState.idle;
@@ -68,9 +70,11 @@ class TripProvider extends ChangeNotifier {
   // ----------------------------------------------------------------
 
   /// Charge la liste des voyages depuis l'API.
+  /// En cas d'échec réseau, bascule en mode offline avec les données SQLite locales.
   Future<void> loadTrips() async {
     _listState = TripListState.loading;
     _listError = null;
+    _isOffline = false;
     notifyListeners();
 
     try {
@@ -83,15 +87,33 @@ class TripProvider extends ChangeNotifier {
         final ready = await _db.isTripReady(trip.id);
         if (!ready) _downloadedAt[trip.id] = null;
       }
-    } on ApiException catch (e) {
-      _listError = e.message;
-      _listState = TripListState.error;
-    } catch (e) {
-      _listError = 'Erreur inattendue : $e';
-      _listState = TripListState.error;
+    } on ApiException {
+      // Réseau indisponible → fallback sur les voyages stockés localement
+      await _loadFromLocalDb();
+    } catch (_) {
+      await _loadFromLocalDb();
     }
 
     notifyListeners();
+  }
+
+  /// Charge les voyages depuis SQLite quand le réseau est indisponible.
+  Future<void> _loadFromLocalDb() async {
+    final localTrips = await _db.getLocalTrips();
+    if (localTrips.isNotEmpty) {
+      _trips = localTrips;
+      _isOffline = true;
+      _listState = TripListState.ready;
+      // Marquer les voyages déjà téléchargés
+      for (final trip in _trips) {
+        _downloadedAt[trip.id] = await _db.getTripDownloadedAt(trip.id);
+        final ready = await _db.isTripReady(trip.id);
+        if (!ready) _downloadedAt[trip.id] = null;
+      }
+    } else {
+      _listError = 'Réseau indisponible et aucun voyage en cache.';
+      _listState = TripListState.error;
+    }
   }
 
   // ----------------------------------------------------------------

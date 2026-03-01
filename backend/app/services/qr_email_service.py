@@ -5,7 +5,7 @@ Flux :
   1. Vérifier que le voyage existe et n'est pas archivé
   2. Pour chaque élève inscrit au voyage :
      a. Skip si pas d'email
-     b. Skip si déjà un QR_DIGITAL actif sur ce voyage
+     b. Skip si déjà une assignation active sur ce voyage (NFC, QR physique ou QR digital)
      c. Générer un token_uid unique (QRD-XXXXXXXX)
      d. Générer l'image QR code en mémoire
      e. Envoyer l'email (l'assignation n'est créée qu'en cas de succès)
@@ -51,7 +51,7 @@ def send_qr_emails_for_trip(db: Session, trip_id: uuid.UUID) -> QrEmailSendResul
 
     Règles métier :
     - Élève sans email → comptabilisé dans no_email_count, aucun envoi
-    - Élève avec QR_DIGITAL actif existant → comptabilisé dans already_sent_count
+    - Élève avec assignation active (NFC, QR physique ou QR digital) → already_sent_count
     - Erreur SMTP individuelle → log + ajout dans errors, pas d'assignation créée
     - L'assignation QR_DIGITAL n'est créée qu'après envoi email réussi
 
@@ -87,12 +87,14 @@ def send_qr_emails_for_trip(db: Session, trip_id: uuid.UUID) -> QrEmailSendResul
             result.no_email_count += 1
             continue
 
-        # Skip si un QR_DIGITAL actif existe déjà pour cet élève sur ce voyage
+        # Skip si l'élève a déjà une assignation active sur ce voyage (quel que soit le type).
+        # Raison : idx_assignments_active_student_trip impose l'unicité (student_id, trip_id)
+        # WHERE released_at IS NULL. Tenter d'insérer un QR_DIGITAL pour un élève ayant déjà
+        # un NFC/QR physique provoquerait une violation de contrainte et un rollback global.
         existing = db.execute(
             select(Assignment).where(
                 Assignment.student_id == student.id,
                 Assignment.trip_id == trip_id,
-                Assignment.assignment_type == "QR_DIGITAL",
                 Assignment.released_at.is_(None),
             )
         ).scalar()
