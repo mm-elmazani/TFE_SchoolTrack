@@ -478,6 +478,20 @@ class LocalDb {
     );
   }
 
+  /// Passe le statut d'un checkpoint ACTIVE à CLOSED dans SQLite local (US 2.7).
+  ///
+  /// Un checkpoint CLOSED est en lecture seule : aucun nouveau scan n'est possible.
+  /// La mise à jour sera propagée au backend via le call best-effort de l'ApiClient.
+  Future<void> closeCheckpoint(String checkpointId) async {
+    final db = await database;
+    await db.update(
+      'checkpoints',
+      {'status': 'CLOSED'},
+      where: 'id = ?',
+      whereArgs: [checkpointId],
+    );
+  }
+
   OfflineCheckpoint _rowToCheckpoint(Map<String, dynamic> r) {
     return OfflineCheckpoint(
       id: r['id'] as String,

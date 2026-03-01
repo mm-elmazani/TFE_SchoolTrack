@@ -261,6 +261,64 @@ void main() {
   });
 
   // ----------------------------------------------------------------
+  // closeCheckpoint() — US 2.7
+  // ----------------------------------------------------------------
+
+  group('LocalDb.closeCheckpoint — ACTIVE→CLOSED', () {
+    test('statut passe à CLOSED après clôture', () async {
+      await LocalDb.instance.saveBundle(_makeBundle());
+      final cp = await LocalDb.instance.createCheckpoint(
+        tripId: 'trip-001',
+        name: 'Point de contrôle',
+      );
+      await LocalDb.instance.activateCheckpoint(cp.id);
+
+      await LocalDb.instance.closeCheckpoint(cp.id);
+
+      final updated = await LocalDb.instance.getCheckpointById(cp.id);
+      expect(updated!.status, 'CLOSED');
+    });
+
+    test('getCheckpoints() reflète le statut CLOSED après clôture', () async {
+      await LocalDb.instance.saveBundle(_makeBundle());
+      final cp = await LocalDb.instance.createCheckpoint(
+        tripId: 'trip-001',
+        name: 'Checkpoint',
+      );
+      await LocalDb.instance.activateCheckpoint(cp.id);
+
+      await LocalDb.instance.closeCheckpoint(cp.id);
+
+      final checkpoints = await LocalDb.instance.getCheckpoints('trip-001');
+      expect(checkpoints.first.status, 'CLOSED');
+    });
+
+    test('clôture n\'affecte pas les autres checkpoints', () async {
+      await LocalDb.instance.saveBundle(_makeBundle(checkpoints: [
+        const OfflineCheckpoint(
+          id: 'cp-active-1',
+          name: 'Actif 1',
+          sequenceOrder: 1,
+          status: 'ACTIVE',
+        ),
+        const OfflineCheckpoint(
+          id: 'cp-active-2',
+          name: 'Actif 2',
+          sequenceOrder: 2,
+          status: 'ACTIVE',
+        ),
+      ]));
+
+      await LocalDb.instance.closeCheckpoint('cp-active-1');
+
+      final cp1 = await LocalDb.instance.getCheckpointById('cp-active-1');
+      final cp2 = await LocalDb.instance.getCheckpointById('cp-active-2');
+      expect(cp1!.status, 'CLOSED');
+      expect(cp2!.status, 'ACTIVE'); // inchangé
+    });
+  });
+
+  // ----------------------------------------------------------------
   // Cohabitation bundle offline + création terrain
   // ----------------------------------------------------------------
 

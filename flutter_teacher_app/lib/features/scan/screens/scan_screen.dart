@@ -65,6 +65,37 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
+  /// Affiche le dialog de confirmation de clôture du checkpoint (US 2.7).
+  Future<void> _showCloseDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Clôturer le checkpoint ?'),
+        content: Text(
+          'Le checkpoint "${widget.checkpointName}" sera marqué comme terminé.\n\n'
+          'Aucun nouveau scan ne sera possible après la clôture.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.lock_outline, size: 18),
+            label: const Text('Clôturer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _provider.closeCheckpoint();
+      if (mounted) context.pop(); // Retour à la sélection des checkpoints
+    }
+  }
+
   void _onQrDetected(BarcodeCapture capture) {
     final raw = capture.barcodes.firstOrNull?.rawValue;
     if (raw == null || raw.isEmpty) return;
@@ -149,6 +180,13 @@ class _ScanScreenState extends State<ScanScreen> {
             'tripDestination': widget.tripDestination,
           }),
         ),
+        // Bouton clôturer checkpoint (US 2.7)
+        if (!provider.isClosed)
+          IconButton(
+            icon: const Icon(Icons.lock_outline),
+            tooltip: 'Clôturer le checkpoint',
+            onPressed: () => _showCloseDialog(context),
+          ),
         // Indicateur NFC
         Padding(
           padding: const EdgeInsets.only(right: 12),

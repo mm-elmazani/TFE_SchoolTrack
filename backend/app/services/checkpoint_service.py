@@ -1,9 +1,10 @@
 """
-Service métier pour les checkpoints (US 2.5).
-Création dynamique sur le terrain par les enseignants.
+Service métier pour les checkpoints (US 2.5 + US 2.7).
+Création dynamique et clôture sur le terrain par les enseignants.
 """
 
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -52,6 +53,33 @@ def create_checkpoint(
         status="DRAFT",
     )
     db.add(checkpoint)
+    db.commit()
+    db.refresh(checkpoint)
+
+    return CheckpointResponse.model_validate(checkpoint)
+
+
+def close_checkpoint(
+    db: Session,
+    checkpoint_id: uuid.UUID,
+) -> CheckpointResponse:
+    """
+    Clôture un checkpoint ACTIVE → CLOSED.
+
+    Enregistre closed_at avec le timestamp UTC courant.
+    Lève ValueError si le checkpoint est introuvable, en statut DRAFT,
+    ou déjà CLOSED.
+    """
+    checkpoint = db.query(Checkpoint).filter(Checkpoint.id == checkpoint_id).first()
+    if checkpoint is None:
+        raise ValueError(f"Checkpoint {checkpoint_id} introuvable.")
+    if checkpoint.status == "DRAFT":
+        raise ValueError("Impossible de clôturer un checkpoint en statut DRAFT.")
+    if checkpoint.status == "CLOSED":
+        raise ValueError("Le checkpoint est déjà clôturé.")
+
+    checkpoint.status = "CLOSED"
+    checkpoint.closed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(checkpoint)
 

@@ -92,6 +92,27 @@ class ApiClient {
     }
   }
 
+  /// Clôture un checkpoint sur le backend (best-effort — retourne null si hors-ligne).
+  ///
+  /// Le statut est d'abord mis à jour localement en SQLite avant cet appel.
+  /// Si le réseau est indisponible ou l'API répond avec une erreur, null est
+  /// retourné silencieusement (l'appli continue en mode offline).
+  Future<bool> closeCheckpoint(String checkpointId) async {
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/checkpoints/$checkpointId/close'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 10));
+
+      return response.statusCode == 200;
+    } catch (_) {
+      // Hors-ligne ou erreur réseau — mode offline, on continue sans erreur
+      return false;
+    }
+  }
+
   // ----------------------------------------------------------------
   // Bundle offline
   // ----------------------------------------------------------------

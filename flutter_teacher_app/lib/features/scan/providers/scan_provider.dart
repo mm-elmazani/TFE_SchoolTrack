@@ -4,6 +4,7 @@ library;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/api/api_client.dart';
 import '../../../core/database/local_db.dart';
 import '../../../core/services/hybrid_identity_reader.dart';
 import '../../../features/scan/models/attendance_record.dart';
@@ -94,6 +95,7 @@ class ScanProvider extends ChangeNotifier {
   int get totalStudents => _totalStudents;
   int get missingCount => _totalStudents - _presentCount;
   String get checkpointStatus => _checkpointStatus;
+  bool get isClosed => _checkpointStatus == 'CLOSED';
 
   // US 2.3 — listes temps réel
   /// Élèves déjà scannés, triés par heure de scan DESC (plus récent en premier).
@@ -284,6 +286,26 @@ class ScanProvider extends ChangeNotifier {
         LocalDb.instance.activateCheckpoint(checkpointId);
       }
     }
+
+    notifyListeners();
+  }
+
+  // ----------------------------------------------------------------
+  // Clôture checkpoint (US 2.7)
+  // ----------------------------------------------------------------
+
+  /// Clôture le checkpoint courant : ACTIVE → CLOSED.
+  ///
+  /// Met à jour SQLite localement (offline-first), puis tente un appel
+  /// best-effort vers le backend. Notifie les listeners après la clôture.
+  Future<void> closeCheckpoint() async {
+    if (_disposed) return;
+
+    await LocalDb.instance.closeCheckpoint(checkpointId);
+    _checkpointStatus = 'CLOSED';
+
+    // Best-effort backend — pas d'await bloquant, pas d'erreur si hors-ligne
+    ApiClient().closeCheckpoint(checkpointId);
 
     notifyListeners();
   }

@@ -1,6 +1,7 @@
 """
-Tests d'intégration API pour les checkpoints terrain (US 2.5).
-Testent POST /api/v1/trips/{trip_id}/checkpoints.
+Tests d'intégration API pour les checkpoints terrain (US 2.5 + US 2.7).
+Testent POST /api/v1/trips/{trip_id}/checkpoints
+      POST /api/v1/checkpoints/{checkpoint_id}/close
 """
 
 import uuid
@@ -149,4 +150,58 @@ def test_create_checkpoint_body_manquant(client):
     """Body JSON absent → 422."""
     trip_id = uuid.uuid4()
     response = client.post(f"/api/v1/trips/{trip_id}/checkpoints")
+    assert response.status_code == 422
+
+
+# ============================================================
+# POST /api/v1/checkpoints/{checkpoint_id}/close (US 2.7)
+# ============================================================
+
+def test_close_checkpoint_succes(client):
+    """Checkpoint ACTIVE → clôture réussie → 200, statut CLOSED."""
+    cp_id = uuid.uuid4()
+    with patch("app.routers.checkpoints.checkpoint_service.close_checkpoint") as mock:
+        mock.return_value = make_checkpoint_response(id=cp_id, status="CLOSED")
+
+        response = client.post(f"/api/v1/checkpoints/{cp_id}/close")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "CLOSED"
+
+
+def test_close_checkpoint_introuvable(client):
+    """Checkpoint inconnu → 404."""
+    cp_id = uuid.uuid4()
+    with patch("app.routers.checkpoints.checkpoint_service.close_checkpoint") as mock:
+        mock.side_effect = ValueError(f"Checkpoint {cp_id} introuvable.")
+
+        response = client.post(f"/api/v1/checkpoints/{cp_id}/close")
+
+    assert response.status_code == 404
+    assert "introuvable" in response.json()["detail"]
+
+
+def test_close_checkpoint_draft(client):
+    """Checkpoint DRAFT → 400."""
+    with patch("app.routers.checkpoints.checkpoint_service.close_checkpoint") as mock:
+        mock.side_effect = ValueError("Impossible de clôturer un checkpoint en statut DRAFT.")
+
+        response = client.post(f"/api/v1/checkpoints/{uuid.uuid4()}/close")
+
+    assert response.status_code == 400
+
+
+def test_close_checkpoint_deja_closed(client):
+    """Checkpoint déjà CLOSED → 400."""
+    with patch("app.routers.checkpoints.checkpoint_service.close_checkpoint") as mock:
+        mock.side_effect = ValueError("Le checkpoint est déjà clôturé.")
+
+        response = client.post(f"/api/v1/checkpoints/{uuid.uuid4()}/close")
+
+    assert response.status_code == 400
+
+
+def test_close_checkpoint_id_invalide(client):
+    """checkpoint_id non-UUID → 422."""
+    response = client.post("/api/v1/checkpoints/pas-un-uuid/close")
     assert response.status_code == 422
