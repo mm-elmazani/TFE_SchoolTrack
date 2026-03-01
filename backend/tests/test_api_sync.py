@@ -18,7 +18,7 @@ def make_scan_payload(**kwargs) -> dict:
         "checkpoint_id": kwargs.get("checkpoint_id", str(uuid.uuid4())),
         "trip_id": kwargs.get("trip_id", str(uuid.uuid4())),
         "scanned_at": kwargs.get("scanned_at", "2026-02-20T14:32:15Z"),
-        "scan_method": kwargs.get("scan_method", "NFC"),
+        "scan_method": kwargs.get("scan_method", "NFC_PHYSICAL"),
     }
 
 
@@ -110,7 +110,7 @@ def test_sync_champ_manquant(client):
         # checkpoint_id manquant
         "trip_id": str(uuid.uuid4()),
         "scanned_at": "2026-02-20T14:32:15Z",
-        "scan_method": "NFC",
+        "scan_method": "NFC_PHYSICAL",
     }
     response = client.post("/api/sync/attendances", json={"scans": [scan]})
     assert response.status_code == 422

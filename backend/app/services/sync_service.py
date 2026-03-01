@@ -72,6 +72,10 @@ def sync_attendances(
             student_id=scan.student_id,
             scanned_at=scan.scanned_at,
             scan_method=scan.scan_method,
+            scan_sequence=scan.scan_sequence,
+            is_manual=scan.is_manual,
+            justification=scan.justification,
+            comment=scan.comment,
         )
         db.add(attendance)
         seen_in_batch.add(scan.client_uuid)

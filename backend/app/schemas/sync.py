@@ -5,11 +5,11 @@ Endpoint : POST /api/sync/attendances
 
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, field_validator
 
-VALID_SCAN_METHODS = {"NFC", "QR_PHYSICAL", "QR_DIGITAL", "MANUAL"}
+VALID_SCAN_METHODS = {"NFC_PHYSICAL", "QR_PHYSICAL", "QR_DIGITAL", "MANUAL"}
 MAX_BATCH_SIZE = 500
 
 
@@ -21,7 +21,11 @@ class ScanItem(BaseModel):
     checkpoint_id: uuid.UUID
     trip_id: uuid.UUID
     scanned_at: datetime          # Timestamp local au moment du scan (avant réseau)
-    scan_method: str              # NFC, QR_PHYSICAL, QR_DIGITAL, MANUAL
+    scan_method: str              # NFC_PHYSICAL, QR_PHYSICAL, QR_DIGITAL, MANUAL
+    scan_sequence: int = 1        # Numéro de scan au checkpoint (US 2.6 : 1=premier, 2+=doublon)
+    is_manual: bool = False       # True si marquage manuel (US 2.4)
+    justification: Optional[str] = None  # Raison du marquage manuel (BADGE_MISSING, etc.)
+    comment: Optional[str] = None        # Commentaire libre optionnel
 
     @field_validator("scan_method")
     @classmethod

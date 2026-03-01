@@ -1,6 +1,7 @@
 """
 Tests unitaires pour le service de synchronisation offline → online (US 3.1).
-Couverture : idempotence, doublons intra-batch, batch vide, multi-scans.
+Couverture : idempotence, doublons intra-batch, batch vide, multi-scans,
+scan_sequence (US 2.6), is_manual + justification (US 2.4).
 """
 
 import uuid
@@ -19,7 +20,11 @@ def make_scan(
     student_id=None,
     checkpoint_id=None,
     trip_id=None,
-    scan_method="NFC",
+    scan_method="NFC_PHYSICAL",
+    scan_sequence=1,
+    is_manual=False,
+    justification=None,
+    comment=None,
 ) -> ScanItem:
     return ScanItem(
         client_uuid=client_uuid or uuid.uuid4(),
@@ -28,6 +33,10 @@ def make_scan(
         trip_id=trip_id or uuid.uuid4(),
         scanned_at=datetime(2026, 2, 20, 14, 32, 15, tzinfo=timezone.utc),
         scan_method=scan_method,
+        scan_sequence=scan_sequence,
+        is_manual=is_manual,
+        justification=justification,
+        comment=comment,
     )
 
 
@@ -159,7 +168,7 @@ def test_mix_nouveaux_et_doublons():
 
 def test_scan_methodes_valides():
     """Toutes les méthodes de scan valides sont acceptées."""
-    for method in ("NFC", "QR_PHYSICAL", "QR_DIGITAL", "MANUAL"):
+    for method in ("NFC_PHYSICAL", "QR_PHYSICAL", "QR_DIGITAL", "MANUAL"):
         db = make_db(existing_attendance=None)
         scan = make_scan(scan_method=method)
         result = sync_attendances(db, scans=[scan])
@@ -171,7 +180,7 @@ def test_scan_methodes_valides():
 # ============================================================
 
 def test_champs_attendance_corrects():
-    """Vérifie que les champs sont correctement mappés sur l'objet Attendance créé."""
+    """Vérifie que les champs de base sont correctement mappés sur Attendance."""
     db = make_db(existing_attendance=None)
     scan = make_scan(scan_method="QR_DIGITAL")
 
@@ -187,3 +196,72 @@ def test_champs_attendance_corrects():
     assert added_obj.trip_id == scan.trip_id
     assert added_obj.scanned_at == scan.scanned_at
     assert added_obj.scan_method == "QR_DIGITAL"
+    assert added_obj.scan_sequence == 1
+    assert added_obj.is_manual is False
+    assert added_obj.justification is None
+    assert added_obj.comment is None
+
+
+# ============================================================
+# scan_sequence (US 2.6 — scans multiples par checkpoint)
+# ============================================================
+
+def test_scan_sequence_doublon_transmis():
+    """scan_sequence=2 (doublon) est bien persisté sur Attendance."""
+    db = make_db(existing_attendance=None)
+    scan = make_scan(scan_sequence=2)
+
+    sync_attendances(db, scans=[scan])
+
+    added_obj = db.add.call_args[0][0]
+    assert added_obj.scan_sequence == 2
+
+
+def test_scan_sequence_premier_scan():
+    """scan_sequence=1 (premier scan) est persisté par défaut."""
+    db = make_db(existing_attendance=None)
+    scan = make_scan(scan_sequence=1)
+
+    sync_attendances(db, scans=[scan])
+
+    added_obj = db.add.call_args[0][0]
+    assert added_obj.scan_sequence == 1
+
+
+# ============================================================
+# Marquage manuel (US 2.4) — is_manual + justification + comment
+# ============================================================
+
+def test_is_manual_et_justification_transmis():
+    """is_manual=True et justification sont bien persistés sur Attendance."""
+    db = make_db(existing_attendance=None)
+    scan = make_scan(
+        scan_method="MANUAL",
+        is_manual=True,
+        justification="BADGE_MISSING",
+        comment="Bracelet oublié à la maison",
+    )
+
+    sync_attendances(db, scans=[scan])
+
+    added_obj = db.add.call_args[0][0]
+    assert added_obj.is_manual is True
+    assert added_obj.justification == "BADGE_MISSING"
+    assert added_obj.comment == "Bracelet oublié à la maison"
+
+
+def test_is_manual_sans_comment():
+    """Marquage manuel sans commentaire : comment=None accepté."""
+    db = make_db(existing_attendance=None)
+    scan = make_scan(
+        scan_method="MANUAL",
+        is_manual=True,
+        justification="SCANNER_FAILURE",
+    )
+
+    sync_attendances(db, scans=[scan])
+
+    added_obj = db.add.call_args[0][0]
+    assert added_obj.is_manual is True
+    assert added_obj.justification == "SCANNER_FAILURE"
+    assert added_obj.comment is None
