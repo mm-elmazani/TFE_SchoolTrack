@@ -82,11 +82,23 @@ class _StudentListScreenState extends State<StudentListScreen> {
   /// Ouvre le dialog de création ou de modification d'un élève.
   /// [student] est null pour une création, non-null pour une modification.
   Future<void> _showStudentDialog([_StudentItem? student]) async {
+    // Pour la création, charger la liste des classes avant d'ouvrir le dialog.
+    List<Map<String, dynamic>> classes = [];
+    if (student == null) {
+      try {
+        classes = await _api.getClasses();
+      } catch (_) {
+        // Impossible de charger les classes → dropdown masqué, non bloquant.
+      }
+    }
+    if (!mounted) return;
+
     final firstNameCtrl = TextEditingController(text: student?.firstName ?? '');
     final lastNameCtrl = TextEditingController(text: student?.lastName ?? '');
     final emailCtrl = TextEditingController(text: student?.email ?? '');
     final formKey = GlobalKey<FormState>();
     bool saving = false;
+    String? selectedClassId; // null = aucune classe sélectionnée
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -131,6 +143,30 @@ class _StudentListScreenState extends State<StudentListScreen> {
                     ),
                     keyboardType: TextInputType.emailAddress,
                   ),
+                  // Dropdown classe — uniquement à la création et si des classes existent.
+                  if (student == null && classes.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedClassId,
+                      decoration: const InputDecoration(
+                        labelText: 'Classe (optionnel)',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('— Aucune —'),
+                        ),
+                        ...classes.map(
+                          (c) => DropdownMenuItem(
+                            value: c['id'] as String,
+                            child: Text(c['name'] as String),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setLocal(() => selectedClassId = v),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -151,11 +187,18 @@ class _StudentListScreenState extends State<StudentListScreen> {
                             ? null
                             : emailCtrl.text.trim();
                         if (student == null) {
-                          await _api.createStudent(
+                          final created = await _api.createStudent(
                             firstName: firstNameCtrl.text.trim(),
                             lastName: lastNameCtrl.text.trim(),
                             email: email,
                           );
+                          // Assigner l'élève à la classe sélectionnée si applicable.
+                          if (selectedClassId != null) {
+                            await _api.assignStudents(
+                              selectedClassId!,
+                              [created['id'] as String],
+                            );
+                          }
                         } else {
                           await _api.updateStudent(
                             student.id,
