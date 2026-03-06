@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../widgets/trip_card.dart';
 import '../widgets/trip_form_dialog.dart';
@@ -24,6 +25,7 @@ class _TripListBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TripProvider>();
+    final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,11 +51,12 @@ class _TripListBody extends StatelessWidget {
                 ],
               ),
             ),
-            FilledButton.icon(
-              onPressed: () => _openCreateDialog(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Nouveau voyage'),
-            ),
+            if (isAdmin)
+              FilledButton.icon(
+                onPressed: () => _openCreateDialog(context),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Nouveau voyage'),
+              ),
           ],
         ),
         const SizedBox(height: 24),
@@ -95,9 +98,10 @@ class _TripListBody extends StatelessWidget {
         else if (provider.filteredTrips.isEmpty)
           _EmptyState(
             hasFilter: provider.searchQuery.isNotEmpty || provider.statusFilter != 'ALL',
+            isAdmin: isAdmin,
           )
         else
-          _TripGrid(trips: provider.filteredTrips),
+          _TripGrid(trips: provider.filteredTrips, isAdmin: isAdmin),
       ],
     );
   }
@@ -111,8 +115,9 @@ class _TripListBody extends StatelessWidget {
 /// Grille 2 colonnes des cartes voyages
 class _TripGrid extends StatelessWidget {
   final List<Trip> trips;
+  final bool isAdmin;
 
-  const _TripGrid({required this.trips});
+  const _TripGrid({required this.trips, required this.isAdmin});
 
   @override
   Widget build(BuildContext context) {
@@ -133,8 +138,8 @@ class _TripGrid extends StatelessWidget {
             final trip = trips[index];
             return TripCard(
               trip: trip,
-              onEdit: () => _openEditDialog(context, trip),
-              onDelete: () => _confirmDelete(context, trip),
+              onEdit: isAdmin ? () => _openEditDialog(context, trip) : null,
+              onDelete: isAdmin ? () => _confirmDelete(context, trip) : null,
             );
           },
         );
@@ -305,8 +310,9 @@ class _ErrorBanner extends StatelessWidget {
 /// État vide (aucun voyage ou aucun résultat)
 class _EmptyState extends StatelessWidget {
   final bool hasFilter;
+  final bool isAdmin;
 
-  const _EmptyState({required this.hasFilter});
+  const _EmptyState({required this.hasFilter, required this.isAdmin});
 
   @override
   Widget build(BuildContext context) {
@@ -320,7 +326,7 @@ class _EmptyState extends StatelessWidget {
             hasFilter ? 'Aucun voyage ne correspond à la recherche.' : 'Aucun voyage pour l\'instant.',
             style: TextStyle(color: Colors.grey.shade600),
           ),
-          if (!hasFilter) ...[
+          if (!hasFilter && isAdmin) ...[
             const SizedBox(height: 12),
             FilledButton.icon(
               onPressed: () {

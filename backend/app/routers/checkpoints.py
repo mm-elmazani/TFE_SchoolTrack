@@ -1,6 +1,6 @@
 """
-Routers pour les checkpoints terrain (US 2.5 + US 2.7).
-Création dynamique et clôture par les enseignants depuis l'app mobile.
+Routers pour les checkpoints terrain (US 2.5, US 2.7, US 6.2).
+Création et clôture par les enseignants / direction depuis l'app mobile.
 """
 
 import uuid
@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import require_role
+from app.models.user import User
 from app.schemas.checkpoint import CheckpointCreate, CheckpointResponse
 from app.services import checkpoint_service
 
@@ -17,6 +19,8 @@ router = APIRouter(prefix="/api/v1/trips", tags=["Checkpoints"])
 
 # POST /api/v1/checkpoints/{checkpoint_id}/close (US 2.7)
 checkpoints_router = APIRouter(prefix="/api/v1/checkpoints", tags=["Checkpoints"])
+
+_field = require_role("DIRECTION", "ADMIN_TECH", "TEACHER")
 
 
 @router.post(
@@ -28,15 +32,11 @@ checkpoints_router = APIRouter(prefix="/api/v1/checkpoints", tags=["Checkpoints"
 def create_checkpoint(
     trip_id: uuid.UUID,
     data: CheckpointCreate,
+    current_user: User = Depends(_field),
     db: Session = Depends(get_db),
 ):
     """
     Crée un nouveau checkpoint en statut DRAFT pour le voyage spécifié.
-
-    L'enseignant appelle cet endpoint depuis l'app mobile quand il crée
-    un point de contrôle sur le terrain. Le checkpoint passe automatiquement
-    à ACTIVE au premier scan d'élève (géré côté Flutter + sync US 3.1).
-
     Retourne 404 si le voyage est introuvable, 400 si le voyage est terminé.
     """
     try:
@@ -55,14 +55,11 @@ def create_checkpoint(
 )
 def close_checkpoint(
     checkpoint_id: uuid.UUID,
+    current_user: User = Depends(_field),
     db: Session = Depends(get_db),
 ):
     """
     Clôture un checkpoint ACTIVE → CLOSED.
-
-    Marque le checkpoint comme terminé (closed_at = now, status = CLOSED).
-    Un checkpoint CLOSED est en lecture seule : aucun nouveau scan n'y est accepté.
-
     Retourne 404 si le checkpoint est introuvable,
     400 si le checkpoint est en statut DRAFT ou déjà CLOSED.
     """

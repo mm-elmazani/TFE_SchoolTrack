@@ -5,19 +5,21 @@ import '../providers/trip_provider.dart';
 /// Conforme à la maquette V1 : statut coloré, date, destination, nb élèves.
 class TripCard extends StatelessWidget {
   final Trip trip;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const TripCard({
     super.key,
     required this.trip,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     final statusInfo = _statusInfo(trip.status);
+
+    final hasActions = onEdit != null || onDelete != null;
 
     return Card(
       elevation: 1,
@@ -42,35 +44,38 @@ class TripCard extends StatelessWidget {
                           ),
                     ),
                   ),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, size: 20),
-                    onSelected: (value) {
-                      if (value == 'edit') onEdit();
-                      if (value == 'delete') onDelete();
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 16),
-                            SizedBox(width: 8),
-                            Text('Modifier'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Supprimer', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  if (hasActions)
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      onSelected: (value) {
+                        if (value == 'edit') onEdit?.call();
+                        if (value == 'delete') onDelete?.call();
+                      },
+                      itemBuilder: (_) => [
+                        if (onEdit != null)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 16),
+                                SizedBox(width: 8),
+                                Text('Modifier'),
+                              ],
+                            ),
+                          ),
+                        if (onDelete != null)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Supprimer', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                 ],
               ),
               const SizedBox(height: 8),

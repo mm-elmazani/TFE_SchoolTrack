@@ -1,9 +1,13 @@
 """
-Dependances FastAPI partagees (US 6.1).
+Dependances FastAPI partagees (US 6.1 + US 6.2).
 get_current_user : extraction et validation du JWT depuis le header Authorization.
+require_role : fabrique de dependances pour restreindre un endpoint a certains roles.
+log_audit : journalise une action dans la table audit_logs (RGPD).
 """
 
-from fastapi import Depends, HTTPException, status
+from typing import Callable
+
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -47,3 +51,62 @@ def get_current_user(
         )
 
     return user
+
+
+# ---------------------------------------------------------------------------
+# US 6.2 — Fabrique de dependance role
+# ---------------------------------------------------------------------------
+
+def require_role(*allowed_roles: str) -> Callable:
+    """
+    Retourne une dependance FastAPI qui verifie que l'utilisateur connecte
+    possede l'un des roles autorises. Leve HTTP 403 sinon.
+
+    Usage dans un router :
+        current_user: User = Depends(require_role("DIRECTION", "ADMIN_TECH"))
+    """
+    def _role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Acces reserve aux roles : {', '.join(allowed_roles)}",
+            )
+        return current_user
+    return _role_checker
+
+
+# ---------------------------------------------------------------------------
+# US 6.2 — Audit log
+# ---------------------------------------------------------------------------
+
+def log_audit(
+    db: Session,
+    *,
+    user_id,
+    action: str,
+    resource_type: str | None = None,
+    resource_id=None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Insere une ligne dans audit_logs (table deja existante dans init.sql)."""
+    from sqlalchemy import text
+
+    db.execute(
+        text(
+            "INSERT INTO audit_logs (user_id, action, resource_type, resource_id, "
+            "ip_address, user_agent, details) "
+            "VALUES (:uid, :action, :rtype, :rid, :ip, :ua, :details)"
+        ),
+        {
+            "uid": str(user_id),
+            "action": action,
+            "rtype": resource_type,
+            "rid": str(resource_id) if resource_id else None,
+            "ip": ip_address,
+            "ua": user_agent,
+            "details": __import__("json").dumps(details) if details else None,
+        },
+    )
+    db.commit()

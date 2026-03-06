@@ -222,6 +222,9 @@ class TestMe:
 
     def test_me_no_token(self, client):
         # HTTPBearer renvoie 403 si pas de header Authorization
+        from app.dependencies import get_current_user
+        from app.main import app
+        app.dependency_overrides.pop(get_current_user, None)
         resp = client.get("/api/v1/auth/me")
         assert resp.status_code == 403
 

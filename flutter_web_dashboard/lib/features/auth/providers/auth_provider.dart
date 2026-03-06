@@ -40,6 +40,17 @@ class AuthProvider extends ChangeNotifier {
     return _userEmail;
   }
 
+  /// Roles avec droits d'administration (ecriture) sur le dashboard.
+  bool get isAdmin =>
+      _userRole == 'DIRECTION' || _userRole == 'ADMIN_TECH';
+
+  /// Roles avec acces aux actions terrain (scan, checkpoints, sync).
+  bool get isFieldUser =>
+      _userRole == 'DIRECTION' || _userRole == 'ADMIN_TECH' || _userRole == 'TEACHER';
+
+  /// Role observateur = lecture seule uniquement.
+  bool get isObserver => _userRole == 'OBSERVER';
+
   /// Charge les tokens depuis le stockage local au demarrage.
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();

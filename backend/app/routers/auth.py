@@ -1,5 +1,5 @@
 """
-Router d'authentification (US 6.1).
+Router d'authentification (US 6.1 + US 6.2).
 Endpoints : login, register, refresh, 2FA, me, change-password.
 """
 
@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_role
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -35,6 +35,8 @@ from app.services.auth_service import (
     register_user,
     verify_and_activate_2fa,
 )
+
+_admin = require_role("DIRECTION", "ADMIN_TECH")
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentification"])
 
@@ -65,8 +67,12 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 # POST /register
 # ---------------------------------------------------------------------------
 @router.post("/register", response_model=UserInfo, status_code=status.HTTP_201_CREATED)
-def register(body: RegisterRequest, db: Session = Depends(get_db)):
-    """Cree un nouvel utilisateur. (Sera restreint aux roles autorises en US 6.2)"""
+def register(
+    body: RegisterRequest,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """Cree un nouvel utilisateur. Reserve a la Direction / Admin Tech (US 6.2)."""
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:
         raise HTTPException(

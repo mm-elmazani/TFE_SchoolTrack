@@ -67,6 +67,7 @@ class TestListUsers:
         assert resp.status_code == 403
 
     def test_list_users_no_auth(self, client):
+        cleanup_auth()
         resp = client.get("/api/v1/users")
         assert resp.status_code == 403
 

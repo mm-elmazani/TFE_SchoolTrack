@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Modèle local pour afficher un élève dans la liste.
 class _StudentItem {
@@ -297,6 +299,8 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = context.watch<AuthProvider>().isAdmin;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -321,12 +325,14 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Actualiser',
               ),
-              const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: () => _showStudentDialog(),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Ajouter'),
-              ),
+              if (isAdmin) ...[
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  onPressed: () => _showStudentDialog(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Ajouter'),
+                ),
+              ],
             ],
           ),
         ),
@@ -356,11 +362,11 @@ class _StudentListScreenState extends State<StudentListScreen> {
               : _error != null
                   ? _ErrorView(message: _error!, onRetry: _load)
                   : _students.isEmpty
-                      ? _EmptyView(onAdd: () => _showStudentDialog())
+                      ? _EmptyView(onAdd: isAdmin ? () => _showStudentDialog() : null)
                       : _StudentList(
                           students: _filtered,
-                          onEdit: _showStudentDialog,
-                          onDelete: _deleteStudent,
+                          onEdit: isAdmin ? _showStudentDialog : null,
+                          onDelete: isAdmin ? _deleteStudent : null,
                         ),
         ),
       ],
@@ -374,13 +380,13 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
 class _StudentList extends StatelessWidget {
   final List<_StudentItem> students;
-  final void Function(_StudentItem) onEdit;
-  final void Function(_StudentItem) onDelete;
+  final void Function(_StudentItem)? onEdit;
+  final void Function(_StudentItem)? onDelete;
 
   const _StudentList({
     required this.students,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -407,21 +413,25 @@ class _StudentList extends StatelessWidget {
           ),
           title: Text(s.displayName),
           subtitle: s.email != null ? Text(s.email!) : null,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 20),
-                tooltip: 'Modifier',
-                onPressed: () => onEdit(s),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                tooltip: 'Supprimer',
-                onPressed: () => onDelete(s),
-              ),
-            ],
-          ),
+          trailing: (onEdit != null || onDelete != null)
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onEdit != null)
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Modifier',
+                        onPressed: () => onEdit!(s),
+                      ),
+                    if (onDelete != null)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                        tooltip: 'Supprimer',
+                        onPressed: () => onDelete!(s),
+                      ),
+                  ],
+                )
+              : null,
         );
       },
     );
@@ -433,9 +443,9 @@ class _StudentList extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _EmptyView extends StatelessWidget {
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
-  const _EmptyView({required this.onAdd});
+  const _EmptyView({this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -451,12 +461,14 @@ class _EmptyView extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const Text('Importez des élèves via le menu "Import élèves" ou ajoutez-en manuellement.'),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Ajouter un élève'),
-          ),
+          if (onAdd != null) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Ajouter un élève'),
+            ),
+          ],
         ],
       ),
     );

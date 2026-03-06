@@ -90,54 +90,60 @@ class _AppSidebar extends StatelessWidget {
 
   const _AppSidebar({required this.currentPath});
 
-  static const _navItems = [
-    _NavItem(
-      path: '/students/import',
-      icon: Icons.upload_file,
-      label: 'Import élèves',
-    ),
-    _NavItem(
-      path: '/students',
-      icon: Icons.people_outline,
-      label: 'Élèves',
-    ),
-    _NavItem(
-      path: '/classes',
-      icon: Icons.class_,
-      label: 'Classes',
-    ),
-    _NavItem(
-      path: '/trips',
-      icon: Icons.directions_bus,
-      label: 'Voyages',
-    ),
-    _NavItem(
-      path: '/tokens',
-      icon: Icons.badge,
-      label: 'Bracelets',
-    ),
-    _NavItem(
-      path: '/users',
-      icon: Icons.manage_accounts,
-      label: 'Utilisateurs',
-    ),
-  ];
+  /// Construit la liste de nav items filtree selon le role de l'utilisateur.
+  static List<_NavItem> _navItemsForRole(bool isAdmin) {
+    return [
+      if (isAdmin)
+        const _NavItem(
+          path: '/students/import',
+          icon: Icons.upload_file,
+          label: 'Import élèves',
+        ),
+      const _NavItem(
+        path: '/students',
+        icon: Icons.people_outline,
+        label: 'Élèves',
+      ),
+      const _NavItem(
+        path: '/classes',
+        icon: Icons.class_,
+        label: 'Classes',
+      ),
+      const _NavItem(
+        path: '/trips',
+        icon: Icons.directions_bus,
+        label: 'Voyages',
+      ),
+      if (isAdmin)
+        const _NavItem(
+          path: '/tokens',
+          icon: Icons.badge,
+          label: 'Bracelets',
+        ),
+      if (isAdmin)
+        const _NavItem(
+          path: '/users',
+          icon: Icons.manage_accounts,
+          label: 'Utilisateurs',
+        ),
+    ];
+  }
 
-  int _selectedIndex() {
-    // Vérification du chemin exact d'abord (évite que /students matche /students/import)
-    for (var i = 0; i < _navItems.length; i++) {
-      if (currentPath == _navItems[i].path) return i;
+  int _selectedIndex(List<_NavItem> items) {
+    for (var i = 0; i < items.length; i++) {
+      if (currentPath == items[i].path) return i;
     }
-    // Puis correspondance par préfixe (pour les sous-routes)
-    for (var i = 0; i < _navItems.length; i++) {
-      if (currentPath.startsWith(_navItems[i].path)) return i;
+    for (var i = 0; i < items.length; i++) {
+      if (currentPath.startsWith(items[i].path)) return i;
     }
     return 0;
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedIdx = _selectedIndex();
+    final auth = Provider.of<AuthProvider>(context);
+    final navItems = _navItemsForRole(auth.isAdmin);
+    final selectedIdx = _selectedIndex(navItems);
 
     return Container(
       width: 200,
@@ -173,9 +179,9 @@ class _AppSidebar extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: _navItems.length,
+              itemCount: navItems.length,
               itemBuilder: (context, index) {
-                final item = _navItems[index];
+                final item = navItems[index];
                 final isSelected = index == selectedIdx;
                 return ListTile(
                   selected: isSelected,

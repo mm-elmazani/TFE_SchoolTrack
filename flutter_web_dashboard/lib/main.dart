@@ -57,6 +57,13 @@ GoRouter _buildRouter(AuthProvider auth) {
 
       if (!loggedIn && !onLogin) return '/login';
       if (loggedIn && onLogin) return '/';
+
+      // US 6.2 — Routes admin-only : redirige les non-admin vers /students
+      if (loggedIn && !auth.isAdmin) {
+        const adminOnlyPaths = ['/students/import', '/tokens', '/users'];
+        if (adminOnlyPaths.contains(state.uri.path)) return '/students';
+      }
+
       return null;
     },
     routes: [
@@ -66,10 +73,10 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => const LoginScreen(),
       ),
 
-      // Redirection racine vers l'ecran d'import eleves
+      // Redirection racine : admin → import, autres → liste eleves
       GoRoute(
         path: '/',
-        redirect: (_, __) => '/students/import',
+        redirect: (_, __) => auth.isAdmin ? '/students/import' : '/students',
       ),
 
       // US 1.1 — Import CSV eleves

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/class_provider.dart';
 import '../widgets/assign_students_dialog.dart';
 import '../widgets/class_form_dialog.dart';
@@ -25,6 +26,7 @@ class _ClassListBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ClassProvider>();
+    final isAdmin = context.watch<AuthProvider>().isAdmin;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,11 +41,12 @@ class _ClassListBody extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const Spacer(),
-              FilledButton.icon(
-                onPressed: () => _showCreateDialog(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Nouvelle classe'),
-              ),
+              if (isAdmin)
+                FilledButton.icon(
+                  onPressed: () => _showCreateDialog(context),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nouvelle classe'),
+                ),
             ],
           ),
         ),
@@ -56,8 +59,8 @@ class _ClassListBody extends StatelessWidget {
                 onRetry: () => context.read<ClassProvider>().loadClasses(),
               ),
             _ => provider.classes.isEmpty
-                ? _EmptyView(onAdd: () => _showCreateDialog(context))
-                : _ClassGrid(classes: provider.classes),
+                ? _EmptyView(onAdd: isAdmin ? () => _showCreateDialog(context) : null)
+                : _ClassGrid(classes: provider.classes, isAdmin: isAdmin),
           },
         ),
       ],
@@ -81,8 +84,9 @@ class _ClassListBody extends StatelessWidget {
 
 class _ClassGrid extends StatelessWidget {
   final List<SchoolClassModel> classes;
+  final bool isAdmin;
 
-  const _ClassGrid({required this.classes});
+  const _ClassGrid({required this.classes, required this.isAdmin});
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +100,10 @@ class _ClassGrid extends StatelessWidget {
           mainAxisSpacing: 16,
         ),
         itemCount: classes.length,
-        itemBuilder: (ctx, i) => _ClassCard(schoolClass: classes[i]),
+        itemBuilder: (ctx, i) => _ClassCard(
+          schoolClass: classes[i],
+          isAdmin: isAdmin,
+        ),
       ),
     );
   }
@@ -108,8 +115,9 @@ class _ClassGrid extends StatelessWidget {
 
 class _ClassCard extends StatelessWidget {
   final SchoolClassModel schoolClass;
+  final bool isAdmin;
 
-  const _ClassCard({required this.schoolClass});
+  const _ClassCard({required this.schoolClass, required this.isAdmin});
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +142,7 @@ class _ClassCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _CardMenu(schoolClass: schoolClass),
+                if (isAdmin) _CardMenu(schoolClass: schoolClass),
               ],
             ),
             if (schoolClass.year != null) ...[
@@ -157,19 +165,21 @@ class _ClassCard extends StatelessWidget {
                 Text('${schoolClass.nbTeachers} enseignant(s)'),
               ],
             ),
-            const SizedBox(height: 8),
-            // Bouton assigner élèves
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showAssignDialog(context),
-                icon: const Icon(Icons.person_add_outlined, size: 16),
-                label: const Text('Assigner des élèves'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
+            if (isAdmin) ...[
+              const SizedBox(height: 8),
+              // Bouton assigner élèves
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showAssignDialog(context),
+                  icon: const Icon(Icons.person_add_outlined, size: 16),
+                  label: const Text('Assigner des élèves'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -281,9 +291,9 @@ class _CardMenu extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _EmptyView extends StatelessWidget {
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
 
-  const _EmptyView({required this.onAdd});
+  const _EmptyView({this.onAdd});
 
   @override
   Widget build(BuildContext context) {
@@ -297,12 +307,14 @@ class _EmptyView extends StatelessWidget {
             'Aucune classe enregistrée',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            onPressed: onAdd,
-            icon: const Icon(Icons.add),
-            label: const Text('Créer la première classe'),
-          ),
+          if (onAdd != null) ...[
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Créer la première classe'),
+            ),
+          ],
         ],
       ),
     );

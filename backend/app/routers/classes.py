@@ -1,5 +1,7 @@
 """
-Router pour la gestion des classes scolaires (US 1.3).
+Router pour la gestion des classes scolaires (US 1.3, US 6.2).
+Lecture : tous les utilisateurs authentifies.
+Ecriture : DIRECTION et ADMIN_TECH.
 """
 
 import uuid
@@ -9,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencies import get_current_user, require_role
+from app.models.user import User
 from app.schemas.school_class import (
     ClassCreate,
     ClassResponse,
@@ -20,9 +24,15 @@ from app.services import class_service
 
 router = APIRouter(prefix="/api/v1/classes", tags=["Classes"])
 
+_admin = require_role("DIRECTION", "ADMIN_TECH")
+
 
 @router.post("", response_model=ClassResponse, status_code=201, summary="Créer une classe")
-def create_class(data: ClassCreate, db: Session = Depends(get_db)):
+def create_class(
+    data: ClassCreate,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     """Crée une nouvelle classe scolaire avec un nom unique."""
     try:
         return class_service.create_class(db, data)
@@ -31,13 +41,20 @@ def create_class(data: ClassCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=List[ClassResponse], summary="Lister les classes")
-def list_classes(db: Session = Depends(get_db)):
+def list_classes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Retourne toutes les classes avec leur nombre d'élèves et d'enseignants."""
     return class_service.get_classes(db)
 
 
 @router.get("/{class_id}", response_model=ClassResponse, summary="Détail d'une classe")
-def get_class(class_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_class(
+    class_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     school_class = class_service.get_class(db, class_id)
     if school_class is None:
         raise HTTPException(status_code=404, detail="Classe introuvable.")
@@ -45,7 +62,12 @@ def get_class(class_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.put("/{class_id}", response_model=ClassResponse, summary="Modifier une classe")
-def update_class(class_id: uuid.UUID, data: ClassUpdate, db: Session = Depends(get_db)):
+def update_class(
+    class_id: uuid.UUID,
+    data: ClassUpdate,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     try:
         result = class_service.update_class(db, class_id, data)
     except ValueError as e:
@@ -56,7 +78,11 @@ def update_class(class_id: uuid.UUID, data: ClassUpdate, db: Session = Depends(g
 
 
 @router.delete("/{class_id}", status_code=204, summary="Supprimer une classe")
-def delete_class(class_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_class(
+    class_id: uuid.UUID,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     """
     Supprime une classe définitivement.
     Bloqué si des élèves participent à un voyage planifié ou en cours.
@@ -72,7 +98,11 @@ def delete_class(class_id: uuid.UUID, db: Session = Depends(get_db)):
 # --- Gestion des élèves ---
 
 @router.get("/{class_id}/students", response_model=List[uuid.UUID], summary="Élèves d'une classe")
-def list_class_students(class_id: uuid.UUID, db: Session = Depends(get_db)):
+def list_class_students(
+    class_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Retourne les IDs des élèves assignés à une classe."""
     from sqlalchemy import select
     from app.models.school_class import ClassStudent
@@ -83,7 +113,12 @@ def list_class_students(class_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/{class_id}/students", response_model=ClassResponse, summary="Assigner des élèves")
-def assign_students(class_id: uuid.UUID, data: ClassStudentsAssign, db: Session = Depends(get_db)):
+def assign_students(
+    class_id: uuid.UUID,
+    data: ClassStudentsAssign,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     """Assigne un ou plusieurs élèves à une classe. Les doublons sont ignorés."""
     try:
         return class_service.assign_students(db, class_id, data)
@@ -92,7 +127,12 @@ def assign_students(class_id: uuid.UUID, data: ClassStudentsAssign, db: Session 
 
 
 @router.delete("/{class_id}/students/{student_id}", status_code=204, summary="Retirer un élève")
-def remove_student(class_id: uuid.UUID, student_id: uuid.UUID, db: Session = Depends(get_db)):
+def remove_student(
+    class_id: uuid.UUID,
+    student_id: uuid.UUID,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     """Retire un élève d'une classe."""
     success = class_service.remove_student(db, class_id, student_id)
     if not success:
@@ -102,7 +142,12 @@ def remove_student(class_id: uuid.UUID, student_id: uuid.UUID, db: Session = Dep
 # --- Gestion des enseignants ---
 
 @router.post("/{class_id}/teachers", response_model=ClassResponse, summary="Assigner des enseignants")
-def assign_teachers(class_id: uuid.UUID, data: ClassTeachersAssign, db: Session = Depends(get_db)):
+def assign_teachers(
+    class_id: uuid.UUID,
+    data: ClassTeachersAssign,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     """Assigne un ou plusieurs enseignants à une classe. Les doublons sont ignorés."""
     try:
         return class_service.assign_teachers(db, class_id, data)
@@ -111,7 +156,12 @@ def assign_teachers(class_id: uuid.UUID, data: ClassTeachersAssign, db: Session 
 
 
 @router.delete("/{class_id}/teachers/{teacher_id}", status_code=204, summary="Retirer un enseignant")
-def remove_teacher(class_id: uuid.UUID, teacher_id: uuid.UUID, db: Session = Depends(get_db)):
+def remove_teacher(
+    class_id: uuid.UUID,
+    teacher_id: uuid.UUID,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
     """Retire un enseignant d'une classe."""
     success = class_service.remove_teacher(db, class_id, teacher_id)
     if not success:

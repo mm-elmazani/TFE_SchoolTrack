@@ -45,6 +45,14 @@ class AuthProvider extends ChangeNotifier {
     return _userEmail;
   }
 
+  /// Roles avec droits d'administration.
+  bool get isAdmin =>
+      _userRole == 'DIRECTION' || _userRole == 'ADMIN_TECH';
+
+  /// Roles avec acces aux actions terrain (scan, checkpoints, sync).
+  bool get isFieldUser =>
+      _userRole == 'DIRECTION' || _userRole == 'ADMIN_TECH' || _userRole == 'TEACHER';
+
   /// Charge les tokens depuis le stockage securise au demarrage.
   Future<void> init() async {
     _accessToken = await _storage.read(key: _keyAccessToken);
