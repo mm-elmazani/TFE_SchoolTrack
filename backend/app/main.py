@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import app.models  # noqa: F401 — enregistre tous les modèles SQLAlchemy dans les métadonnées
-from app.routers import checkpoints, classes, students, sync, tokens, trips
+from app.routers import auth, checkpoints, classes, students, sync, tokens, trips, users
 from app.routers.checkpoints import checkpoints_router
 from app.scheduler import start_scheduler, stop_scheduler
 
@@ -48,6 +48,8 @@ app.add_middleware(
 )
 
 
+app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(students.router)
 app.include_router(trips.router)
 app.include_router(checkpoints.router)

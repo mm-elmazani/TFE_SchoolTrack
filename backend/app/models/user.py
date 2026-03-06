@@ -1,6 +1,5 @@
 """
-Modèle SQLAlchemy pour les utilisateurs.
-Version minimale — sera complété avec les champs auth en EPIC 6.
+Modele SQLAlchemy pour les utilisateurs.
 """
 
 import uuid
@@ -22,6 +21,7 @@ class User(Base):
     totp_secret = Column(String(100), nullable=True)
     is_2fa_enabled = Column(Boolean, default=False)
     failed_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

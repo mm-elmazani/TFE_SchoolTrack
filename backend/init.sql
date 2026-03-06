@@ -41,6 +41,7 @@ CREATE TABLE users (
     totp_secret VARCHAR(100),               -- Secret 2FA TOTP (optionnel)
     is_2fa_enabled BOOLEAN DEFAULT FALSE,
     failed_attempts INT DEFAULT 0,
+    locked_until TIMESTAMP,                 -- Verrouillage après 5 tentatives (US 6.1)
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -446,13 +447,13 @@ GROUP BY c.id;
 -- DONNÉES DE TEST (dev uniquement)
 -- ============================================================================
 
--- Utilisateur direction de test (mot de passe réel sera défini via l'API)
+-- Utilisateur direction de test (mot de passe : Admin123!)
 INSERT INTO users (email, password_hash, first_name, last_name, role, is_2fa_enabled)
-VALUES ('admin@schooltrack.test', '$2b$12$dummyhashfortest', 'Admin', 'Test', 'DIRECTION', FALSE);
+VALUES ('admin@schooltrack.be', '$2b$12$kGMMYlNs9/Z5wnajznpNgeq/3wNVRl7fjAsGKps/s9rPQbWtnj9s.', 'Admin', 'Test', 'DIRECTION', FALSE);
 
--- Enseignant de test
+-- Enseignant de test (mot de passe : Teacher123!)
 INSERT INTO users (email, password_hash, first_name, last_name, role, is_2fa_enabled)
-VALUES ('teacher@schooltrack.test', '$2b$12$dummyhashfortest', 'Jean', 'Dupont', 'TEACHER', FALSE);
+VALUES ('teacher@schooltrack.be', '$2b$12$R3S3eEArQzvvfTyvw5ETK.nAfedJE3S93aEBccr4G3DHNUA4A6/6u', 'Jean', 'Dupont', 'TEACHER', FALSE);
 
 -- ============================================================================
 -- FIN DU SCHÉMA v4.2
