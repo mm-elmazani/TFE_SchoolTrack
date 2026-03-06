@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter_teacher_app/core/database/local_db.dart';
+import 'package:flutter_teacher_app/features/auth/providers/auth_provider.dart';
 import 'package:flutter_teacher_app/main.dart';
 
 void main() {
@@ -18,7 +19,8 @@ void main() {
   });
 
   testWidgets('SchoolTrackApp smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const SchoolTrackApp());
+    final authProvider = AuthProvider();
+    await tester.pumpWidget(SchoolTrackApp(authProvider: authProvider));
     expect(find.byType(SchoolTrackApp), findsOneWidget);
   });
 }

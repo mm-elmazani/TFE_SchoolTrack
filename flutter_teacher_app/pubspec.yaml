@@ -35,6 +35,9 @@ dependencies:
   lottie: ^3.1.0               # Animations visuelles (succès/erreur)
   uuid: ^4.5.1                 # Génération client_uuid pour idempotence sync
 
+  # Stockage securise des tokens JWT (Android Keystore)
+  flutter_secure_storage: ^9.2.4
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

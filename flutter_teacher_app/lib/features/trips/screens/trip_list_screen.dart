@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../models/offline_bundle.dart';
 
@@ -42,13 +43,35 @@ class _TripListBody extends StatelessWidget {
         backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
-          // Bouton rafraîchir
+          // Bouton rafraichir
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Rafraîchir',
             onPressed: provider.listState == TripListState.loading
                 ? null
                 : () => context.read<TripProvider>().loadTrips(),
+          ),
+          // Bouton deconnexion
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Déconnexion',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Déconnexion'),
+                  content: const Text('Voulez-vous vous déconnecter ?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Déconnexion')),
+                  ],
+                ),
+              );
+              if (confirmed == true && context.mounted) {
+                await context.read<AuthProvider>().logout();
+                if (context.mounted) context.go('/login');
+              }
+            },
           ),
         ],
       ),

@@ -23,9 +23,18 @@ class ApiClient {
   final String baseUrl;
   final http.Client _http;
 
+  /// Token JWT injecte dans le header Authorization de chaque requete authentifiee.
+  static String? authToken;
+
   ApiClient({String? baseUrl, http.Client? client})
       : baseUrl = baseUrl ?? kApiBaseUrl,
         _http = client ?? http.Client();
+
+  Map<String, String> get _authHeaders => {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (authToken != null) 'Authorization': 'Bearer $authToken',
+      };
 
   // ----------------------------------------------------------------
   // Voyages
@@ -36,7 +45,7 @@ class ApiClient {
   Future<List<TripSummary>> getTrips() async {
     try {
       final response = await _http
-          .get(Uri.parse('$baseUrl/api/v1/trips'))
+          .get(Uri.parse('$baseUrl/api/v1/trips'), headers: _authHeaders)
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -73,7 +82,7 @@ class ApiClient {
       final response = await _http
           .post(
             Uri.parse('$baseUrl/api/v1/trips/$tripId/checkpoints'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _authHeaders,
             body: jsonEncode({'name': name}),
           )
           .timeout(const Duration(seconds: 10));
@@ -102,7 +111,7 @@ class ApiClient {
       final response = await _http
           .post(
             Uri.parse('$baseUrl/api/v1/checkpoints/$checkpointId/close'),
-            headers: {'Content-Type': 'application/json'},
+            headers: _authHeaders,
           )
           .timeout(const Duration(seconds: 10));
 
@@ -123,7 +132,7 @@ class ApiClient {
   Future<OfflineDataBundle> getOfflineBundle(String tripId) async {
     try {
       final response = await _http
-          .get(Uri.parse('$baseUrl/api/v1/trips/$tripId/offline-data'))
+          .get(Uri.parse('$baseUrl/api/v1/trips/$tripId/offline-data'), headers: _authHeaders)
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
@@ -142,6 +151,70 @@ class ApiClient {
       rethrow;
     } catch (e) {
       throw ApiException('Impossible de télécharger les données : $e');
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Authentification (US 6.1)
+  // ----------------------------------------------------------------
+
+  /// POST /api/v1/auth/login
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+    String? totpCode,
+  }) async {
+    final body = <String, dynamic>{
+      'email': email,
+      'password': password,
+      if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+    };
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/auth/login'),
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      String detail;
+      try {
+        final err = jsonDecode(response.body) as Map<String, dynamic>;
+        detail = err['detail']?.toString() ?? 'Erreur inconnue';
+      } catch (_) {
+        detail = 'Erreur serveur (${response.statusCode})';
+      }
+      throw ApiException(detail, statusCode: response.statusCode);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
+  /// POST /api/v1/auth/refresh
+  Future<Map<String, dynamic>> refreshToken({required String refreshToken}) async {
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/auth/refresh'),
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: jsonEncode({'refresh_token': refreshToken}),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw ApiException('Refresh token invalide', statusCode: response.statusCode);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
     }
   }
 }
