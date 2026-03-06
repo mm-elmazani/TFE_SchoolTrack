@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import '../../features/auth/providers/auth_provider.dart';
 
 /// Structure commune du dashboard (sidebar + zone de contenu).
 /// Utilisée comme wrapper pour tous les écrans du dashboard Direction.
@@ -113,6 +116,11 @@ class _AppSidebar extends StatelessWidget {
       icon: Icons.badge,
       label: 'Bracelets',
     ),
+    _NavItem(
+      path: '/users',
+      icon: Icons.manage_accounts,
+      label: 'Utilisateurs',
+    ),
   ];
 
   int _selectedIndex() {
@@ -200,14 +208,48 @@ class _AppSidebar extends StatelessWidget {
             ),
           ),
 
-          // Pied de sidebar
+          // Pied de sidebar — utilisateur connecte + deconnexion
           const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Text(
-              'Direction',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-            ),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      auth.userDisplayName ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey.shade700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      auth.userRole ?? '',
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 32,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await auth.logout();
+                          if (context.mounted) context.go('/login');
+                        },
+                        icon: const Icon(Icons.logout, size: 16),
+                        label: const Text('Déconnexion', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

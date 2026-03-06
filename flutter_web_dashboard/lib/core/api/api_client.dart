@@ -3,10 +3,14 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../constants.dart';
 
-/// Client HTTP centralisé pour les appels à l'API FastAPI.
-/// Gère la base URL et les en-têtes communs.
+/// Client HTTP centralise pour les appels a l'API FastAPI.
+/// Gere la base URL, les en-tetes communs et le token JWT.
 class ApiClient {
   final String baseUrl;
+
+  /// Token JWT injecte dans le header Authorization de chaque requete.
+  /// Mis a jour par AuthProvider apres login/refresh.
+  static String? authToken;
 
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? kApiBaseUrl;
 
@@ -15,6 +19,7 @@ class ApiClient {
   Map<String, String> get _jsonHeaders => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        if (authToken != null) 'Authorization': 'Bearer $authToken',
       };
 
   /// Effectue une requête GET et retourne le corps JSON décodé.
@@ -103,6 +108,9 @@ class ApiClient {
   Future<Map<String, dynamic>> uploadCsv(Uint8List bytes, String filename) async {
     final uri = Uri.parse('$baseUrl/api/v1/students/upload');
     final request = http.MultipartRequest('POST', uri);
+    if (authToken != null) {
+      request.headers['Authorization'] = 'Bearer $authToken';
+    }
     request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
 
     try {
@@ -316,6 +324,82 @@ class ApiClient {
   /// Retourne l'URL d'export CSV des assignations d'un voyage.
   String getExportUrl(String tripId) =>
       '$baseUrl/api/v1/trips/$tripId/assignments/export';
+
+  // ─── US 6.1 — Gestion utilisateurs ──────────────────────────────────────
+
+  /// Liste tous les utilisateurs (GET /api/v1/users). Reserve a la Direction.
+  Future<List<Map<String, dynamic>>> getUsers() async {
+    final data = await _get('/api/v1/users');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  /// Cree un nouvel utilisateur (POST /api/v1/users). Reserve a la Direction.
+  Future<Map<String, dynamic>> createUser({
+    required String email,
+    required String password,
+    required String role,
+    String? firstName,
+    String? lastName,
+  }) async {
+    final body = <String, dynamic>{
+      'email': email,
+      'password': password,
+      'role': role,
+      if (firstName != null && firstName.isNotEmpty) 'first_name': firstName,
+      if (lastName != null && lastName.isNotEmpty) 'last_name': lastName,
+    };
+    return (await _post('/api/v1/users', body)) as Map<String, dynamic>;
+  }
+
+  /// Supprime un utilisateur (DELETE /api/v1/users/{id}). Reserve a la Direction.
+  Future<void> deleteUser(String userId) async {
+    await _delete('/api/v1/users/$userId');
+  }
+
+  // ─── US 6.1 — Authentification ────────────────────────────────────────────
+
+  /// POST /api/v1/auth/login — connexion avec email + mot de passe + TOTP optionnel.
+  /// Retourne { access_token, refresh_token, token_type, user }.
+  Future<Map<String, dynamic>> login({
+    required String email,
+    required String password,
+    String? totpCode,
+  }) async {
+    final body = <String, dynamic>{
+      'email': email,
+      'password': password,
+      if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+    };
+    // Login ne requiert pas de token — appel direct sans header Authorization.
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/login'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode(body),
+      );
+      return _handleResponse(response) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(statusCode: 0, message: 'Impossible de contacter le serveur : $e');
+    }
+  }
+
+  /// POST /api/v1/auth/refresh — renouvelle les tokens.
+  Future<Map<String, dynamic>> refreshToken({required String refreshToken}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/refresh'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: jsonEncode({'refresh_token': refreshToken}),
+      );
+      return _handleResponse(response) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(statusCode: 0, message: 'Impossible de contacter le serveur : $e');
+    }
+  }
 }
 
 /// Exception levée lors d'une erreur d'appel API.
