@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     # Base de données
     DATABASE_URL: str = "postgresql://schooltrack:schooltrack_dev@localhost:5432/schooltrack"
 
+    # Chiffrement AES-256 des donnees sensibles (US 6.3)
+    ENCRYPTION_KEY: str = "dev-only-change-in-production-32chars!"
+
     # JWT
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"

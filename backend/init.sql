@@ -15,9 +15,9 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ----------------------------------------------------------------------------
 CREATE TABLE students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(255),                    -- Pour envoi QR Code digital
+    first_name TEXT NOT NULL,              -- Chiffre AES-256-GCM (US 6.3)
+    last_name TEXT NOT NULL,               -- Chiffre AES-256-GCM (US 6.3)
+    email TEXT,                            -- Chiffre AES-256-GCM (US 6.3)
     photo_url VARCHAR(500),                -- URL photo élève (optionnel)
     parent_consent BOOLEAN DEFAULT FALSE,  -- Consentement parental RGPD
     created_at TIMESTAMP DEFAULT NOW(),
@@ -35,10 +35,10 @@ CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,    -- Bcrypt hash (coût 12)
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
+    first_name TEXT,                        -- Chiffre AES-256-GCM (US 6.3)
+    last_name TEXT,                         -- Chiffre AES-256-GCM (US 6.3)
     role VARCHAR(50) NOT NULL,              -- DIRECTION, TEACHER, OBSERVER, ADMIN_TECH
-    totp_secret VARCHAR(100),               -- Secret 2FA TOTP (optionnel)
+    totp_secret TEXT,                       -- Chiffre AES-256-GCM (US 6.3)
     is_2fa_enabled BOOLEAN DEFAULT FALSE,
     failed_attempts INT DEFAULT 0,
     locked_until TIMESTAMP,                 -- Verrouillage après 5 tentatives (US 6.1)

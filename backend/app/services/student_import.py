@@ -162,17 +162,15 @@ def parse_and_import_csv(
             errors=errors
         )
 
-    # Détection doublons contre la BDD (batch query)
-    keys_to_check = [(r.last_name.lower(), r.first_name.lower()) for r in valid_rows]
-    existing = db.execute(
-        select(
-            func.lower(Student.last_name),
-            func.lower(Student.first_name)
-        ).where(
-            func.lower(Student.last_name).in_([k[0] for k in keys_to_check])
-        )
+    # Detection doublons contre la BDD (colonnes chiffrees → comparaison Python)
+    all_students = db.execute(
+        select(Student.last_name, Student.first_name)
     ).fetchall()
-    existing_set = {(row[0], row[1]) for row in existing}
+    existing_set = {
+        (row[0].lower(), row[1].lower())
+        for row in all_students
+        if row[0] and row[1]
+    }
 
     to_insert: list[StudentImportRow] = []
     duplicates_in_db = 0
@@ -189,14 +187,14 @@ def parse_and_import_csv(
         else:
             to_insert.append(student)
 
-    # Insertion bulk des élèves
+    # Insertion des eleves via ORM (chiffrement transparent par EncryptedString)
     if to_insert:
-        db.bulk_insert_mappings(Student, [
-            {
-                "first_name": s.first_name,
-                "last_name": s.last_name,
-                "email": s.email,
-            }
+        db.add_all([
+            Student(
+                first_name=s.first_name,
+                last_name=s.last_name,
+                email=s.email,
+            )
             for s in to_insert
         ])
         db.flush()  # obtenir les IDs avant d'assigner les classes
@@ -237,20 +235,18 @@ def _assign_classes(db: Session, students: list[StudentImportRow]) -> None:
     if not classes_map:
         return
 
-    # Récupérer les IDs des élèves qu'on vient d'insérer
-    inserted_students = db.execute(
-        select(Student.id, func.lower(Student.last_name), func.lower(Student.first_name))
-        .where(
-            func.lower(Student.last_name).in_(
-                [s.last_name.lower() for s in students if s.classe]
-            )
-        )
+    # Recuperer les IDs des eleves (colonnes chiffrees → filtrage Python)
+    target_keys = {
+        (s.last_name.lower(), s.first_name.lower())
+        for s in students if s.classe
+    }
+    all_rows = db.execute(
+        select(Student.id, Student.last_name, Student.first_name)
     ).fetchall()
-
-    # Construire un index (last_name_lower, first_name_lower) → student_id
     student_id_map = {
-        (row[1], row[2]): row[0]
-        for row in inserted_students
+        (row[1].lower(), row[2].lower()): row[0]
+        for row in all_rows
+        if row[1] and row[2] and (row[1].lower(), row[2].lower()) in target_keys
     }
 
     # Récupérer les assignations existantes pour éviter les doublons

@@ -200,8 +200,8 @@ def test_import_csv_classe_creee_si_inexistante():
 
     parse_and_import_csv(csv_content, db)
 
-    # bulk_insert_mappings doit avoir été appelé (élève + assignation classe)
-    assert db.bulk_insert_mappings.called
+    # add_all doit avoir ete appele (insertion ORM pour chiffrement transparent)
+    assert db.add_all.called
 
 
 def test_import_csv_classe_plusieurs_eleves_meme_classe():

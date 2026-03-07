@@ -28,10 +28,9 @@ def list_students(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retourne tous les élèves triés alphabétiquement par nom puis prénom."""
-    students = db.execute(
-        select(Student).order_by(Student.last_name, Student.first_name)
-    ).scalars().all()
+    """Retourne tous les eleves tries alphabetiquement par nom puis prenom."""
+    students = db.execute(select(Student)).scalars().all()
+    students = sorted(students, key=lambda s: ((s.last_name or "").lower(), (s.first_name or "").lower()))
     return students
 
 

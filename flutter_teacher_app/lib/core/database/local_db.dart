@@ -1,19 +1,31 @@
-/// Base de données locale SQLite pour le mode offline (US 2.1 + US 2.2 + US 2.5).
+/// Base de données locale SQLite chiffree SQLCipher pour le mode offline
+/// (US 2.1 + US 2.2 + US 2.5 + US 6.3).
 ///
 /// Schéma :
 ///   trips        — informations du voyage + timestamp de téléchargement
 ///   students     — élèves avec leur assignation bracelet/QR
 ///   checkpoints  — points de contrôle du voyage (créés offline, US 2.5)
 ///   attendances  — présences enregistrées localement (US 2.2), en attente de sync
+///
+/// Chiffrement : AES-256 via SQLCipher. La cle est stockee dans Android Keystore
+/// via flutter_secure_storage (US 6.3).
 library;
 
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sqflite_std;
+import 'package:sqflite_sqlcipher/sqflite.dart' as sqlcipher;
 import 'package:uuid/uuid.dart';
 import '../constants.dart';
 import '../../features/trips/models/offline_bundle.dart';
 import '../../features/scan/models/attendance_record.dart';
+
+// Re-export les types communs (identiques entre sqflite et sqflite_sqlcipher)
+typedef Database = sqflite_std.Database;
+typedef ConflictAlgorithm = sqflite_std.ConflictAlgorithm;
 
 const _uuid = Uuid();
 
@@ -44,15 +56,58 @@ class LocalDb {
     return _db!;
   }
 
-  Future<Database> _open() async {
-    final path = testDatabasePath ?? join(await getDatabasesPath(), 'schooltrack.db');
+  /// Nom de la cle de chiffrement dans le Keystore Android.
+  static const _dbKeyName = 'schooltrack_db_key';
 
-    return openDatabase(
-      path,
-      version: 2,
-      onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
-    );
+  Future<Database> _open() async {
+    final path = testDatabasePath ??
+        join(await sqflite_std.getDatabasesPath(), 'schooltrack.db');
+
+    // Mode test : sqflite standard (FFI, pas de chiffrement)
+    if (testDatabasePath != null) {
+      return sqflite_std.openDatabase(
+        path,
+        version: 3,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    }
+
+    // Production : sqflite_sqlcipher — chiffrement AES-256 (US 6.3)
+    final password = await _getOrCreateDbKey();
+    try {
+      return await sqlcipher.openDatabase(
+        path,
+        version: 3,
+        password: password,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    } catch (_) {
+      // Migration depuis une BDD non chiffree : supprimer et recreer
+      await sqlcipher.deleteDatabase(path);
+      return sqlcipher.openDatabase(
+        path,
+        version: 3,
+        password: password,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    }
+  }
+
+  /// Genere ou recupere la cle de chiffrement SQLCipher depuis le Keystore.
+  Future<String> _getOrCreateDbKey() async {
+    const storage = FlutterSecureStorage();
+    var key = await storage.read(key: _dbKeyName);
+    if (key == null) {
+      final random = Random.secure();
+      key = List.generate(32, (_) => random.nextInt(256))
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      await storage.write(key: _dbKeyName, value: key);
+    }
+    return key;
   }
 
   Future<void> _onCreate(Database db, int version) async {

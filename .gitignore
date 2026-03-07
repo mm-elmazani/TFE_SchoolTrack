@@ -38,3 +38,8 @@ pgadmin_data/
 # OS
 .DS_Store
 Thumbs.db
+
+# docs
+
+/docs/DEPLOY-PRODUCTION.md
+/docs/SECURITY-KEYS.md

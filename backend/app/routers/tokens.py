@@ -1,11 +1,15 @@
 """
-Router pour les assignations de bracelets (US 1.5, US 6.2).
+Router pour les assignations de bracelets (US 1.5, US 6.2, US 6.3).
 Ecriture (assign/reassign/release) : DIRECTION, ADMIN_TECH.
 Lecture (statut, liste, export) : tous les utilisateurs authentifies.
+Export CSV : optionnellement protege par mot de passe ZIP AES-256 (US 6.3).
 """
 
+import io
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -109,16 +113,35 @@ def release_trip_tokens(
             summary="Exporter les assignations en CSV")
 def export_assignments(
     trip_id: uuid.UUID,
+    password: Optional[str] = Query(None, description="Mot de passe pour chiffrement ZIP AES-256 (optionnel)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Exporte la liste des assignations actives d'un voyage en CSV.
+    Exporte la liste des assignations actives d'un voyage.
+    Sans mot de passe : CSV brut. Avec mot de passe : ZIP AES-256 (US 6.3).
     """
     csv_content = assignment_service.export_assignments_csv(db, trip_id)
+
+    if password:
+        import pyzipper
+        zip_buffer = io.BytesIO()
+        with pyzipper.AESZipFile(
+            zip_buffer, "w",
+            compression=pyzipper.ZIP_DEFLATED,
+            encryption=pyzipper.WZ_AES,
+        ) as zf:
+            zf.setpassword(password.encode("utf-8"))
+            zf.writestr(f"assignations_{trip_id}.csv", csv_content.encode("utf-8"))
+        zip_buffer.seek(0)
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename=assignations_{trip_id}.zip"},
+        )
 
     return StreamingResponse(
         iter([csv_content]),
         media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename=assignations_{trip_id}.csv"}
+        headers={"Content-Disposition": f"attachment; filename=assignations_{trip_id}.csv"},
     )

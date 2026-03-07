@@ -24,7 +24,8 @@ def list_users(
     db: Session = Depends(get_db),
 ):
     """Liste tous les utilisateurs. Reserve a la Direction / Admin Tech."""
-    users = db.query(User).order_by(User.last_name, User.first_name).all()
+    users = db.query(User).all()
+    users = sorted(users, key=lambda u: ((u.last_name or "").lower(), (u.first_name or "").lower()))
     return [UserInfo.model_validate(u) for u in users]
 
 

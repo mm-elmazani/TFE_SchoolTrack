@@ -50,7 +50,7 @@ class TestListUsers:
         override_auth(admin)
 
         mock_db = MagicMock()
-        mock_db.query.return_value.order_by.return_value.all.return_value = [admin, teacher]
+        mock_db.query.return_value.all.return_value = [admin, teacher]
         from app.database import get_db
         app.dependency_overrides[get_db] = lambda: mock_db
 

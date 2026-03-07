@@ -59,8 +59,10 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
             ),
         )
         .where(TripStudent.trip_id == trip_id)
-        .order_by(Student.last_name, Student.first_name)
     ).all()
+
+    # Tri alphabetique en Python (colonnes chiffrees, US 6.3)
+    rows = sorted(rows, key=lambda r: ((r[0].last_name or "").lower(), (r[0].first_name or "").lower()))
 
     students = []
     for student, assignment in rows:

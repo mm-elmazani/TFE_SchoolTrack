@@ -30,6 +30,9 @@ Pillow==11.1.0
 # Scheduling (envoi QR 48h avant voyage)
 apscheduler==3.11.0
 
+# Export CSV chiffre (US 6.3)
+pyzipper==0.3.6
+
 # Rate limiting
 redis==5.2.1
 
