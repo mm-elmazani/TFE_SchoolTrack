@@ -57,6 +57,7 @@ def create_user(
         resource_type="USER",
         resource_id=user.id,
         ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
         details={"email": body.email, "role": body.role},
     )
 
@@ -85,6 +86,7 @@ def delete_user(
         resource_type="USER",
         resource_id=user.id,
         ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
         details={"email": user.email, "role": user.role},
     )
 

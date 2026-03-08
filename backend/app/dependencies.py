@@ -100,7 +100,7 @@ def log_audit(
             "VALUES (:uid, :action, :rtype, :rid, :ip, :ua, :details)"
         ),
         {
-            "uid": str(user_id),
+            "uid": str(user_id) if user_id else None,
             "action": action,
             "rtype": resource_type,
             "rid": str(resource_id) if resource_id else None,

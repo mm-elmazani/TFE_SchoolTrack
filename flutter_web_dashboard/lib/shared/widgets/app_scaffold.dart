@@ -126,6 +126,12 @@ class _AppSidebar extends StatelessWidget {
           icon: Icons.manage_accounts,
           label: 'Utilisateurs',
         ),
+      if (isAdmin)
+        const _NavItem(
+          path: '/audit',
+          icon: Icons.history,
+          label: 'Logs d\'audit',
+        ),
     ];
   }
 

@@ -1,20 +1,21 @@
 """
-Router pour les assignations de bracelets (US 1.5, US 6.2, US 6.3).
+Router pour les assignations de bracelets (US 1.5, US 6.2, US 6.3, US 6.4).
 Ecriture (assign/reassign/release) : DIRECTION, ADMIN_TECH.
 Lecture (statut, liste, export) : tous les utilisateurs authentifies.
 Export CSV : optionnellement protege par mot de passe ZIP AES-256 (US 6.3).
+Audit logging sur toutes les actions d'ecriture et exports.
 """
 
 import io
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, log_audit, require_role
 from app.models.user import User
 from app.schemas.assignment import (
     AssignmentCreate,
@@ -34,6 +35,7 @@ _admin = require_role("DIRECTION", "ADMIN_TECH")
              summary="Assigner un bracelet à un élève")
 def assign_token(
     data: AssignmentCreate,
+    request: Request,
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
@@ -41,15 +43,26 @@ def assign_token(
     Assigne un bracelet NFC ou QR physique à un élève pour un voyage spécifique.
     """
     try:
-        return assignment_service.assign_token(db, data)
+        result = assignment_service.assign_token(db, data)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKEN_ASSIGNED",
+        resource_type="ASSIGNMENT", resource_id=result.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"student_id": str(data.student_id), "trip_id": str(data.trip_id)},
+    )
+
+    return result
 
 
 @router.post("/tokens/reassign", response_model=AssignmentResponse, status_code=201,
              summary="Réassigner un bracelet")
 def reassign_token(
     data: AssignmentReassign,
+    request: Request,
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
@@ -58,9 +71,19 @@ def reassign_token(
     Libère les assignations actives précédentes et en crée une nouvelle.
     """
     try:
-        return assignment_service.reassign_token(db, data)
+        result = assignment_service.reassign_token(db, data)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKEN_REASSIGNED",
+        resource_type="ASSIGNMENT", resource_id=result.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"student_id": str(data.student_id), "trip_id": str(data.trip_id)},
+    )
+
+    return result
 
 
 @router.get("/trips/{trip_id}/assignments", response_model=TripAssignmentStatus,
@@ -99,6 +122,7 @@ def get_trip_students(
 )
 def release_trip_tokens(
     trip_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
@@ -106,6 +130,15 @@ def release_trip_tokens(
     Libère toutes les assignations actives d'un voyage (released_at = NOW()).
     """
     count = assignment_service.release_trip_tokens(db, trip_id)
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKENS_RELEASED",
+        resource_type="TRIP", resource_id=trip_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"released_count": count},
+    )
+
     return {"trip_id": str(trip_id), "released_count": count}
 
 
@@ -113,6 +146,7 @@ def release_trip_tokens(
             summary="Exporter les assignations en CSV")
 def export_assignments(
     trip_id: uuid.UUID,
+    request: Request,
     password: Optional[str] = Query(None, description="Mot de passe pour chiffrement ZIP AES-256 (optionnel)"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -122,6 +156,14 @@ def export_assignments(
     Sans mot de passe : CSV brut. Avec mot de passe : ZIP AES-256 (US 6.3).
     """
     csv_content = assignment_service.export_assignments_csv(db, trip_id)
+
+    log_audit(
+        db, user_id=current_user.id, action="ASSIGNMENTS_EXPORTED",
+        resource_type="TRIP", resource_id=trip_id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"format": "zip_aes256" if password else "csv"},
+    )
 
     if password:
         import pyzipper

@@ -325,6 +325,51 @@ class ApiClient {
   String getExportUrl(String tripId) =>
       '$baseUrl/api/v1/trips/$tripId/assignments/export';
 
+  // ─── US 6.4 — Audit logs ───────────────────────────────────────────────
+
+  /// Retourne les logs d'audit pagines avec filtres optionnels.
+  Future<Map<String, dynamic>> getAuditLogs({
+    int page = 1,
+    int pageSize = 50,
+    String? userId,
+    String? action,
+    String? resourceType,
+    String? dateFrom,
+    String? dateTo,
+  }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'page_size': pageSize.toString(),
+      if (userId != null && userId.isNotEmpty) 'user_id': userId,
+      if (action != null && action.isNotEmpty) 'action': action,
+      if (resourceType != null && resourceType.isNotEmpty) 'resource_type': resourceType,
+      if (dateFrom != null && dateFrom.isNotEmpty) 'date_from': dateFrom,
+      if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
+    };
+    final query = queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+    return (await _get('/api/v1/audit/logs?$query')) as Map<String, dynamic>;
+  }
+
+  /// Retourne l'URL de telechargement de l'export JSON des logs d'audit.
+  String getAuditExportUrl({
+    String? userId,
+    String? action,
+    String? resourceType,
+    String? dateFrom,
+    String? dateTo,
+  }) {
+    final queryParams = <String, String>{
+      if (userId != null && userId.isNotEmpty) 'user_id': userId,
+      if (action != null && action.isNotEmpty) 'action': action,
+      if (resourceType != null && resourceType.isNotEmpty) 'resource_type': resourceType,
+      if (dateFrom != null && dateFrom.isNotEmpty) 'date_from': dateFrom,
+      if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
+    };
+    final query = queryParams.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final sep = query.isEmpty ? '' : '?$query';
+    return '$baseUrl/api/v1/audit/logs/export$sep';
+  }
+
   // ─── US 6.1 — Gestion utilisateurs ──────────────────────────────────────
 
   /// Liste tous les utilisateurs (GET /api/v1/users). Reserve a la Direction.

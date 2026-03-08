@@ -9,6 +9,7 @@ import 'features/students/screens/student_import_screen.dart';
 import 'features/students/screens/student_list_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
 import 'features/tokens/screens/token_screen.dart';
+import 'features/audit/screens/audit_log_screen.dart';
 import 'features/users/screens/user_list_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
 
@@ -60,7 +61,7 @@ GoRouter _buildRouter(AuthProvider auth) {
 
       // US 6.2 — Routes admin-only : redirige les non-admin vers /students
       if (loggedIn && !auth.isAdmin) {
-        const adminOnlyPaths = ['/students/import', '/tokens', '/users'];
+        const adminOnlyPaths = ['/students/import', '/tokens', '/users', '/audit'];
         if (adminOnlyPaths.contains(state.uri.path)) return '/students';
       }
 
@@ -130,6 +131,15 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => AppScaffold(
           pageTitle: 'Utilisateurs',
           child: const UserListScreen(),
+        ),
+      ),
+
+      // US 6.4 — Logs d'audit
+      GoRoute(
+        path: '/audit',
+        builder: (context, state) => AppScaffold(
+          pageTitle: 'Logs d\'audit',
+          child: const AuditLogScreen(),
         ),
       ),
     ],

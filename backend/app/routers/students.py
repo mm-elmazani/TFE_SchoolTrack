@@ -1,18 +1,19 @@
 """
-Router pour les élèves (US 1.1, US 1.3, US 6.2).
+Router pour les élèves (US 1.1, US 1.3, US 6.2, US 6.4).
 Lecture : tous les utilisateurs authentifies.
 Ecriture (create/update/delete/import) : DIRECTION et ADMIN_TECH uniquement.
+Audit logging sur toutes les actions d'ecriture.
 """
 
 import uuid
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, log_audit, require_role
 from app.models.student import Student
 from app.models.user import User
 from app.schemas.student import StudentCreate, StudentImportReport, StudentResponse, StudentUpdate
@@ -37,6 +38,7 @@ def list_students(
 @router.post("", response_model=StudentResponse, status_code=201, summary="Créer un élève manuellement")
 def create_student(
     data: StudentCreate,
+    request: Request,
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
@@ -49,6 +51,15 @@ def create_student(
     db.add(student)
     db.commit()
     db.refresh(student)
+
+    log_audit(
+        db, user_id=current_user.id, action="STUDENT_CREATED",
+        resource_type="STUDENT", resource_id=student.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"first_name": data.first_name, "last_name": data.last_name},
+    )
+
     return student
 
 
@@ -56,6 +67,7 @@ def create_student(
 def update_student(
     student_id: uuid.UUID,
     data: StudentUpdate,
+    request: Request,
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
@@ -70,12 +82,22 @@ def update_student(
 
     db.commit()
     db.refresh(student)
+
+    log_audit(
+        db, user_id=current_user.id, action="STUDENT_UPDATED",
+        resource_type="STUDENT", resource_id=student.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"fields": list(update_data.keys())},
+    )
+
     return student
 
 
 @router.delete("/{student_id}", status_code=204, summary="Supprimer un élève")
 def delete_student(
     student_id: uuid.UUID,
+    request: Request,
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
@@ -83,6 +105,14 @@ def delete_student(
     student = db.get(Student, student_id)
     if student is None:
         raise HTTPException(status_code=404, detail="Élève introuvable.")
+
+    log_audit(
+        db, user_id=current_user.id, action="STUDENT_DELETED",
+        resource_type="STUDENT", resource_id=student.id,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"first_name": student.first_name, "last_name": student.last_name},
+    )
 
     db.delete(student)
     db.commit()
@@ -94,6 +124,7 @@ MAX_FILE_SIZE_MB = 5
 
 @router.post("/upload", response_model=StudentImportReport, summary="Importer des élèves via CSV")
 async def upload_students(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
@@ -129,4 +160,13 @@ async def upload_students(
         raise HTTPException(status_code=400, detail="Le fichier CSV est vide.")
 
     report = parse_and_import_csv(content, db)
+
+    log_audit(
+        db, user_id=current_user.id, action="STUDENTS_IMPORTED",
+        resource_type="STUDENT",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"filename": file.filename, "created": report.created_count, "errors": report.error_count},
+    )
+
     return report

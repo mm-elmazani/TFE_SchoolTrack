@@ -1,15 +1,16 @@
 """
-Planificateur APScheduler pour l'envoi automatique des QR codes 48h avant chaque voyage (US 1.6).
+Planificateur APScheduler (US 1.6, US 6.4).
 
-Le job s'exécute toutes les heures et envoie les QR codes aux élèves
-dont le voyage est prévu dans exactement 2 jours (J+2), si ce n'est pas déjà fait.
+Jobs :
+- QR emails 48h avant chaque voyage (toutes les heures)
+- Rotation des audit logs > 12 mois (tous les jours a 3h)
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.database import SessionLocal
 from app.models.trip import Trip
@@ -57,6 +58,31 @@ def _send_qr_emails_scheduled() -> None:
         db.close()
 
 
+def _purge_old_audit_logs() -> None:
+    """
+    Tache planifiee (US 6.4) : supprime les logs d'audit de plus de 12 mois.
+    Conservation minimale de 12 mois pour conformite RGPD.
+    """
+    cutoff = datetime.utcnow() - timedelta(days=365)
+    db = SessionLocal()
+    try:
+        result = db.execute(
+            text("DELETE FROM audit_logs WHERE performed_at < :cutoff"),
+            {"cutoff": cutoff},
+        )
+        deleted = result.rowcount
+        db.commit()
+        if deleted > 0:
+            logger.info("Rotation audit logs : %d entrees supprimees (avant %s).", deleted, cutoff.date())
+        else:
+            logger.debug("Rotation audit logs : rien a supprimer.")
+    except Exception as exc:
+        db.rollback()
+        logger.error("Erreur lors de la rotation des audit logs : %s", exc)
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     """Démarre le planificateur en arrière-plan (appelé au démarrage de l'API)."""
     scheduler.add_job(
@@ -66,8 +92,16 @@ def start_scheduler() -> None:
         id="qr_email_48h_check",
         replace_existing=True,
     )
+    scheduler.add_job(
+        _purge_old_audit_logs,
+        trigger="cron",
+        hour=3,
+        minute=0,
+        id="audit_log_rotation",
+        replace_existing=True,
+    )
     scheduler.start()
-    logger.info("Scheduler démarré — vérification QR emails toutes les heures.")
+    logger.info("Scheduler démarré — QR emails (1h) + rotation audit logs (3h quotidien).")
 
 
 def stop_scheduler() -> None:

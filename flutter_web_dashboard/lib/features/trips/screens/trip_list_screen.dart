@@ -37,12 +37,7 @@ class _TripListBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Voyages scolaires',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
+                  
                   const SizedBox(height: 4),
                   Text(
                     'Gérez tous vos voyages et sorties',
