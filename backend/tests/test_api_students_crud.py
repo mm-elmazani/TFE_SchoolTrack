@@ -21,6 +21,9 @@ def make_student(**kwargs) -> Student:
     s.last_name = kwargs.get("last_name", "Dupont")
     s.email = kwargs.get("email", "jean.dupont@school.be")
     s.created_at = kwargs.get("created_at", datetime.now())
+    s.is_deleted = kwargs.get("is_deleted", False)
+    s.deleted_at = kwargs.get("deleted_at", None)
+    s.deleted_by = kwargs.get("deleted_by", None)
     return s
 
 
@@ -196,7 +199,7 @@ def test_update_student_succes_complet(client):
 # ============================================================
 
 def test_delete_student_succes(client):
-    """Suppression d'un élève existant → 204."""
+    """Suppression logique d'un élève existant → 204, is_deleted=True."""
     sid = uuid.uuid4()
     student = make_student(id=sid)
 
@@ -213,6 +216,47 @@ def test_delete_student_succes(client):
 
     assert response.status_code == 204
     assert response.content == b""
+    # Vérifier le soft delete
+    assert student.is_deleted is True
+    assert student.deleted_at is not None
+
+
+def test_delete_student_deja_supprime(client):
+    """Suppression d'un élève déjà supprimé → 410."""
+    sid = uuid.uuid4()
+    student = make_student(id=sid, is_deleted=True)
+
+    from app.database import get_db
+    from app.main import app
+
+    mock_db = MagicMock()
+    mock_db.get.return_value = student
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    response = client.delete(f"/api/v1/students/{sid}")
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 410
+
+
+def test_update_student_supprime(client):
+    """Mise à jour d'un élève supprimé → 410."""
+    sid = uuid.uuid4()
+    student = make_student(id=sid, is_deleted=True)
+
+    from app.database import get_db
+    from app.main import app
+
+    mock_db = MagicMock()
+    mock_db.get.return_value = student
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    response = client.put(f"/api/v1/students/{sid}", json={"first_name": "Test"})
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 410
 
 
 def test_delete_student_introuvable(client):

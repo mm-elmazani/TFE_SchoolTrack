@@ -1,3 +1,7 @@
+import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/api/api_client.dart';
@@ -246,6 +250,38 @@ class _StudentListScreenState extends State<StudentListScreen> {
     }
   }
 
+  /// Telecharge l'export RGPD des donnees personnelles d'un eleve.
+  Future<void> _exportStudentData(_StudentItem student) async {
+    try {
+      final data = await _api.getStudentGdprExport(student.id);
+      final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
+      final bytes = utf8.encode(jsonStr);
+      final blob = html.Blob([bytes], 'application/json');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', 'rgpd_${student.lastName}_${student.firstName}.json')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Export RGPD telecharge.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur : ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// Affiche un dialog de confirmation avant suppression.
   Future<void> _deleteStudent(_StudentItem student) async {
     final confirmed = await showDialog<bool>(
@@ -253,8 +289,9 @@ class _StudentListScreenState extends State<StudentListScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer l\'élève ?'),
         content: Text(
-          'Voulez-vous supprimer définitivement ${student.displayName} ?\n\n'
-          'Cette action est irréversible.',
+          'Voulez-vous supprimer ${student.displayName} ?\n\n'
+          'L\'élève sera marqué comme supprimé (suppression logique RGPD). '
+          'Ses données seront conservées pour l\'historique mais exclues des listes.',
         ),
         actions: [
           TextButton(
@@ -367,6 +404,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
                           students: _filtered,
                           onEdit: isAdmin ? _showStudentDialog : null,
                           onDelete: isAdmin ? _deleteStudent : null,
+                          onExportGdpr: isAdmin ? _exportStudentData : null,
                         ),
         ),
       ],
@@ -382,11 +420,13 @@ class _StudentList extends StatelessWidget {
   final List<_StudentItem> students;
   final void Function(_StudentItem)? onEdit;
   final void Function(_StudentItem)? onDelete;
+  final void Function(_StudentItem)? onExportGdpr;
 
   const _StudentList({
     required this.students,
     this.onEdit,
     this.onDelete,
+    this.onExportGdpr,
   });
 
   @override
@@ -413,10 +453,16 @@ class _StudentList extends StatelessWidget {
           ),
           title: Text(s.displayName),
           subtitle: s.email != null ? Text(s.email!) : null,
-          trailing: (onEdit != null || onDelete != null)
+          trailing: (onEdit != null || onDelete != null || onExportGdpr != null)
               ? Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (onExportGdpr != null)
+                      IconButton(
+                        icon: const Icon(Icons.download_outlined, size: 20),
+                        tooltip: 'Export RGPD',
+                        onPressed: () => onExportGdpr!(s),
+                      ),
                     if (onEdit != null)
                       IconButton(
                         icon: const Icon(Icons.edit_outlined, size: 20),

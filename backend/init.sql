@@ -20,12 +20,18 @@ CREATE TABLE students (
     email TEXT,                            -- Chiffre AES-256-GCM (US 6.3)
     photo_url VARCHAR(500),                -- URL photo élève (optionnel)
     parent_consent BOOLEAN DEFAULT FALSE,  -- Consentement parental RGPD
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,  -- Suppression logique RGPD (US 6.5)
+    deleted_at TIMESTAMP,                       -- Date de suppression logique
+    deleted_by UUID,                            -- FK users.id (ajoutee apres CREATE TABLE users)
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE INDEX idx_students_active ON students(is_deleted) WHERE is_deleted = FALSE;
+
 -- Note v4.1: Champ 'uid' SUPPRIMÉ (remplacé par table assignments)
 -- Note v4.2: Champ 'class' SUPPRIMÉ (normalisation complète via tables classes/class_students)
+-- Note US 6.5: Ajout soft delete (is_deleted, deleted_at, deleted_by) pour conformite RGPD
 
 
 -- ----------------------------------------------------------------------------
@@ -49,6 +55,9 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
+
+-- FK differee : students.deleted_by → users.id (tables creees dans cet ordre)
+ALTER TABLE students ADD CONSTRAINT fk_students_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id);
 
 
 -- ----------------------------------------------------------------------------

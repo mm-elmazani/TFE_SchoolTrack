@@ -166,6 +166,11 @@ class ApiClient {
     await _delete('/api/v1/students/$studentId');
   }
 
+  /// Export RGPD des donnees personnelles d'un eleve (GET /api/v1/students/{id}/data-export).
+  Future<Map<String, dynamic>> getStudentGdprExport(String studentId) async {
+    return (await _get('/api/v1/students/$studentId/data-export')) as Map<String, dynamic>;
+  }
+
   // ─── US 1.3 — Classes ────────────────────────────────────────────────────
 
   /// Retourne toutes les classes (GET /api/v1/classes).
