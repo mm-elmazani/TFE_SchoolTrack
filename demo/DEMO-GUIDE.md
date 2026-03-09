@@ -9,15 +9,12 @@
 ## 2. Lancer l'infrastructure
 
 ```bash
-# PostgreSQL
+# PostgreSQL (init.sql cree le schema complet automatiquement)
 cd demo
 docker compose -f docker-compose.dev.yml up -d
 
-# Attendre ~5s que PostgreSQL soit pret, puis appliquer les migrations
+# Attendre ~5s que PostgreSQL soit pret, puis injecter les donnees de demo
 cd ../backend
-for f in migrations/*.sql; do docker exec -i schooltrack_db_dev psql -U schooltrack -d schooltrack < "$f" 2>/dev/null; done
-
-# Injecter les donnees de demo (25 eleves, 2 voyages, tokens, presences...)
 python ../demo/seed_demo.py
 ```
 
@@ -89,8 +86,7 @@ flutter run
 cd demo
 docker compose -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.dev.yml up -d
-# Attendre 5s...
+# Attendre ~5s...
 cd ../backend
-for f in migrations/*.sql; do docker exec -i schooltrack_db_dev psql -U schooltrack -d schooltrack < "$f" 2>/dev/null; done
 python ../demo/seed_demo.py
 ```
