@@ -165,6 +165,10 @@ pour l'ouvrir. Compatible avec 7-Zip, WinRAR, et les outils ZIP standard.
 - **Minimisation** : seules les donnees necessaires sont collectees
 - **Chiffrement** : donnees personnelles chiffrees au repos et en transit
 - **Consentement** : champ `parent_consent` pour le consentement parental
-- **Audit** : journal d'audit complet (table `audit_logs`)
-- **Droit a l'oubli** : suppression en cascade (FK avec `ON DELETE CASCADE`)
+- **Audit** : journal d'audit complet (table `audit_logs`, retention 12 mois)
+- **Droit d'acces** : export JSON complet des donnees d'un eleve (`GET /students/{id}/data-export`)
+- **Droit de rectification** : modification des donnees via `PUT /students/{id}`
+- **Droit a l'effacement** : suppression logique (soft delete) avec tracabilite
 - **Anonymisation** : les identifiants de bracelets (`token_uid`) sont anonymes
+
+> Document complet : voir `docs/PRIVACY-POLICY.md`

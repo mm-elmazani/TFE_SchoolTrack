@@ -1,0 +1,25 @@
+# ============================================================================
+# SchoolTrack — Docker Compose LOCAL (demo / dev)
+# Usage : cd demo && docker compose -f docker-compose.dev.yml up -d
+# ============================================================================
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: schooltrack_db_dev
+    environment:
+      POSTGRES_DB: schooltrack
+      POSTGRES_USER: schooltrack
+      POSTGRES_PASSWORD: schooltrack_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ../backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U schooltrack"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
