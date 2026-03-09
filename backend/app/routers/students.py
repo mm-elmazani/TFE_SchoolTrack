@@ -185,7 +185,7 @@ def export_student_data(
     # Sorties scolaires
     trips_rows = db.execute(
         text("""
-            SELECT t.id, t.destination, t.departure_date, t.return_date, ts.added_at
+            SELECT t.id, t.destination, t.date, ts.added_at
             FROM trip_students ts
             JOIN trips t ON t.id = ts.trip_id
             WHERE ts.student_id = :sid
@@ -194,9 +194,8 @@ def export_student_data(
     trips = [
         {
             "trip_id": str(r[0]), "destination": r[1],
-            "departure_date": str(r[2]) if r[2] else None,
-            "return_date": str(r[3]) if r[3] else None,
-            "added_at": str(r[4]) if r[4] else None,
+            "date": str(r[2]) if r[2] else None,
+            "added_at": str(r[3]) if r[3] else None,
         }
         for r in trips_rows
     ]
