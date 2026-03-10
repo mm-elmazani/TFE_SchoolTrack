@@ -57,7 +57,7 @@ class _TokenScreenBody extends StatelessWidget {
         else if (provider.studentsData != null) ...[
           _StatsRow(data: provider.studentsData!),
           const SizedBox(height: 16),
-          _StudentsTable(data: provider.studentsData!),
+          Expanded(child: SingleChildScrollView(child: _StudentsTable(data: provider.studentsData!))),
         ],
       ],
     );
