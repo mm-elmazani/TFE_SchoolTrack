@@ -29,7 +29,7 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 **Terminal 2 — Dashboard Web (Direction) :**
 ```bash
 cd flutter_web_dashboard
-flutter run -d chrome
+flutter run -d chrome ou flutter run -d web-server
 ```
 
 **Terminal 3 — App Mobile (Enseignant) :**
