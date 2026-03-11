@@ -15,6 +15,9 @@ const _uuid = Uuid();
 /// État de l'écran de scan.
 enum ScanState { idle, scanning, success, duplicate, error }
 
+/// Mode de scan actif (QR camera OU NFC, jamais les deux).
+enum ScanMode { qr, nfc }
+
 /// Informations du dernier scan réussi d'un élève (US 2.3 — liste temps réel).
 class StudentScanInfo {
   final String scanMethod;
@@ -64,6 +67,7 @@ class ScanProvider extends ChangeNotifier {
   bool _disposed = false;
   bool _nfcAvailable = false;
   bool _qrPaused = false; // true pendant l'affichage du résultat
+  ScanMode _scanMode = ScanMode.qr;
 
   ScanState _state = ScanState.idle;
   ScannedStudentInfo? _lastResult;
@@ -91,6 +95,7 @@ class ScanProvider extends ChangeNotifier {
   String? get lastErrorUid => _lastErrorUid;
   bool get nfcAvailable => _nfcAvailable;
   bool get qrPaused => _qrPaused;
+  ScanMode get scanMode => _scanMode;
   int get presentCount => _presentCount;
   int get totalStudents => _totalStudents;
   int get missingCount => _totalStudents - _presentCount;
@@ -130,7 +135,9 @@ class ScanProvider extends ChangeNotifier {
   // Initialisation de la session
   // ----------------------------------------------------------------
 
-  /// Démarre la session de scan : NFC + chargement des compteurs.
+  /// Démarre la session de scan : chargement des compteurs.
+  /// Le NFC est démarré séparément via [startNfc] pour éviter
+  /// un conflit avec l'initialisation de la caméra.
   Future<void> startSession(List<OfflineStudent> students) async {
     _students = List.unmodifiable(students);
     _totalStudents = students.length;
@@ -155,11 +162,47 @@ class ScanProvider extends ChangeNotifier {
     }
     _presentCount = _presentMap.length;
 
-    // Démarrer le NFC
-    _nfcAvailable = await _reader.startNfc(_onScanResult);
-
     _state = ScanState.idle;
     notifyListeners();
+  }
+
+  /// Démarre la session NFC séparément.
+  /// Appelé après que la caméra soit initialisée pour éviter les conflits.
+  Future<void> startNfc() async {
+    _nfcAvailable = await _reader.startNfc(_onScanResult);
+    notifyListeners();
+  }
+
+  /// Arrête la session NFC.
+  Future<void> stopNfc() async {
+    await _reader.stopNfc();
+    _nfcAvailable = false;
+    notifyListeners();
+  }
+
+  /// Bascule entre le mode QR (camera) et NFC.
+  /// Retourne true si le mode demande a ete active avec succes.
+  Future<bool> setScanMode(ScanMode mode) async {
+    if (_scanMode == mode) return true;
+
+    // Remettre en idle avant de changer de mode
+    _state = ScanState.idle;
+    _qrPaused = false;
+
+    if (mode == ScanMode.nfc) {
+      // On arrete la camera cote ecran ; ici on demarre le NFC
+      _scanMode = ScanMode.nfc;
+      _nfcAvailable = await _reader.startNfc(_onScanResult);
+      notifyListeners();
+      return _nfcAvailable;
+    } else {
+      // On arrete le NFC ; la camera sera redemarree cote ecran
+      await _reader.stopNfc();
+      _nfcAvailable = false;
+      _scanMode = ScanMode.qr;
+      notifyListeners();
+      return true;
+    }
   }
 
   // ----------------------------------------------------------------
@@ -179,6 +222,9 @@ class ScanProvider extends ChangeNotifier {
 
   void _onScanResult(ScanResult result) {
     if (_disposed) return;
+
+    // Pause QR scanning pendant l'affichage du résultat (NFC et QR)
+    _qrPaused = true;
 
     if (result is ScanSuccess) {
       _handleSuccess(result);

@@ -1,5 +1,5 @@
 """
-Service métier pour l'assignation des bracelets aux élèves (US 1.5).
+Service metier pour les tokens (US 1.4) et l'assignation des bracelets (US 1.5).
 """
 
 import csv
@@ -7,7 +7,7 @@ import io
 import uuid
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
@@ -19,6 +19,10 @@ from app.schemas.assignment import (
     AssignmentCreate,
     AssignmentReassign,
     AssignmentResponse,
+    TokenBatchCreate,
+    TokenCreate,
+    TokenResponse,
+    TokenStatsResponse,
     TripAssignmentStatus,
     TripStudentWithAssignment,
     TripStudentsResponse,
@@ -308,3 +312,155 @@ def _update_token_status(db: Session, token_uid: str, status: str) -> None:
     if token:
         token.status = status
         token.last_assigned_at = datetime.now()
+
+
+# ----------------------------------------------------------------
+# US 1.4 — Initialisation du stock de bracelets
+# ----------------------------------------------------------------
+
+
+def init_token(db: Session, data: TokenCreate) -> TokenResponse:
+    """
+    Enregistre un token unique dans le stock.
+    Verifie que le token_uid n'existe pas deja.
+    """
+    existing = db.execute(
+        select(Token).where(Token.token_uid == data.token_uid)
+    ).scalar()
+
+    if existing:
+        raise ValueError(f"Le token '{data.token_uid}' existe deja dans le stock.")
+
+    token = Token(
+        token_uid=data.token_uid,
+        token_type=data.token_type,
+        hardware_uid=data.hardware_uid,
+        status="AVAILABLE",
+    )
+    db.add(token)
+    db.commit()
+    db.refresh(token)
+
+    logger.info("Token %s (%s) enregistre dans le stock", data.token_uid, data.token_type)
+    return TokenResponse.model_validate(token)
+
+
+def init_tokens_batch(db: Session, data: TokenBatchCreate) -> List[TokenResponse]:
+    """
+    Enregistre un lot de tokens dans le stock.
+    Verifie les doublons et retourne la liste des tokens crees.
+    """
+    # Verifier les doublons internes au batch
+    uids = [t.token_uid for t in data.tokens]
+    if len(uids) != len(set(uids)):
+        raise ValueError("Le lot contient des token_uid en double.")
+
+    # Verifier les doublons avec la BDD
+    existing = db.execute(
+        select(Token.token_uid).where(Token.token_uid.in_(uids))
+    ).scalars().all()
+
+    if existing:
+        raise ValueError(f"Token(s) deja existant(s) : {', '.join(existing)}")
+
+    tokens = []
+    for item in data.tokens:
+        token = Token(
+            token_uid=item.token_uid,
+            token_type=item.token_type,
+            hardware_uid=item.hardware_uid,
+            status="AVAILABLE",
+        )
+        tokens.append(token)
+
+    db.add_all(tokens)
+    db.commit()
+
+    # Refresh pour obtenir les id et created_at
+    for t in tokens:
+        db.refresh(t)
+
+    logger.info("%d token(s) enregistre(s) dans le stock", len(tokens))
+    return [TokenResponse.model_validate(t) for t in tokens]
+
+
+def list_tokens(
+    db: Session,
+    status: Optional[str] = None,
+    token_type: Optional[str] = None,
+) -> List[TokenResponse]:
+    """
+    Liste tous les tokens du stock, avec filtres optionnels.
+    """
+    query = select(Token).order_by(Token.token_uid)
+
+    if status:
+        query = query.where(Token.status == status)
+    if token_type:
+        query = query.where(Token.token_type == token_type)
+
+    tokens = db.execute(query).scalars().all()
+    return [TokenResponse.model_validate(t) for t in tokens]
+
+
+def get_token_stats(db: Session) -> TokenStatsResponse:
+    """
+    Retourne les statistiques du stock de tokens.
+    """
+    total = db.execute(select(func.count()).select_from(Token)).scalar() or 0
+    available = db.execute(
+        select(func.count()).select_from(Token).where(Token.status == "AVAILABLE")
+    ).scalar() or 0
+    assigned = db.execute(
+        select(func.count()).select_from(Token).where(Token.status == "ASSIGNED")
+    ).scalar() or 0
+    damaged = db.execute(
+        select(func.count()).select_from(Token).where(Token.status == "DAMAGED")
+    ).scalar() or 0
+    lost = db.execute(
+        select(func.count()).select_from(Token).where(Token.status == "LOST")
+    ).scalar() or 0
+
+    return TokenStatsResponse(
+        total=total,
+        available=available,
+        assigned=assigned,
+        damaged=damaged,
+        lost=lost,
+    )
+
+
+def delete_token(db: Session, token_id: int) -> None:
+    """
+    Supprime un token du stock par son id.
+    Interdit si le token est actuellement ASSIGNED.
+    """
+    token = db.execute(select(Token).where(Token.id == token_id)).scalar()
+
+    if not token:
+        raise ValueError(f"Token avec id={token_id} introuvable.")
+
+    if token.status == "ASSIGNED":
+        raise ValueError("Impossible de supprimer un token actuellement assigne.")
+
+    db.delete(token)
+    db.commit()
+
+    logger.info("Token %s (id=%d) supprime du stock", token.token_uid, token_id)
+
+
+def update_token_status_by_id(db: Session, token_id: int, status: str) -> TokenResponse:
+    """
+    Met a jour le statut d'un token par son id.
+    """
+    token = db.execute(select(Token).where(Token.id == token_id)).scalar()
+
+    if not token:
+        raise ValueError(f"Token avec id={token_id} introuvable.")
+
+    token.status = status
+    db.commit()
+    db.refresh(token)
+
+    logger.info("Token %s : statut mis a jour → %s", token.token_uid, status)
+    return TokenResponse.model_validate(token)

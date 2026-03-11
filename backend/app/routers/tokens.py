@@ -1,14 +1,14 @@
 """
-Router pour les assignations de bracelets (US 1.5, US 6.2, US 6.3, US 6.4).
-Ecriture (assign/reassign/release) : DIRECTION, ADMIN_TECH.
-Lecture (statut, liste, export) : tous les utilisateurs authentifies.
+Router pour les tokens (US 1.4) et assignations de bracelets (US 1.5, US 6.2, US 6.3, US 6.4).
+Ecriture (init/assign/reassign/release) : DIRECTION, ADMIN_TECH.
+Lecture (statut, liste, export, stock) : tous les utilisateurs authentifies.
 Export CSV : optionnellement protege par mot de passe ZIP AES-256 (US 6.3).
 Audit logging sur toutes les actions d'ecriture et exports.
 """
 
 import io
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -21,14 +21,165 @@ from app.schemas.assignment import (
     AssignmentCreate,
     AssignmentReassign,
     AssignmentResponse,
+    TokenBatchCreate,
+    TokenCreate,
+    TokenResponse,
+    TokenStatsResponse,
+    TokenStatusUpdate,
     TripAssignmentStatus,
     TripStudentsResponse,
 )
 from app.services import assignment_service
 
-router = APIRouter(prefix="/api/v1", tags=["Assignations bracelets"])
+router = APIRouter(prefix="/api/v1", tags=["Tokens & Assignations"])
 
 _admin = require_role("DIRECTION", "ADMIN_TECH")
+
+
+# ----------------------------------------------------------------
+# US 1.4 — Initialisation du stock de bracelets
+# ----------------------------------------------------------------
+
+
+@router.post("/tokens/init", response_model=TokenResponse, status_code=201,
+             summary="Enregistrer un token dans le stock")
+def init_token(
+    data: TokenCreate,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Enregistre un token unique (bracelet NFC ou QR physique) dans le stock
+    avec le statut AVAILABLE. Utilise apres l'encodage NFC sur le terrain.
+    """
+    try:
+        result = assignment_service.init_token(db, data)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKEN_INITIALIZED",
+        resource_type="TOKEN", resource_id=None,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"token_id": result.id, "token_uid": data.token_uid, "token_type": data.token_type},
+    )
+
+    return result
+
+
+@router.post("/tokens/init-batch", response_model=List[TokenResponse], status_code=201,
+             summary="Enregistrer un lot de tokens dans le stock")
+def init_tokens_batch(
+    data: TokenBatchCreate,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Enregistre un lot de tokens en une seule requete.
+    Utile pour l'initialisation en serie (ST-001 a ST-100).
+    """
+    try:
+        results = assignment_service.init_tokens_batch(db, data)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKENS_BATCH_INITIALIZED",
+        resource_type="TOKEN", resource_id=None,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"count": len(results), "uids": [r.token_uid for r in results]},
+    )
+
+    return results
+
+
+@router.get("/tokens", response_model=List[TokenResponse],
+            summary="Lister les tokens du stock")
+def list_tokens(
+    status: Optional[str] = Query(None, description="Filtrer par statut (AVAILABLE, ASSIGNED, DAMAGED, LOST)"),
+    token_type: Optional[str] = Query(None, description="Filtrer par type (NFC_PHYSICAL, QR_PHYSICAL)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne la liste des tokens du stock avec filtres optionnels.
+    """
+    return assignment_service.list_tokens(db, status=status, token_type=token_type)
+
+
+@router.get("/tokens/stats", response_model=TokenStatsResponse,
+            summary="Statistiques du stock de tokens")
+def get_token_stats(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne les compteurs du stock : total, disponibles, assignes, endommages, perdus.
+    """
+    return assignment_service.get_token_stats(db)
+
+
+@router.delete("/tokens/{token_id}", status_code=204,
+               summary="Supprimer un token du stock")
+def delete_token(
+    token_id: int,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Supprime un token du stock. Interdit si le token est actuellement ASSIGNED.
+    """
+    try:
+        assignment_service.delete_token(db, token_id)
+    except ValueError as e:
+        status = 404 if "introuvable" in str(e) else 409
+        raise HTTPException(status_code=status, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKEN_DELETED",
+        resource_type="TOKEN", resource_id=None,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"token_id": token_id},
+    )
+
+
+@router.patch("/tokens/{token_id}/status", response_model=TokenResponse,
+              summary="Modifier le statut d'un token")
+def update_token_status(
+    token_id: int,
+    data: TokenStatusUpdate,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Met a jour le statut d'un token (ex: DAMAGED, LOST, AVAILABLE).
+    """
+    try:
+        result = assignment_service.update_token_status_by_id(db, token_id, data.status)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKEN_STATUS_UPDATED",
+        resource_type="TOKEN", resource_id=None,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"token_id": token_id, "token_uid": result.token_uid, "new_status": data.status},
+    )
+
+    return result
+
+
+# ----------------------------------------------------------------
+# US 1.5 — Assignation des bracelets
+# ----------------------------------------------------------------
 
 
 @router.post("/tokens/assign", response_model=AssignmentResponse, status_code=201,
@@ -49,10 +200,10 @@ def assign_token(
 
     log_audit(
         db, user_id=current_user.id, action="TOKEN_ASSIGNED",
-        resource_type="ASSIGNMENT", resource_id=result.id,
+        resource_type="ASSIGNMENT", resource_id=None,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
-        details={"student_id": str(data.student_id), "trip_id": str(data.trip_id)},
+        details={"assignment_id": result.id, "student_id": str(data.student_id), "trip_id": str(data.trip_id)},
     )
 
     return result
@@ -77,10 +228,10 @@ def reassign_token(
 
     log_audit(
         db, user_id=current_user.id, action="TOKEN_REASSIGNED",
-        resource_type="ASSIGNMENT", resource_id=result.id,
+        resource_type="ASSIGNMENT", resource_id=None,
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
-        details={"student_id": str(data.student_id), "trip_id": str(data.trip_id)},
+        details={"assignment_id": result.id, "student_id": str(data.student_id), "trip_id": str(data.trip_id)},
     )
 
     return result

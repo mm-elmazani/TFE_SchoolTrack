@@ -17,6 +17,7 @@ class Token(Base):
     token_uid = Column(String(50), unique=True, nullable=False)  # Ex: "ST-001"
     token_type = Column(String(20), nullable=False)              # NFC_PHYSICAL, QR_PHYSICAL
     status = Column(String(20), default="AVAILABLE")             # AVAILABLE, ASSIGNED, DAMAGED, LOST
+    hardware_uid = Column(String(100), nullable=True)            # UID hardware NFC (hex), US 1.4
     created_at = Column(DateTime, server_default=func.now())
     last_assigned_at = Column(DateTime, nullable=True)
 

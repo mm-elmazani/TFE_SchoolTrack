@@ -5,7 +5,10 @@
 library;
 
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:nfc_manager/ndef_record.dart';
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/nfc_manager_android.dart';
 import 'package:uuid/uuid.dart';
@@ -59,23 +62,45 @@ class HybridIdentityReader {
   /// Appelle [onResult] à chaque lecture NFC.
   /// Retourne false si le NFC n'est pas disponible sur l'appareil.
   Future<bool> startNfc(void Function(ScanResult) onResult) async {
+    debugPrint('[NFC] checkAvailability...');
     final availability = await NfcManager.instance.checkAvailability();
+    debugPrint('[NFC] availability = $availability');
     if (availability != NfcAvailability.enabled) return false;
 
+    // Stopper toute session NFC residuelle avant d'en demarrer une nouvelle
+    try {
+      await NfcManager.instance.stopSession();
+      debugPrint('[NFC] session precedente stoppee');
+    } catch (_) {}
+
+    // Laisser le systeme NFC se reinitialiser (evite conflit avec la camera)
+    await Future.delayed(const Duration(milliseconds: 500));
+
     _nfcStarted = true;
-    NfcManager.instance.startSession(
+    debugPrint('[NFC] startSession...');
+    await NfcManager.instance.startSession(
       // Polling ISO 14443 couvre les bracelets NTAG213 (NFC-A)
-      pollingOptions: {NfcPollingOption.iso14443, NfcPollingOption.iso15693},
+      pollingOptions: {NfcPollingOption.iso14443},
       onDiscovered: (NfcTag tag) async {
-        final uid = _extractNfcUid(tag);
-        if (uid == null) {
-          onResult(ScanError(message: 'Impossible de lire le badge NFC.'));
-          return;
+        debugPrint('[NFC] >>> tag detecte !');
+        try {
+          // Lire le token_uid depuis le contenu NDEF (ecrit lors de l'encodage US 1.4).
+          final tokenUid = await _readNdefTokenUid(tag);
+          debugPrint('[NFC] tokenUid lu = $tokenUid');
+          if (tokenUid == null) {
+            onResult(ScanError(message: 'Bracelet NFC illisible (pas de donnees NDEF).'));
+            return;
+          }
+          final result = await _resolveAndRecord(tokenUid, ScanMethod.nfcPhysical);
+          debugPrint('[NFC] resultat: ${result is ScanSuccess ? 'SUCCESS ${(result as ScanSuccess).student.fullName}' : 'ERROR'}');
+          onResult(result);
+        } catch (e) {
+          debugPrint('[NFC] EXCEPTION: $e');
+          onResult(ScanError(message: 'Erreur lecture NFC : $e'));
         }
-        final result = await _resolveAndRecord(uid, ScanMethod.nfcPhysical);
-        onResult(result);
       },
     );
+    debugPrint('[NFC] session demarree OK');
     return true;
   }
 
@@ -87,22 +112,46 @@ class HybridIdentityReader {
     }
   }
 
-  /// Extrait l'UID d'un tag NFC NTAG213 sous forme hexadécimale.
-  /// Utilise NfcTagAndroid.id (API nfc_manager 4.x Android).
-  String? _extractNfcUid(NfcTag tag) {
+  /// Lit le token_uid depuis le contenu NDEF d'un tag NFC.
+  /// Le token_uid est encode comme NFC Forum Text Record lors de l'encodage (US 1.4).
+  Future<String?> _readNdefTokenUid(NfcTag tag) async {
     try {
-      // NfcTagAndroid.id contient l'UID brut du tag (Uint8List)
-      final androidTag = NfcTagAndroid.from(tag);
-      if (androidTag != null) {
-        return androidTag.id
-            .map((b) => b.toRadixString(16).padLeft(2, '0'))
-            .join(':')
-            .toUpperCase();
+      final ndef = NdefAndroid.from(tag);
+      if (ndef == null) return null;
+
+      // Utiliser le message NDEF cache (lu a la decouverte du tag)
+      // ou le relire si absent
+      final message = ndef.cachedNdefMessage ?? await ndef.getNdefMessage();
+      if (message == null || message.records.isEmpty) return null;
+
+      // Chercher le premier Text Record (TNF=Well-Known, RTD=T)
+      for (final record in message.records) {
+        if (record.typeNameFormat == TypeNameFormat.wellKnown &&
+            record.type.length == 1 &&
+            record.type[0] == 0x54) {     // RTD 'T' (Text)
+          return _decodeTextRecord(record.payload);
+        }
       }
+
+      // Fallback : si pas de Text Record, essayer le payload brut du premier record
+      if (message.records.first.payload.isNotEmpty) {
+        return String.fromCharCodes(message.records.first.payload).trim();
+      }
+
       return null;
     } catch (_) {
       return null;
     }
+  }
+
+  /// Decode le payload d'un NFC Forum Text Record.
+  /// Format : [status byte] [language code] [text content]
+  /// Le status byte contient la longueur du code langue dans les 6 bits de poids faible.
+  String? _decodeTextRecord(Uint8List payload) {
+    if (payload.isEmpty) return null;
+    final langLength = payload[0] & 0x3F; // 6 bits de poids faible
+    if (payload.length <= 1 + langLength) return null;
+    return String.fromCharCodes(payload.sublist(1 + langLength)).trim();
   }
 
   // ----------------------------------------------------------------

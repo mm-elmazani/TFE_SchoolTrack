@@ -43,6 +43,24 @@ class _TripListBody extends StatelessWidget {
         backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
+          // Boutons admin — visible uniquement pour DIRECTION / ADMIN_TECH
+          if (context.watch<AuthProvider>().isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.inventory_2),
+              tooltip: 'Stock bracelets',
+              onPressed: () => context.push('/token-stock'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.nfc),
+              tooltip: 'Encodage NFC',
+              onPressed: () => context.push('/nfc-encoding'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.contactless),
+              tooltip: 'Test NFC',
+              onPressed: () => context.push('/nfc-test'),
+            ),
+          ],
           // Bouton rafraichir
           IconButton(
             icon: const Icon(Icons.refresh),

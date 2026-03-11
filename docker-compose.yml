@@ -34,6 +34,7 @@ services:
     build: ./backend
     container_name: schooltrack_api
     environment:
+      TZ: Europe/Brussels
       DATABASE_URL: postgresql://${POSTGRES_USER:-schooltrack}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-schooltrack}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-in-production!}
@@ -53,7 +54,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: schooltrack_db
+    command: -c timezone=Europe/Brussels
     environment:
+      TZ: Europe/Brussels
       POSTGRES_DB: ${POSTGRES_DB:-schooltrack}
       POSTGRES_USER: ${POSTGRES_USER:-schooltrack}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

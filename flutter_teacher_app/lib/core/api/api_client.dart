@@ -196,6 +196,104 @@ class ApiClient {
     }
   }
 
+  // ----------------------------------------------------------------
+  // Tokens — stock de bracelets (US 1.4)
+  // ----------------------------------------------------------------
+
+  /// POST /api/v1/tokens/init — Enregistre un token dans le stock.
+  Future<Map<String, dynamic>> initToken({
+    required String tokenUid,
+    required String tokenType,
+    String? hardwareUid,
+  }) async {
+    final body = <String, dynamic>{
+      'token_uid': tokenUid,
+      'token_type': tokenType,
+      if (hardwareUid != null) 'hardware_uid': hardwareUid,
+    };
+    try {
+      final response = await _http
+          .post(
+            Uri.parse('$baseUrl/api/v1/tokens/init'),
+            headers: _authHeaders,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      String detail;
+      try {
+        final err = jsonDecode(response.body) as Map<String, dynamic>;
+        detail = err['detail']?.toString() ?? 'Erreur inconnue';
+      } catch (_) {
+        detail = 'Erreur serveur (${response.statusCode})';
+      }
+      throw ApiException(detail, statusCode: response.statusCode);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
+  /// GET /api/v1/tokens — Liste des tokens du stock avec filtres optionnels.
+  Future<List<Map<String, dynamic>>> getTokens({
+    String? status,
+    String? tokenType,
+  }) async {
+    final params = <String, String>{
+      if (status != null) 'status': status,
+      if (tokenType != null) 'token_type': tokenType,
+    };
+    final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final sep = query.isEmpty ? '' : '?$query';
+    try {
+      final response = await _http
+          .get(Uri.parse('$baseUrl/api/v1/tokens$sep'), headers: _authHeaders)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      }
+      throw ApiException(
+        'Erreur serveur (${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
+  /// GET /api/v1/tokens/stats — Statistiques du stock.
+  Future<Map<String, dynamic>> getTokenStats() async {
+    try {
+      final response = await _http
+          .get(Uri.parse('$baseUrl/api/v1/tokens/stats'), headers: _authHeaders)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      }
+      throw ApiException(
+        'Erreur serveur (${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Authentification (US 6.1)
+  // ----------------------------------------------------------------
+
   /// POST /api/v1/auth/refresh
   Future<Map<String, dynamic>> refreshToken({required String refreshToken}) async {
     try {

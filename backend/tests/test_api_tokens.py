@@ -1,5 +1,5 @@
 """
-Tests d'intégration API pour les assignations de bracelets (US 1.5).
+Tests d'integration API pour les tokens (US 1.4) et assignations (US 1.5).
 """
 
 import uuid
@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 from app.schemas.assignment import (
     AssignmentResponse,
+    TokenResponse,
+    TokenStatsResponse,
     TripAssignmentStatus,
     TripStudentWithAssignment,
     TripStudentsResponse,
@@ -39,8 +41,258 @@ def make_status(trip_id=None, total=10, assigned=5) -> TripAssignmentStatus:
     )
 
 
+# --- Helper US 1.4 ---
+
+def make_token_response(**kwargs) -> TokenResponse:
+    return TokenResponse(
+        id=kwargs.get("id", 1),
+        token_uid=kwargs.get("token_uid", "ST-001"),
+        token_type=kwargs.get("token_type", "NFC_PHYSICAL"),
+        status=kwargs.get("status", "AVAILABLE"),
+        hardware_uid=kwargs.get("hardware_uid", None),
+        created_at=datetime.now(),
+        last_assigned_at=None,
+    )
+
+
 # ============================================================
-# POST /api/v1/tokens/assign
+# POST /api/v1/tokens/init  (US 1.4)
+# ============================================================
+
+def test_init_token_succes(client):
+    """Enregistrement d'un token → 201."""
+    with patch("app.routers.tokens.assignment_service.init_token") as mock:
+        mock.return_value = make_token_response(token_uid="ST-001")
+
+        response = client.post("/api/v1/tokens/init", json={
+            "token_uid": "ST-001",
+            "token_type": "NFC_PHYSICAL",
+        })
+
+    assert response.status_code == 201
+    assert response.json()["token_uid"] == "ST-001"
+    assert response.json()["status"] == "AVAILABLE"
+
+
+def test_init_token_avec_hardware_uid(client):
+    """Enregistrement avec UID hardware NFC → 201."""
+    with patch("app.routers.tokens.assignment_service.init_token") as mock:
+        mock.return_value = make_token_response(
+            token_uid="ST-002", hardware_uid="04:A3:2B:8F:12:00:00"
+        )
+
+        response = client.post("/api/v1/tokens/init", json={
+            "token_uid": "ST-002",
+            "token_type": "NFC_PHYSICAL",
+            "hardware_uid": "04:A3:2B:8F:12:00:00",
+        })
+
+    assert response.status_code == 201
+    assert response.json()["hardware_uid"] == "04:A3:2B:8F:12:00:00"
+
+
+def test_init_token_type_invalide(client):
+    """Type de token invalide → 422."""
+    response = client.post("/api/v1/tokens/init", json={
+        "token_uid": "ST-001",
+        "token_type": "BLUETOOTH",
+    })
+    assert response.status_code == 422
+
+
+def test_init_token_uid_vide(client):
+    """UID vide → 422."""
+    response = client.post("/api/v1/tokens/init", json={
+        "token_uid": "   ",
+        "token_type": "NFC_PHYSICAL",
+    })
+    assert response.status_code == 422
+
+
+def test_init_token_doublon(client):
+    """Token deja existant → 409."""
+    with patch("app.routers.tokens.assignment_service.init_token") as mock:
+        mock.side_effect = ValueError("Le token 'ST-001' existe deja dans le stock.")
+
+        response = client.post("/api/v1/tokens/init", json={
+            "token_uid": "ST-001",
+            "token_type": "NFC_PHYSICAL",
+        })
+
+    assert response.status_code == 409
+    assert "ST-001" in response.json()["detail"]
+
+
+# ============================================================
+# POST /api/v1/tokens/init-batch  (US 1.4)
+# ============================================================
+
+def test_init_batch_succes(client):
+    """Enregistrement batch → 201 avec la liste des tokens."""
+    with patch("app.routers.tokens.assignment_service.init_tokens_batch") as mock:
+        mock.return_value = [
+            make_token_response(id=1, token_uid="ST-001"),
+            make_token_response(id=2, token_uid="ST-002"),
+            make_token_response(id=3, token_uid="ST-003"),
+        ]
+
+        response = client.post("/api/v1/tokens/init-batch", json={
+            "tokens": [
+                {"token_uid": "ST-001", "token_type": "NFC_PHYSICAL"},
+                {"token_uid": "ST-002", "token_type": "NFC_PHYSICAL"},
+                {"token_uid": "ST-003", "token_type": "NFC_PHYSICAL"},
+            ]
+        })
+
+    assert response.status_code == 201
+    assert len(response.json()) == 3
+
+
+def test_init_batch_liste_vide(client):
+    """Batch vide → 422."""
+    response = client.post("/api/v1/tokens/init-batch", json={
+        "tokens": []
+    })
+    assert response.status_code == 422
+
+
+def test_init_batch_doublon_interne(client):
+    """Doublons dans le batch → 409."""
+    with patch("app.routers.tokens.assignment_service.init_tokens_batch") as mock:
+        mock.side_effect = ValueError("Le lot contient des token_uid en double.")
+
+        response = client.post("/api/v1/tokens/init-batch", json={
+            "tokens": [
+                {"token_uid": "ST-001", "token_type": "NFC_PHYSICAL"},
+                {"token_uid": "ST-001", "token_type": "NFC_PHYSICAL"},
+            ]
+        })
+
+    assert response.status_code == 409
+
+
+# ============================================================
+# GET /api/v1/tokens  (US 1.4)
+# ============================================================
+
+def test_list_tokens_succes(client):
+    """Liste des tokens → 200."""
+    with patch("app.routers.tokens.assignment_service.list_tokens") as mock:
+        mock.return_value = [
+            make_token_response(id=1, token_uid="ST-001"),
+            make_token_response(id=2, token_uid="ST-002", status="ASSIGNED"),
+        ]
+
+        response = client.get("/api/v1/tokens")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+
+def test_list_tokens_filtre_statut(client):
+    """Filtre par statut → appel avec le bon parametre."""
+    with patch("app.routers.tokens.assignment_service.list_tokens") as mock:
+        mock.return_value = [make_token_response(status="AVAILABLE")]
+
+        response = client.get("/api/v1/tokens?status=AVAILABLE")
+
+    assert response.status_code == 200
+    mock.assert_called_once()
+    _, kwargs = mock.call_args
+    assert kwargs.get("status") == "AVAILABLE"
+
+
+# ============================================================
+# GET /api/v1/tokens/stats  (US 1.4)
+# ============================================================
+
+def test_token_stats_succes(client):
+    """Statistiques du stock → 200 avec compteurs."""
+    with patch("app.routers.tokens.assignment_service.get_token_stats") as mock:
+        mock.return_value = TokenStatsResponse(
+            total=20, available=12, assigned=6, damaged=1, lost=1
+        )
+
+        response = client.get("/api/v1/tokens/stats")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 20
+    assert data["available"] == 12
+    assert data["assigned"] == 6
+    assert data["damaged"] == 1
+    assert data["lost"] == 1
+
+
+# ============================================================
+# PATCH /api/v1/tokens/{id}/status  (US 1.4)
+# ============================================================
+
+def test_update_token_status_succes(client):
+    """Mise a jour du statut → 200."""
+    with patch("app.routers.tokens.assignment_service.update_token_status_by_id") as mock:
+        mock.return_value = make_token_response(id=5, status="DAMAGED")
+
+        response = client.patch("/api/v1/tokens/5/status", json={"status": "DAMAGED"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "DAMAGED"
+
+
+def test_update_token_status_invalide(client):
+    """Statut invalide → 422."""
+    response = client.patch("/api/v1/tokens/5/status", json={"status": "EXPLODED"})
+    assert response.status_code == 422
+
+
+def test_update_token_status_introuvable(client):
+    """Token introuvable → 404."""
+    with patch("app.routers.tokens.assignment_service.update_token_status_by_id") as mock:
+        mock.side_effect = ValueError("Token avec id=999 introuvable.")
+
+        response = client.patch("/api/v1/tokens/999/status", json={"status": "LOST"})
+
+    assert response.status_code == 404
+
+
+# ============================================================
+# DELETE /api/v1/tokens/{id}  (US 1.4)
+# ============================================================
+
+def test_delete_token_succes(client):
+    """Suppression d'un token AVAILABLE → 204."""
+    with patch("app.routers.tokens.assignment_service.delete_token") as mock:
+        mock.return_value = None
+
+        response = client.delete("/api/v1/tokens/5")
+
+    assert response.status_code == 204
+    mock.assert_called_once()
+
+
+def test_delete_token_introuvable(client):
+    """Token introuvable → 404."""
+    with patch("app.routers.tokens.assignment_service.delete_token") as mock:
+        mock.side_effect = ValueError("Token avec id=999 introuvable.")
+
+        response = client.delete("/api/v1/tokens/999")
+
+    assert response.status_code == 404
+
+
+def test_delete_token_assigne(client):
+    """Token ASSIGNED → 409 (interdit)."""
+    with patch("app.routers.tokens.assignment_service.delete_token") as mock:
+        mock.side_effect = ValueError("Impossible de supprimer un token actuellement assigne.")
+
+        response = client.delete("/api/v1/tokens/3")
+
+    assert response.status_code == 409
+    assert "assigne" in response.json()["detail"]
+
+
+# ============================================================
+# POST /api/v1/tokens/assign  (US 1.5)
 # ============================================================
 
 def test_assign_succes(client):

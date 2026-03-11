@@ -9,6 +9,7 @@ import 'features/students/screens/student_import_screen.dart';
 import 'features/students/screens/student_list_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
 import 'features/tokens/screens/token_screen.dart';
+import 'features/token_stock/screens/token_stock_screen.dart';
 import 'features/audit/screens/audit_log_screen.dart';
 import 'features/users/screens/user_list_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
@@ -40,6 +41,26 @@ class SchoolTrackDashboardApp extends StatelessWidget {
           ),
           useMaterial3: true,
           fontFamily: 'Roboto',
+          textTheme: const TextTheme(
+            // Titres
+            titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            titleSmall: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            // Corps de texte
+            bodyLarge: TextStyle(fontSize: 13),
+            bodyMedium: TextStyle(fontSize: 12.5),
+            bodySmall: TextStyle(fontSize: 11.5),
+            // Labels (boutons, champs)
+            labelLarge: TextStyle(fontSize: 13),
+            labelMedium: TextStyle(fontSize: 12),
+            labelSmall: TextStyle(fontSize: 11),
+          ),
+          dataTableTheme: const DataTableThemeData(
+            headingTextStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            dataTextStyle: TextStyle(fontSize: 12),
+            dataRowMinHeight: 40,
+            dataRowMaxHeight: 48,
+          ),
         ),
         routerConfig: _buildRouter(authProvider),
       ),
@@ -61,7 +82,7 @@ GoRouter _buildRouter(AuthProvider auth) {
 
       // US 6.2 — Routes admin-only : redirige les non-admin vers /students
       if (loggedIn && !auth.isAdmin) {
-        const adminOnlyPaths = ['/students/import', '/tokens', '/users', '/audit'];
+        const adminOnlyPaths = ['/students/import', '/tokens', '/tokens/stock', '/users', '/audit'];
         if (adminOnlyPaths.contains(state.uri.path)) return '/students';
       }
 
@@ -122,6 +143,15 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => AppScaffold(
           pageTitle: 'Bracelets NFC/QR',
           child: const TokenScreen(),
+        ),
+      ),
+
+      // US 1.4 — Stock de bracelets
+      GoRoute(
+        path: '/tokens/stock',
+        builder: (context, state) => AppScaffold(
+          pageTitle: 'Stock de bracelets',
+          child: const TokenStockScreen(),
         ),
       ),
 

@@ -275,6 +275,49 @@ class ApiClient {
     await _delete('/api/v1/trips/$tripId');
   }
 
+  // ─── US 1.4 — Stock de bracelets ─────────────────────────────────────────
+
+  /// Retourne la liste des tokens du stock avec filtres optionnels.
+  Future<List<Map<String, dynamic>>> getTokens({
+    String? status,
+    String? tokenType,
+  }) async {
+    final params = <String, String>{
+      if (status != null) 'status': status,
+      if (tokenType != null) 'token_type': tokenType,
+    };
+    final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final sep = query.isEmpty ? '' : '?$query';
+    final data = await _get('/api/v1/tokens$sep');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  /// Retourne les statistiques du stock de tokens.
+  Future<Map<String, dynamic>> getTokenStats() async {
+    return (await _get('/api/v1/tokens/stats')) as Map<String, dynamic>;
+  }
+
+  /// Supprime un token du stock (DELETE /api/v1/tokens/{id}).
+  Future<void> deleteToken(int tokenId) async {
+    await _delete('/api/v1/tokens/$tokenId');
+  }
+
+  /// Met a jour le statut d'un token (PATCH /api/v1/tokens/{id}/status).
+  Future<Map<String, dynamic>> updateTokenStatus(int tokenId, String status) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/api/v1/tokens/$tokenId/status'),
+        headers: _jsonHeaders,
+        body: jsonEncode({'status': status}),
+      );
+      return _handleResponse(response) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(statusCode: 0, message: 'Impossible de contacter le serveur : $e');
+    }
+  }
+
   // ─── US 1.5 — Assignation bracelets ──────────────────────────────────────
 
   /// Retourne les élèves d'un voyage avec leur statut d'assignation bracelet.

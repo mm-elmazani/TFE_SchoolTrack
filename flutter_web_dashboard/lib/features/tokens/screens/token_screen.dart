@@ -199,7 +199,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
@@ -207,15 +207,15 @@ class _StatCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 10),
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
@@ -223,7 +223,7 @@ class _StatCard extends StatelessWidget {
               Text(
                 label,
                 style:
-                    TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    TextStyle(fontSize: 11, color: Colors.grey.shade600),
               ),
             ],
           ),

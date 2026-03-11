@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/nfc_encoding/screens/nfc_encoding_screen.dart';
+import 'features/nfc_encoding/screens/token_stock_mobile_screen.dart';
+import 'features/nfc_test/screens/nfc_test_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
 import 'features/scan/screens/checkpoint_selection_screen.dart';
 import 'features/scan/screens/scan_screen.dart';
@@ -45,6 +48,24 @@ GoRouter _buildRouter(AuthProvider auth) {
       GoRoute(
         path: '/',
         builder: (context, state) => const TripListScreen(),
+      ),
+
+      // US 1.4 : encodage NFC (Mode Admin)
+      GoRoute(
+        path: '/nfc-encoding',
+        builder: (context, state) => const NfcEncodingScreen(),
+      ),
+
+      // US 1.4 : consultation stock bracelets (Mode Admin)
+      GoRoute(
+        path: '/token-stock',
+        builder: (context, state) => const TokenStockMobileScreen(),
+      ),
+
+      // Test NFC (Mode Admin)
+      GoRoute(
+        path: '/nfc-test',
+        builder: (context, state) => const NfcTestScreen(),
       ),
 
       // US 2.2 : selection checkpoint puis scan

@@ -37,7 +37,7 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   late ScanProvider _provider;
-  final MobileScannerController _cameraController = MobileScannerController();
+  MobileScannerController? _cameraController;
   Timer? _resultTimer;
 
   @override
@@ -48,21 +48,64 @@ class _ScanScreenState extends State<ScanScreen> {
       checkpointId: widget.checkpointId,
       audioPlayer: AudioPlayer(),
     );
+    _provider.addListener(_onProviderStateChanged);
+    // Demarrer en mode QR par defaut → camera active
+    _cameraController = MobileScannerController();
     _initSession();
+  }
+
+  /// Écoute les changements d'état pour auto-résumer après les scans NFC.
+  /// (Les scans QR passent aussi par ici, mais _scheduleResume annule le timer précédent.)
+  void _onProviderStateChanged() {
+    final s = _provider.state;
+    if (s == ScanState.success || s == ScanState.duplicate || s == ScanState.error) {
+      _scheduleResume();
+    }
   }
 
   Future<void> _initSession() async {
     final students = await LocalDb.instance.getStudents(widget.tripId);
     await _provider.startSession(students);
     if (mounted) setState(() {});
+    // Pas de demarrage NFC automatique — l'utilisateur choisit le mode via le toggle
   }
 
   @override
   void dispose() {
     _resultTimer?.cancel();
+    _provider.removeListener(_onProviderStateChanged);
     _provider.dispose();
-    _cameraController.dispose();
+    _cameraController?.dispose();
     super.dispose();
+  }
+
+  /// Bascule entre mode QR et NFC.
+  Future<void> _switchMode(ScanMode mode) async {
+    if (_provider.scanMode == mode) return;
+
+    if (mode == ScanMode.nfc) {
+      // Arreter la camera AVANT de demarrer le NFC
+      await _cameraController?.stop();
+      _cameraController?.dispose();
+      _cameraController = null;
+
+      final ok = await _provider.setScanMode(ScanMode.nfc);
+      if (!ok && mounted) {
+        // NFC non disponible → revenir en mode QR
+        _cameraController = MobileScannerController();
+        await _provider.setScanMode(ScanMode.qr);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('NFC non disponible sur cet appareil')),
+          );
+        }
+      }
+    } else {
+      // Arreter le NFC AVANT de redemarrer la camera
+      await _provider.setScanMode(ScanMode.qr);
+      _cameraController = MobileScannerController();
+    }
+    if (mounted) setState(() {});
   }
 
   /// Affiche le dialog de confirmation de clôture du checkpoint (US 2.7).
@@ -118,17 +161,18 @@ class _ScanScreenState extends State<ScanScreen> {
       value: _provider,
       child: Consumer<ScanProvider>(
         builder: (context, provider, _) {
+          final isQr = provider.scanMode == ScanMode.qr;
           return Scaffold(
             appBar: _buildAppBar(context, provider),
             body: Stack(
               children: [
-                // Caméra QR (toujours visible en arrière-plan)
-                _buildCamera(provider),
+                // Zone principale : camera QR ou UI NFC dediee
+                if (isQr) _buildCamera(provider) else _buildNfcView(context, provider),
 
-                // Overlay scan avec cadre de visée
-                _buildScanOverlay(context, provider),
+                // Overlay scan avec cadre de visee (QR uniquement)
+                if (isQr) _buildScanOverlay(context, provider),
 
-                // Panneau résultat (glisse depuis le bas quand il y a un résultat)
+                // Panneau resultat (glisse depuis le bas quand il y a un resultat)
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOut,
@@ -140,6 +184,14 @@ class _ScanScreenState extends State<ScanScreen> {
 
                 // Compteur en haut
                 _buildCounter(context, provider),
+
+                // Toggle QR / NFC en bas
+                Positioned(
+                  bottom: 16,
+                  left: 0,
+                  right: 0,
+                  child: _buildModeToggle(context, provider),
+                ),
               ],
             ),
           );
@@ -189,22 +241,7 @@ class _ScanScreenState extends State<ScanScreen> {
             tooltip: 'Clôturer le checkpoint',
             onPressed: () => _showCloseDialog(context),
           ),
-        // Indicateur NFC
-        Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: Chip(
-            avatar: Icon(
-              Icons.nfc,
-              size: 16,
-              color: provider.nfcAvailable ? Colors.green : Colors.grey,
-            ),
-            label: Text(
-              provider.nfcAvailable ? 'NFC actif' : 'NFC off',
-              style: const TextStyle(fontSize: 11),
-            ),
-            visualDensity: VisualDensity.compact,
-          ),
-        ),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -214,9 +251,102 @@ class _ScanScreenState extends State<ScanScreen> {
   // ----------------------------------------------------------------
 
   Widget _buildCamera(ScanProvider provider) {
+    if (_cameraController == null) return const SizedBox.expand();
     return MobileScanner(
-      controller: _cameraController,
+      controller: _cameraController!,
       onDetect: provider.qrPaused ? null : _onQrDetected,
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // Vue NFC dediee (remplace la camera en mode NFC)
+  // ----------------------------------------------------------------
+
+  Widget _buildNfcView(BuildContext context, ScanProvider provider) {
+    final cs = Theme.of(context).colorScheme;
+    final isListening = provider.nfcAvailable;
+
+    return Container(
+      color: cs.surfaceContainerHighest,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icone NFC animee (pulse via TweenAnimationBuilder)
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.8, end: 1.0),
+              duration: const Duration(milliseconds: 1200),
+              curve: Curves.easeInOut,
+              builder: (_, scale, child) => Transform.scale(scale: scale, child: child),
+              onEnd: () {}, // l'animation se relance via le rebuild
+              child: Icon(
+                Icons.contactless_outlined,
+                size: 120,
+                color: isListening ? cs.primary : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              isListening
+                  ? 'Approchez le bracelet NFC'
+                  : 'Demarrage du NFC...',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: isListening ? cs.onSurface : Colors.grey,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isListening
+                  ? 'Placez le bracelet contre le dos du telephone'
+                  : 'Veuillez patienter',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+            ),
+            if (!isListening) ...[
+              const SizedBox(height: 16),
+              const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------------
+  // Toggle QR / NFC
+  // ----------------------------------------------------------------
+
+  Widget _buildModeToggle(BuildContext context, ScanProvider provider) {
+    // Ne pas afficher le toggle par-dessus un panneau de resultat
+    if (provider.state != ScanState.idle) return const SizedBox.shrink();
+
+    final isQr = provider.scanMode == ScanMode.qr;
+    return Center(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black87,
+          borderRadius: BorderRadius.circular(32),
+        ),
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ModeButton(
+              icon: Icons.qr_code_scanner,
+              label: 'QR Code',
+              isActive: isQr,
+              onTap: () => _switchMode(ScanMode.qr),
+            ),
+            _ModeButton(
+              icon: Icons.nfc,
+              label: 'NFC',
+              isActive: !isQr,
+              onTap: () => _switchMode(ScanMode.nfc),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -259,11 +389,9 @@ class _ScanScreenState extends State<ScanScreen> {
               color: Colors.black54,
               alignment: Alignment.topCenter,
               padding: const EdgeInsets.only(top: 16),
-              child: Text(
-                provider.nfcAvailable
-                    ? 'Scannez le QR ou approchez le bracelet NFC'
-                    : 'Scannez le QR code',
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+              child: const Text(
+                'Scannez le QR code du bracelet',
+                style: TextStyle(color: Colors.white, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -542,6 +670,62 @@ class _ScanMethodBadge extends StatelessWidget {
       child: Text(
         '$icon $label',
         style: const TextStyle(fontSize: 11),
+      ),
+    );
+  }
+}
+
+// ----------------------------------------------------------------
+// Widget Lottie avec fallback icône
+// ----------------------------------------------------------------
+
+// ----------------------------------------------------------------
+// Bouton du toggle mode QR / NFC
+// ----------------------------------------------------------------
+
+class _ModeButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _ModeButton({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isActive ? Colors.black87 : Colors.white60,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                color: isActive ? Colors.black87 : Colors.white60,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

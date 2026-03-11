@@ -122,6 +122,12 @@ class _AppSidebar extends StatelessWidget {
         ),
       if (isAdmin)
         const _NavItem(
+          path: '/tokens/stock',
+          icon: Icons.inventory_2,
+          label: 'Stock NFC',
+        ),
+      if (isAdmin)
+        const _NavItem(
           path: '/users',
           icon: Icons.manage_accounts,
           label: 'Utilisateurs',
