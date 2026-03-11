@@ -26,9 +26,27 @@ class ApiClient {
   /// Token JWT injecte dans le header Authorization de chaque requete authentifiee.
   static String? authToken;
 
+  /// Callback appele quand un 401 est recu (token expire).
+  /// Doit rafraichir authToken et retourner true si le refresh a reussi.
+  static Future<bool> Function()? onTokenExpired;
+
+  /// Empeche les refreshs concurrents.
+  static bool _isRefreshing = false;
+
   ApiClient({String? baseUrl, http.Client? client})
       : baseUrl = baseUrl ?? kApiBaseUrl,
         _http = client ?? http.Client();
+
+  /// Tente de rafraichir le token. Retourne true si reussi.
+  Future<bool> _tryRefresh() async {
+    if (_isRefreshing || onTokenExpired == null) return false;
+    _isRefreshing = true;
+    try {
+      return await onTokenExpired!();
+    } finally {
+      _isRefreshing = false;
+    }
+  }
 
   Map<String, String> get _authHeaders => {
         'Content-Type': 'application/json',
@@ -44,9 +62,16 @@ class ApiClient {
   /// Lève [ApiException] si le réseau est indisponible ou si l'API répond avec une erreur.
   Future<List<TripSummary>> getTrips() async {
     try {
-      final response = await _http
-          .get(Uri.parse('$baseUrl/api/v1/trips'), headers: _authHeaders)
+      final uri = Uri.parse('$baseUrl/api/v1/trips');
+      var response = await _http
+          .get(uri, headers: _authHeaders)
           .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
@@ -131,9 +156,16 @@ class ApiClient {
   /// Lève [ApiException] si le réseau est indisponible ou si l'API répond avec une erreur.
   Future<OfflineDataBundle> getOfflineBundle(String tripId) async {
     try {
-      final response = await _http
-          .get(Uri.parse('$baseUrl/api/v1/trips/$tripId/offline-data'), headers: _authHeaders)
+      final uri = Uri.parse('$baseUrl/api/v1/trips/$tripId/offline-data');
+      var response = await _http
+          .get(uri, headers: _authHeaders)
           .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 30));
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data =
@@ -212,13 +244,17 @@ class ApiClient {
       if (hardwareUid != null) 'hardware_uid': hardwareUid,
     };
     try {
-      final response = await _http
-          .post(
-            Uri.parse('$baseUrl/api/v1/tokens/init'),
-            headers: _authHeaders,
-            body: jsonEncode(body),
-          )
+      final uri = Uri.parse('$baseUrl/api/v1/tokens/init');
+      final encoded = jsonEncode(body);
+      var response = await _http
+          .post(uri, headers: _authHeaders, body: encoded)
           .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .post(uri, headers: _authHeaders, body: encoded)
+            .timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 201) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -250,9 +286,16 @@ class ApiClient {
     final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
     final sep = query.isEmpty ? '' : '?$query';
     try {
-      final response = await _http
-          .get(Uri.parse('$baseUrl/api/v1/tokens$sep'), headers: _authHeaders)
+      final uri = Uri.parse('$baseUrl/api/v1/tokens$sep');
+      var response = await _http
+          .get(uri, headers: _authHeaders)
           .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
@@ -272,9 +315,16 @@ class ApiClient {
   /// GET /api/v1/tokens/stats — Statistiques du stock.
   Future<Map<String, dynamic>> getTokenStats() async {
     try {
-      final response = await _http
-          .get(Uri.parse('$baseUrl/api/v1/tokens/stats'), headers: _authHeaders)
+      final uri = Uri.parse('$baseUrl/api/v1/tokens/stats');
+      var response = await _http
+          .get(uri, headers: _authHeaders)
           .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 10));
+      }
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;

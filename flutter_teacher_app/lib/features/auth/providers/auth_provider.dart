@@ -62,6 +62,7 @@ class AuthProvider extends ChangeNotifier {
     _userFirstName = await _storage.read(key: _keyUserFirstName);
     _userLastName = await _storage.read(key: _keyUserLastName);
     ApiClient.authToken = _accessToken;
+    ApiClient.onTokenExpired = refreshTokens;
     _initialized = true;
     notifyListeners();
   }

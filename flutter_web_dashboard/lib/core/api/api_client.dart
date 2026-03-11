@@ -12,7 +12,25 @@ class ApiClient {
   /// Mis a jour par AuthProvider apres login/refresh.
   static String? authToken;
 
+  /// Callback appele quand un 401 est recu (token expire).
+  /// Doit rafraichir authToken et retourner true si le refresh a reussi.
+  static Future<bool> Function()? onTokenExpired;
+
+  /// Empeche les refreshs concurrents.
+  static bool _isRefreshing = false;
+
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? kApiBaseUrl;
+
+  /// Tente de rafraichir le token. Retourne true si reussi.
+  Future<bool> _tryRefresh() async {
+    if (_isRefreshing || onTokenExpired == null) return false;
+    _isRefreshing = true;
+    try {
+      return await onTokenExpired!();
+    } finally {
+      _isRefreshing = false;
+    }
+  }
 
   // ─── Helpers internes ──────────────────────────────────────────────────────
 
@@ -23,12 +41,19 @@ class ApiClient {
       };
 
   /// Effectue une requête GET et retourne le corps JSON décodé.
+  /// Retente automatiquement apres refresh si 401.
   Future<dynamic> _get(String path) async {
     try {
-      final response = await http.get(
+      var response = await http.get(
         Uri.parse('$baseUrl$path'),
         headers: _jsonHeaders,
       );
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await http.get(
+          Uri.parse('$baseUrl$path'),
+          headers: _jsonHeaders,
+        );
+      }
       return _handleResponse(response);
     } on ApiException {
       rethrow;
@@ -38,13 +63,22 @@ class ApiClient {
   }
 
   /// Effectue une requête POST avec un corps JSON.
+  /// Retente automatiquement apres refresh si 401.
   Future<dynamic> _post(String path, Map<String, dynamic> body) async {
     try {
-      final response = await http.post(
+      final encoded = jsonEncode(body);
+      var response = await http.post(
         Uri.parse('$baseUrl$path'),
         headers: _jsonHeaders,
-        body: jsonEncode(body),
+        body: encoded,
       );
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await http.post(
+          Uri.parse('$baseUrl$path'),
+          headers: _jsonHeaders,
+          body: encoded,
+        );
+      }
       return _handleResponse(response);
     } on ApiException {
       rethrow;
@@ -54,13 +88,22 @@ class ApiClient {
   }
 
   /// Effectue une requête PUT avec un corps JSON.
+  /// Retente automatiquement apres refresh si 401.
   Future<dynamic> _put(String path, Map<String, dynamic> body) async {
     try {
-      final response = await http.put(
+      final encoded = jsonEncode(body);
+      var response = await http.put(
         Uri.parse('$baseUrl$path'),
         headers: _jsonHeaders,
-        body: jsonEncode(body),
+        body: encoded,
       );
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await http.put(
+          Uri.parse('$baseUrl$path'),
+          headers: _jsonHeaders,
+          body: encoded,
+        );
+      }
       return _handleResponse(response);
     } on ApiException {
       rethrow;
@@ -70,12 +113,19 @@ class ApiClient {
   }
 
   /// Effectue une requête DELETE.
+  /// Retente automatiquement apres refresh si 401.
   Future<void> _delete(String path) async {
     try {
-      final response = await http.delete(
+      var response = await http.delete(
         Uri.parse('$baseUrl$path'),
         headers: _jsonHeaders,
       );
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await http.delete(
+          Uri.parse('$baseUrl$path'),
+          headers: _jsonHeaders,
+        );
+      }
       if (response.statusCode == 200 || response.statusCode == 204) return;
       _handleResponse(response);
     } on ApiException {
@@ -303,13 +353,15 @@ class ApiClient {
   }
 
   /// Met a jour le statut d'un token (PATCH /api/v1/tokens/{id}/status).
+  /// Retente automatiquement apres refresh si 401.
   Future<Map<String, dynamic>> updateTokenStatus(int tokenId, String status) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/api/v1/tokens/$tokenId/status'),
-        headers: _jsonHeaders,
-        body: jsonEncode({'status': status}),
-      );
+      final uri = Uri.parse('$baseUrl/api/v1/tokens/$tokenId/status');
+      final encoded = jsonEncode({'status': status});
+      var response = await http.patch(uri, headers: _jsonHeaders, body: encoded);
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await http.patch(uri, headers: _jsonHeaders, body: encoded);
+      }
       return _handleResponse(response) as Map<String, dynamic>;
     } on ApiException {
       rethrow;

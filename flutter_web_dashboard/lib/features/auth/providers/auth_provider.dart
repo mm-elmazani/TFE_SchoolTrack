@@ -61,6 +61,7 @@ class AuthProvider extends ChangeNotifier {
     _userFirstName = prefs.getString(_keyUserFirstName);
     _userLastName = prefs.getString(_keyUserLastName);
     ApiClient.authToken = _accessToken;
+    ApiClient.onTokenExpired = refreshTokens;
     _initialized = true;
     notifyListeners();
   }
