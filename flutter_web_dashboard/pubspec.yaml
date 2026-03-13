@@ -29,6 +29,9 @@ dependencies:
   # Persistance token auth (localStorage sur web)
   shared_preferences: ^2.3.4
 
+  # Graphiques dashboard (US 4.2)
+  fl_chart: ^0.70.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

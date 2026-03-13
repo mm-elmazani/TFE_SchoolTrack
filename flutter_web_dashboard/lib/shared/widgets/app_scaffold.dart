@@ -95,6 +95,18 @@ class _AppSidebar extends StatelessWidget {
     return [
       if (isAdmin)
         const _NavItem(
+          path: '/dashboard',
+          icon: Icons.dashboard,
+          label: 'Vue d\'ensemble',
+        ),
+      if (isAdmin)
+        const _NavItem(
+          path: '/alerts',
+          icon: Icons.notifications_active,
+          label: 'Alertes',
+        ),
+      if (isAdmin)
+        const _NavItem(
           path: '/students/import',
           icon: Icons.upload_file,
           label: 'Import élèves',

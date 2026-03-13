@@ -435,6 +435,65 @@ class ApiClient {
     return '$baseUrl/api/v1/trips/export-all?trip_ids=$ids';
   }
 
+  // ─── US 4.4 — Timeline checkpoints ───────────────────────────────────
+
+  /// Retourne le resume et la timeline des checkpoints d'un voyage.
+  Future<Map<String, dynamic>> getCheckpointsSummary(String tripId) async {
+    return (await _get('/api/v1/trips/$tripId/checkpoints-summary')) as Map<String, dynamic>;
+  }
+
+  // ─── US 4.3 — Alertes temps reel ──────────────────────────────────────
+
+  /// Retourne les alertes actives (ACTIVE + IN_PROGRESS).
+  Future<List<Map<String, dynamic>>> getActiveAlerts({String? tripId}) async {
+    final query = tripId != null ? '?trip_id=$tripId' : '';
+    final data = await _get('/api/v1/alerts/active$query');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  /// Retourne toutes les alertes avec filtres.
+  Future<List<Map<String, dynamic>>> getAlerts({String? tripId, String? status}) async {
+    final params = <String, String>{
+      if (tripId != null) 'trip_id': tripId,
+      if (status != null) 'status': status,
+    };
+    final query = params.entries.map((e) => '${e.key}=${e.value}').join('&');
+    final sep = query.isEmpty ? '' : '?$query';
+    final data = await _get('/api/v1/alerts$sep');
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  /// Retourne les stats d'alertes.
+  Future<Map<String, dynamic>> getAlertStats({String? tripId}) async {
+    final query = tripId != null ? '?trip_id=$tripId' : '';
+    return (await _get('/api/v1/alerts/stats$query')) as Map<String, dynamic>;
+  }
+
+  /// Met a jour le statut d'une alerte (IN_PROGRESS ou RESOLVED).
+  Future<Map<String, dynamic>> updateAlertStatus(String alertId, String status) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/alerts/$alertId');
+      final encoded = jsonEncode({'status': status});
+      var response = await http.patch(uri, headers: _jsonHeaders, body: encoded);
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await http.patch(uri, headers: _jsonHeaders, body: encoded);
+      }
+      return _handleResponse(response) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(statusCode: 0, message: 'Impossible de contacter le serveur : $e');
+    }
+  }
+
+  // ─── US 4.2 — Dashboard overview ──────────────────────────────────────
+
+  /// Retourne les statistiques agregees pour le dashboard direction.
+  Future<Map<String, dynamic>> getDashboardOverview({String? status}) async {
+    final query = (status != null && status.isNotEmpty) ? '?status=$status' : '';
+    return (await _get('/api/v1/dashboard/overview$query')) as Map<String, dynamic>;
+  }
+
   // ─── US 6.4 — Audit logs ───────────────────────────────────────────────
 
   /// Retourne les logs d'audit pagines avec filtres optionnels.

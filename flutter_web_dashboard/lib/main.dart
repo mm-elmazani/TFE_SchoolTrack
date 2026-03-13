@@ -8,9 +8,12 @@ import 'features/classes/screens/class_list_screen.dart';
 import 'features/students/screens/student_import_screen.dart';
 import 'features/students/screens/student_list_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
+import 'features/trips/screens/checkpoint_timeline_screen.dart';
 import 'features/tokens/screens/token_screen.dart';
 import 'features/token_stock/screens/token_stock_screen.dart';
 import 'features/audit/screens/audit_log_screen.dart';
+import 'features/alerts/screens/alert_screen.dart';
+import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/users/screens/user_list_screen.dart';
 import 'shared/widgets/app_scaffold.dart';
 
@@ -82,7 +85,7 @@ GoRouter _buildRouter(AuthProvider auth) {
 
       // US 6.2 — Routes admin-only : redirige les non-admin vers /students
       if (loggedIn && !auth.isAdmin) {
-        const adminOnlyPaths = ['/students/import', '/tokens', '/tokens/stock', '/users', '/audit'];
+        const adminOnlyPaths = ['/dashboard', '/alerts', '/students/import', '/tokens', '/tokens/stock', '/users', '/audit'];
         if (adminOnlyPaths.contains(state.uri.path)) return '/students';
       }
 
@@ -95,10 +98,28 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => const LoginScreen(),
       ),
 
-      // Redirection racine : admin → import, autres → liste eleves
+      // Redirection racine : admin → dashboard, autres → liste eleves
       GoRoute(
         path: '/',
-        redirect: (_, __) => auth.isAdmin ? '/students/import' : '/students',
+        redirect: (_, __) => auth.isAdmin ? '/dashboard' : '/students',
+      ),
+
+      // US 4.2 — Dashboard de supervision
+      GoRoute(
+        path: '/dashboard',
+        builder: (context, state) => AppScaffold(
+          pageTitle: 'Vue d\'ensemble',
+          child: const DashboardScreen(),
+        ),
+      ),
+
+      // US 4.3 — Alertes temps reel
+      GoRoute(
+        path: '/alerts',
+        builder: (context, state) => AppScaffold(
+          pageTitle: 'Alertes',
+          child: const AlertScreen(),
+        ),
       ),
 
       // US 1.1 — Import CSV eleves
@@ -126,6 +147,18 @@ GoRouter _buildRouter(AuthProvider auth) {
           pageTitle: 'Voyages scolaires',
           child: const TripListScreen(),
         ),
+      ),
+
+      // US 4.4 — Timeline checkpoints d'un voyage
+      GoRoute(
+        path: '/trips/:id/checkpoints',
+        builder: (context, state) {
+          final tripId = state.pathParameters['id']!;
+          return AppScaffold(
+            pageTitle: 'Timeline checkpoints',
+            child: CheckpointTimelineScreen(tripId: tripId),
+          );
+        },
       ),
 
       // US 1.3 — Classes scolaires
