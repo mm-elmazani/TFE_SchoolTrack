@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html; // ignore: deprecated_member_use
+
+import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../widgets/trip_card.dart';
@@ -46,6 +51,15 @@ class _TripListBody extends StatelessWidget {
                 ],
               ),
             ),
+            if (isAdmin && provider.selectedForExport.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: OutlinedButton.icon(
+                  onPressed: () => _downloadBulkExport(context),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: Text('Exporter (${provider.selectedForExport.length})'),
+                ),
+              ),
             if (isAdmin)
               FilledButton.icon(
                 onPressed: () => _openCreateDialog(context),
@@ -96,7 +110,11 @@ class _TripListBody extends StatelessWidget {
             isAdmin: isAdmin,
           )
         else
-          _TripGrid(trips: provider.filteredTrips, isAdmin: isAdmin),
+          _TripGrid(
+            trips: provider.filteredTrips,
+            isAdmin: isAdmin,
+            selectedForExport: provider.selectedForExport,
+          ),
       ],
     );
   }
@@ -105,14 +123,43 @@ class _TripListBody extends StatelessWidget {
     context.read<TripProvider>().resetOpState();
     await TripFormDialog.show(context);
   }
+
+  Future<void> _downloadBulkExport(BuildContext context) async {
+    final provider = context.read<TripProvider>();
+    final url = provider.getBulkExportUrl();
+    _downloadFile(url);
+  }
+
+  void _downloadFile(String url) {
+    final token = ApiClient.authToken;
+    http.get(Uri.parse(url), headers: {
+      if (token != null) 'Authorization': 'Bearer $token',
+    }).then((response) {
+      final blob = html.Blob([response.bodyBytes]);
+      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+      // Extraire le nom du fichier depuis Content-Disposition
+      final disposition = response.headers['content-disposition'] ?? '';
+      final match = RegExp(r'filename=(.+)').firstMatch(disposition);
+      final filename = match?.group(1) ?? 'export.zip';
+      html.AnchorElement(href: blobUrl)
+        ..setAttribute('download', filename)
+        ..click();
+      html.Url.revokeObjectUrl(blobUrl);
+    });
+  }
 }
 
 /// Grille 2 colonnes des cartes voyages
 class _TripGrid extends StatelessWidget {
   final List<Trip> trips;
   final bool isAdmin;
+  final Set<String> selectedForExport;
 
-  const _TripGrid({required this.trips, required this.isAdmin});
+  const _TripGrid({
+    required this.trips,
+    required this.isAdmin,
+    required this.selectedForExport,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -135,11 +182,34 @@ class _TripGrid extends StatelessWidget {
               trip: trip,
               onEdit: isAdmin ? () => _openEditDialog(context, trip) : null,
               onDelete: isAdmin ? () => _confirmDelete(context, trip) : null,
+              onExport: isAdmin ? () => _exportSingle(context, trip) : null,
+              isSelectedForExport: selectedForExport.contains(trip.id),
+              onToggleExportSelection: isAdmin
+                  ? () => context.read<TripProvider>().toggleExportSelection(trip.id)
+                  : null,
             );
           },
         );
       },
     );
+  }
+
+  void _exportSingle(BuildContext context, Trip trip) {
+    final url = context.read<TripProvider>().getSingleExportUrl(trip.id);
+    final token = ApiClient.authToken;
+    http.get(Uri.parse(url), headers: {
+      if (token != null) 'Authorization': 'Bearer $token',
+    }).then((response) {
+      final blob = html.Blob([response.bodyBytes]);
+      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+      final disposition = response.headers['content-disposition'] ?? '';
+      final match = RegExp(r'filename=(.+)').firstMatch(disposition);
+      final filename = match?.group(1) ?? 'export.csv';
+      html.AnchorElement(href: blobUrl)
+        ..setAttribute('download', filename)
+        ..click();
+      html.Url.revokeObjectUrl(blobUrl);
+    });
   }
 
   Future<void> _openEditDialog(BuildContext context, Trip trip) async {

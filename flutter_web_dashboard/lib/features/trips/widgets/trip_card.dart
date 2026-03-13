@@ -7,19 +7,25 @@ class TripCard extends StatelessWidget {
   final Trip trip;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback? onExport;
+  final bool isSelectedForExport;
+  final VoidCallback? onToggleExportSelection;
 
   const TripCard({
     super.key,
     required this.trip,
     this.onEdit,
     this.onDelete,
+    this.onExport,
+    this.isSelectedForExport = false,
+    this.onToggleExportSelection,
   });
 
   @override
   Widget build(BuildContext context) {
     final statusInfo = _statusInfo(trip.status);
 
-    final hasActions = onEdit != null || onDelete != null;
+    final hasActions = onEdit != null || onDelete != null || onExport != null;
 
     return Card(
       elevation: 1,
@@ -32,10 +38,20 @@ class TripCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // En-tête : titre + menu actions
+              // En-tête : checkbox + titre + menu actions
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (onToggleExportSelection != null)
+                    SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Checkbox(
+                        value: isSelectedForExport,
+                        onChanged: (_) => onToggleExportSelection?.call(),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
                   Expanded(
                     child: Text(
                       trip.destination,
@@ -50,6 +66,7 @@ class TripCard extends StatelessWidget {
                       onSelected: (value) {
                         if (value == 'edit') onEdit?.call();
                         if (value == 'delete') onDelete?.call();
+                        if (value == 'export') onExport?.call();
                       },
                       itemBuilder: (_) => [
                         if (onEdit != null)
@@ -60,6 +77,17 @@ class TripCard extends StatelessWidget {
                                 Icon(Icons.edit, size: 16),
                                 SizedBox(width: 8),
                                 Text('Modifier'),
+                              ],
+                            ),
+                          ),
+                        if (onExport != null)
+                          const PopupMenuItem(
+                            value: 'export',
+                            child: Row(
+                              children: [
+                                Icon(Icons.download, size: 16),
+                                SizedBox(width: 8),
+                                Text('Exporter presences'),
                               ],
                             ),
                           ),

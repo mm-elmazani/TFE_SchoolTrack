@@ -1,16 +1,22 @@
 """
-Service métier pour les voyages (US 1.2).
-Gère la création, la lecture, la modification et l'archivage des voyages.
+Service métier pour les voyages (US 1.2, US 4.1).
+Gère la création, la lecture, la modification, l'archivage et l'export CSV des voyages.
 """
 
+import csv
+import io
 import uuid
 import logging
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session
 
+from app.models.attendance import Attendance
+from app.models.checkpoint import Checkpoint
 from app.models.school_class import ClassStudent, SchoolClass
+from app.models.student import Student
 from app.models.trip import Trip, TripStudent
 from app.schemas.trip import ClassSummary, TripCreate, TripResponse, TripUpdate
 from app.services import assignment_service
@@ -184,3 +190,131 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
         created_at=trip.created_at,
         updated_at=trip.updated_at,
     )
+
+
+# ---------------------------------------------------------------------------
+# US 4.1 — Export CSV presences
+# ---------------------------------------------------------------------------
+
+
+def export_attendance_csv(db: Session, trip_id: uuid.UUID) -> tuple[str, Trip]:
+    """
+    Genere le contenu CSV des presences pour un voyage.
+    Retourne (csv_string, trip_object) pour que le router construise le filename.
+    Leve ValueError si le voyage est introuvable.
+    """
+    trip = db.get(Trip, trip_id)
+    if trip is None:
+        raise ValueError("Voyage introuvable.")
+
+    # Total eleves inscrits au voyage
+    total_students = db.execute(
+        select(func.count())
+        .select_from(TripStudent)
+        .where(TripStudent.trip_id == trip.id)
+    ).scalar() or 0
+
+    # Dict {student_id: class_name} via class_students + school_classes
+    class_map: dict[uuid.UUID, str] = {}
+    class_rows = db.execute(
+        select(ClassStudent.student_id, SchoolClass.name)
+        .join(SchoolClass, SchoolClass.id == ClassStudent.class_id)
+        .join(
+            TripStudent,
+            and_(
+                TripStudent.student_id == ClassStudent.student_id,
+                TripStudent.trip_id == trip.id,
+            ),
+        )
+    ).all()
+    for row in class_rows:
+        class_map[row[0]] = row[1]
+
+    # Presences avec student + checkpoint
+    attendances = db.execute(
+        select(Attendance, Student, Checkpoint)
+        .join(Student, Student.id == Attendance.student_id)
+        .join(Checkpoint, Checkpoint.id == Attendance.checkpoint_id)
+        .where(Attendance.trip_id == trip.id)
+    ).all()
+
+    # Tri en Python (colonnes chiffrees)
+    attendances_sorted = sorted(
+        attendances,
+        key=lambda row: (
+            (row[1].last_name or "").lower(),
+            (row[1].first_name or "").lower(),
+            row[2].sequence_order or 0,
+        ),
+    )
+
+    # Taux de presence par checkpoint
+    checkpoint_names: dict[uuid.UUID, str] = {}
+    checkpoint_counts: dict[uuid.UUID, set] = {}
+    for att, student, cp in attendances_sorted:
+        checkpoint_names[cp.id] = cp.name
+        if cp.id not in checkpoint_counts:
+            checkpoint_counts[cp.id] = set()
+        checkpoint_counts[cp.id].add(att.student_id)
+
+    # Construire le CSV
+    output = io.StringIO()
+    # BOM UTF-8 pour Excel
+    output.write("\ufeff")
+
+    # Metadonnees en commentaires
+    output.write(f"# Voyage : {trip.destination}\n")
+    output.write(f"# Date : {trip.date.strftime('%d/%m/%Y')}\n")
+    output.write(f"# Export : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
+    output.write(f"# Total eleves : {total_students}\n")
+    output.write("#\n")
+    output.write("# Taux de presence par checkpoint :\n")
+
+    # Ordonner les checkpoints par sequence_order
+    ordered_cps = db.execute(
+        select(Checkpoint)
+        .where(Checkpoint.trip_id == trip.id)
+        .order_by(Checkpoint.sequence_order)
+    ).scalars().all()
+
+    for cp in ordered_cps:
+        count = len(checkpoint_counts.get(cp.id, set()))
+        rate = (count / total_students * 100) if total_students > 0 else 0
+        output.write(f"# {cp.name} : {rate:.0f}%\n")
+
+    output.write("#\n")
+
+    # En-tete CSV
+    writer = csv.writer(output, delimiter=";")
+    writer.writerow([
+        "Nom", "Prenom", "Classe", "Checkpoint",
+        "Heure de passage", "Mode de scan", "Justification",
+    ])
+
+    # Lignes de donnees
+    for att, student, cp in attendances_sorted:
+        if student.is_deleted:
+            last_name = "[Supprime]"
+            first_name = "[Supprime]"
+        else:
+            last_name = student.last_name or ""
+            first_name = student.first_name or ""
+
+        writer.writerow([
+            last_name,
+            first_name,
+            class_map.get(student.id, ""),
+            cp.name,
+            att.scanned_at.strftime("%H:%M:%S") if att.scanned_at else "",
+            att.scan_method or "",
+            att.justification or "",
+        ])
+
+    return (output.getvalue(), trip)
+
+
+def _generate_export_filename(destination: str, trip_date) -> str:
+    """Genere un nom de fichier securise pour l'export CSV."""
+    safe = destination.replace(" ", "_").replace("/", "-")
+    now = datetime.now()
+    return f"voyage_{safe}_{trip_date.strftime('%Y-%m-%d')}_{now.strftime('%H-%M')}"

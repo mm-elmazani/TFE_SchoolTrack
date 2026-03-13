@@ -425,6 +425,16 @@ class ApiClient {
   String getExportUrl(String tripId) =>
       '$baseUrl/api/v1/trips/$tripId/assignments/export';
 
+  /// Retourne l'URL d'export CSV des presences d'un voyage (US 4.1).
+  String getAttendanceExportUrl(String tripId) =>
+      '$baseUrl/api/v1/trips/$tripId/export';
+
+  /// Retourne l'URL d'export ZIP multi-voyages des presences (US 4.1).
+  String getAttendanceBulkExportUrl(List<String> tripIds) {
+    final ids = tripIds.join(',');
+    return '$baseUrl/api/v1/trips/export-all?trip_ids=$ids';
+  }
+
   // ─── US 6.4 — Audit logs ───────────────────────────────────────────────
 
   /// Retourne les logs d'audit pagines avec filtres optionnels.

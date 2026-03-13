@@ -83,6 +83,9 @@ class TripProvider extends ChangeNotifier {
   String _searchQuery = '';
   String _statusFilter = 'ALL';
 
+  // --- Selection multi-export (US 4.1) ---
+  final Set<String> _selectedForExport = {};
+
   // --- Getters ---
   TripLoadState get listState => _listState;
   TripLoadState get opState => _opState;
@@ -91,6 +94,7 @@ class TripProvider extends ChangeNotifier {
   List<SchoolClass> get classes => _classes;
   String get searchQuery => _searchQuery;
   String get statusFilter => _statusFilter;
+  Set<String> get selectedForExport => _selectedForExport;
 
   /// Voyages filtrés selon la recherche et le statut sélectionné
   List<Trip> get filteredTrips {
@@ -118,6 +122,36 @@ class TripProvider extends ChangeNotifier {
     _statusFilter = status;
     notifyListeners();
   }
+
+  // --- Multi-export (US 4.1) ---
+
+  void toggleExportSelection(String tripId) {
+    if (_selectedForExport.contains(tripId)) {
+      _selectedForExport.remove(tripId);
+    } else {
+      _selectedForExport.add(tripId);
+    }
+    notifyListeners();
+  }
+
+  void selectAllForExport() {
+    _selectedForExport.clear();
+    for (final t in filteredTrips) {
+      _selectedForExport.add(t.id);
+    }
+    notifyListeners();
+  }
+
+  void clearExportSelection() {
+    _selectedForExport.clear();
+    notifyListeners();
+  }
+
+  String getSingleExportUrl(String tripId) =>
+      _apiClient.getAttendanceExportUrl(tripId);
+
+  String getBulkExportUrl() =>
+      _apiClient.getAttendanceBulkExportUrl(_selectedForExport.toList());
 
   /// Charge la liste des voyages depuis l'API.
   Future<void> loadTrips() async {
