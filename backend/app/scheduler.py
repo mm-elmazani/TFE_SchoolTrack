@@ -4,6 +4,7 @@ Planificateur APScheduler (US 1.6, US 6.4).
 Jobs :
 - QR emails 48h avant chaque voyage (toutes les heures)
 - Rotation des audit logs > 12 mois (tous les jours a 3h)
+- Transition automatique des statuts de voyages (toutes les 15 min)
 """
 
 import logging
@@ -83,6 +84,85 @@ def _purge_old_audit_logs() -> None:
         db.close()
 
 
+def _auto_update_trip_statuses() -> None:
+    """
+    Tache planifiee : met a jour automatiquement le statut des voyages
+    en fonction de la date du jour.
+    - PLANNED + date == aujourd'hui  → ACTIVE
+    - PLANNED + date <  aujourd'hui  → COMPLETED (rattrapage)
+    - ACTIVE  + date <  aujourd'hui  → COMPLETED (+ liberation bracelets)
+    """
+    from app.services import assignment_service
+
+    today = date.today()
+    db = SessionLocal()
+    try:
+        # PLANNED → ACTIVE (date == aujourd'hui)
+        planned_today = db.execute(
+            select(Trip).where(
+                Trip.status == "PLANNED",
+                Trip.date == today,
+            )
+        ).scalars().all()
+
+        for trip in planned_today:
+            trip.status = "ACTIVE"
+            logger.info(
+                "Transition automatique PLANNED → ACTIVE — voyage %s (%s)",
+                trip.id, trip.destination,
+            )
+
+        # PLANNED → COMPLETED (date < aujourd'hui, rattrapage)
+        planned_past = db.execute(
+            select(Trip).where(
+                Trip.status == "PLANNED",
+                Trip.date < today,
+            )
+        ).scalars().all()
+
+        for trip in planned_past:
+            trip.status = "COMPLETED"
+            logger.info(
+                "Transition automatique PLANNED → COMPLETED (rattrapage) — voyage %s (%s)",
+                trip.id, trip.destination,
+            )
+
+        # ACTIVE → COMPLETED (date < aujourd'hui)
+        active_past_trips = db.execute(
+            select(Trip).where(
+                Trip.status == "ACTIVE",
+                Trip.date < today,
+            )
+        ).scalars().all()
+
+        for trip in active_past_trips:
+            trip.status = "COMPLETED"
+            logger.info(
+                "Transition automatique ACTIVE → COMPLETED — voyage %s (%s)",
+                trip.id, trip.destination,
+            )
+
+        db.commit()
+
+        # Liberer les bracelets des voyages termines (apres commit)
+        for trip in planned_past + active_past_trips:
+            assignment_service.release_trip_tokens(db, trip.id)
+
+        total = len(planned_today) + len(planned_past) + len(active_past_trips)
+        if total > 0:
+            logger.info(
+                "Transition statuts : %d PLANNED→ACTIVE, %d PLANNED→COMPLETED, %d ACTIVE→COMPLETED.",
+                len(planned_today), len(planned_past), len(active_past_trips),
+            )
+        else:
+            logger.debug("Transition statuts : aucun voyage a mettre a jour.")
+    except Exception as exc:
+        db.rollback()
+        logger.error("Erreur lors de la transition automatique des statuts : %s", exc)
+    finally:
+        db.close()
+
+
 def start_scheduler() -> None:
     """Démarre le planificateur en arrière-plan (appelé au démarrage de l'API)."""
     scheduler.add_job(
@@ -100,8 +180,15 @@ def start_scheduler() -> None:
         id="audit_log_rotation",
         replace_existing=True,
     )
+    scheduler.add_job(
+        _auto_update_trip_statuses,
+        trigger="interval",
+        minutes=15,
+        id="trip_status_auto_update",
+        replace_existing=True,
+    )
     scheduler.start()
-    logger.info("Scheduler démarré — QR emails (1h) + rotation audit logs (3h quotidien).")
+    logger.info("Scheduler démarré — QR emails (1h) + rotation audit logs (3h quotidien) + statuts voyages (15min).")
 
 
 def stop_scheduler() -> None:
