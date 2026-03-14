@@ -8,6 +8,7 @@ class TripCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onExport;
+  final VoidCallback? onViewTimeline;
   final bool isSelectedForExport;
   final VoidCallback? onToggleExportSelection;
 
@@ -17,6 +18,7 @@ class TripCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onExport,
+    this.onViewTimeline,
     this.isSelectedForExport = false,
     this.onToggleExportSelection,
   });
@@ -25,7 +27,7 @@ class TripCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusInfo = _statusInfo(trip.status);
 
-    final hasActions = onEdit != null || onDelete != null || onExport != null;
+    final hasActions = onEdit != null || onDelete != null || onExport != null || onViewTimeline != null;
 
     return Card(
       elevation: 1,
@@ -67,6 +69,7 @@ class TripCard extends StatelessWidget {
                         if (value == 'edit') onEdit?.call();
                         if (value == 'delete') onDelete?.call();
                         if (value == 'export') onExport?.call();
+                        if (value == 'timeline') onViewTimeline?.call();
                       },
                       itemBuilder: (_) => [
                         if (onEdit != null)
@@ -77,6 +80,17 @@ class TripCard extends StatelessWidget {
                                 Icon(Icons.edit, size: 16),
                                 SizedBox(width: 8),
                                 Text('Modifier'),
+                              ],
+                            ),
+                          ),
+                        if (onViewTimeline != null)
+                          const PopupMenuItem(
+                            value: 'timeline',
+                            child: Row(
+                              children: [
+                                Icon(Icons.timeline, size: 16),
+                                SizedBox(width: 8),
+                                Text('Timeline checkpoints'),
                               ],
                             ),
                           ),

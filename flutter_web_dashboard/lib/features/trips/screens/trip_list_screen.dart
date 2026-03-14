@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 // ignore: avoid_web_libraries_in_flutter
@@ -183,6 +184,7 @@ class _TripGrid extends StatelessWidget {
               onEdit: isAdmin ? () => _openEditDialog(context, trip) : null,
               onDelete: isAdmin ? () => _confirmDelete(context, trip) : null,
               onExport: isAdmin ? () => _exportSingle(context, trip) : null,
+              onViewTimeline: isAdmin ? () => context.go('/trips/${trip.id}/checkpoints') : null,
               isSelectedForExport: selectedForExport.contains(trip.id),
               onToggleExportSelection: isAdmin
                   ? () => context.read<TripProvider>().toggleExportSelection(trip.id)

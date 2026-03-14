@@ -34,3 +34,36 @@ class CheckpointResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# US 4.4 — Timeline et resume checkpoints
+# ---------------------------------------------------------------------------
+
+
+class CheckpointTimelineEntry(BaseModel):
+    """Un checkpoint dans la timeline avec ses statistiques de scan."""
+    id: uuid.UUID
+    name: str
+    description: Optional[str] = None
+    sequence_order: int
+    status: str
+    created_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    closed_at: Optional[datetime] = None
+    created_by_name: Optional[str] = None
+    scan_count: int = 0
+    student_count: int = 0
+    duration_minutes: Optional[int] = None
+
+
+class CheckpointsSummary(BaseModel):
+    """Resume des checkpoints d'un voyage pour la direction."""
+    trip_id: uuid.UUID
+    trip_destination: str
+    total_checkpoints: int
+    active_checkpoints: int
+    closed_checkpoints: int
+    total_scans: int
+    avg_duration_minutes: Optional[float] = None
+    timeline: list[CheckpointTimelineEntry] = []

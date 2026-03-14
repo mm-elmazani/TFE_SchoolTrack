@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import log_audit, require_role
 from app.models.user import User
-from app.schemas.checkpoint import CheckpointCreate, CheckpointResponse
+from app.schemas.checkpoint import CheckpointCreate, CheckpointResponse, CheckpointsSummary
 from app.services import checkpoint_service
 
 # POST /api/v1/trips/{trip_id}/checkpoints (US 2.5)
@@ -22,6 +22,32 @@ router = APIRouter(prefix="/api/v1/trips", tags=["Checkpoints"])
 checkpoints_router = APIRouter(prefix="/api/v1/checkpoints", tags=["Checkpoints"])
 
 _field = require_role("DIRECTION", "ADMIN_TECH", "TEACHER")
+_admin = require_role("DIRECTION", "ADMIN_TECH")
+
+
+# ---------------------------------------------------------------------------
+# US 4.4 — Timeline / résumé checkpoints (direction uniquement)
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/{trip_id}/checkpoints-summary",
+    response_model=CheckpointsSummary,
+    summary="Résumé et timeline des checkpoints d'un voyage (US 4.4)",
+)
+def get_checkpoints_summary(
+    trip_id: uuid.UUID,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne le résumé des checkpoints avec timeline, statistiques de scan
+    et durées. Réservé à la direction.
+    """
+    try:
+        return checkpoint_service.get_checkpoints_summary(db, trip_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post(
