@@ -10,3 +10,4 @@ from app.models.trip import Trip, TripStudent  # noqa: F401
 from app.models.assignment import Assignment, Token  # noqa: F401
 from app.models.checkpoint import Checkpoint  # noqa: F401
 from app.models.attendance import Attendance  # noqa: F401
+from app.models.alert import Alert  # noqa: F401

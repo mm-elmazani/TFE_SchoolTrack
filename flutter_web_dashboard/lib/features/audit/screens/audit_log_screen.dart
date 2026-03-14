@@ -72,6 +72,9 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     'SYNC_ATTENDANCES',
     'QR_EMAILS_SENT',
     'AUDIT_LOGS_EXPORTED',
+    'ALERT_CREATED',
+    'ALERT_ACKNOWLEDGED',
+    'ALERT_RESOLVED',
   ];
 
   /// Types de ressource disponibles pour le filtre dropdown.
@@ -85,6 +88,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     'ASSIGNMENT',
     'CHECKPOINT',
     'ATTENDANCE',
+    'ALERT',
     'AUDIT',
   ];
 
