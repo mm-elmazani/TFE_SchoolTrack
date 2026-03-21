@@ -57,17 +57,23 @@ class SyncProvider extends ChangeNotifier {
 
     // Ecouter les changements de connectivite
     _connectivitySub?.cancel();
-    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) {
+    _connectivitySub = _connectivity.onConnectivityChanged.listen((results) async {
       final hasNetwork = results.any((r) => r != ConnectivityResult.none);
-      if (hasNetwork && _pendingCount > 0) {
-        // Debounce 2 secondes (le reseau peut ne pas etre pret immediatement)
-        Future.delayed(const Duration(seconds: 2), () => syncNow());
+      if (hasNetwork && !_isSyncing) {
+        // Rafraichir le count depuis SQLite (peut avoir change depuis le dernier check)
+        await refreshPendingCount();
+        if (_pendingCount > 0) {
+          // Debounce 2 secondes (le reseau peut ne pas etre pret immediatement)
+          Future.delayed(const Duration(seconds: 2), () => syncNow());
+        }
       }
     });
 
     // Timer periodique : tenter la sync toutes les 30s si des presences sont en attente
     _periodicTimer?.cancel();
-    _periodicTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _periodicTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      // Rafraichir le count depuis SQLite avant de decider si on sync
+      await refreshPendingCount();
       if (_pendingCount > 0 && !_isSyncing) {
         syncNow();
       }
