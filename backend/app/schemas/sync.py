@@ -1,5 +1,5 @@
 """
-Schémas Pydantic pour la synchronisation offline → online (US 3.1).
+Schémas Pydantic pour la synchronisation offline → online (US 3.1 + US 3.2).
 Endpoint : POST /api/sync/attendances
 """
 
@@ -49,10 +49,28 @@ class SyncRequest(BaseModel):
         return v
 
 
-class SyncResponse(BaseModel):
-    """Rapport de synchronisation retourné par le serveur."""
+class TemporalAnomaly(BaseModel):
+    """Incohérence temporelle détectée entre deux checkpoints pour un même élève (US 3.2)."""
 
-    accepted: List[str]           # client_uuids insérés avec succès
-    duplicate: List[str]          # client_uuids déjà présents en base (idempotence)
+    student_id: str
+    trip_id: str
+    checkpoint_before: str        # Nom du checkpoint d'ordre inférieur
+    checkpoint_after: str         # Nom du checkpoint d'ordre supérieur
+    scanned_at_before: str        # ISO 8601
+    scanned_at_after: str         # ISO 8601 — scanné AVANT checkpoint_before
+    description: str              # Message lisible (pour le dashboard)
+
+
+class SyncResponse(BaseModel):
+    """Rapport de synchronisation retourné par le serveur (US 3.1 + US 3.2)."""
+
+    # US 3.1 — idempotence
+    accepted: List[str]           # client_uuids insérés comme nouveaux canoniques
+    duplicate: List[str]          # client_uuids déjà connus (idempotence)
     total_received: int
     total_inserted: int
+
+    # US 3.2 — fusion multi-enseignants
+    merged: List[str] = []        # client_uuids dont le scan (plus ancien) a remplacé le canonique
+    temporal_anomalies: List[TemporalAnomaly] = []  # incohérences d'ordre entre checkpoints
+    total_merged: int = 0
