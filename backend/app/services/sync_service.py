@@ -1,25 +1,32 @@
 """
-Service de synchronisation offline → online (US 3.1).
+Service de synchronisation offline → online (US 3.1 + US 3.2).
 
-Stratégie : Hybride (LWW + CRDT append-only)
-- Les scans sont append-only : chaque scan a un client_uuid unique → pas de conflit possible
-- Idempotence via client_uuid : un UUID déjà connu est silencieusement ignoré
-- Doublons intra-batch gérés en mémoire (autoflush=False)
-- En cas de 2 enseignants qui scannent le même élève au même checkpoint :
-  les 2 scans ont des UUIDs différents → tous les 2 sont insérés (append-only)
+Stratégie US 3.2 — Fusion multi-enseignants :
+- attendance_history : archive TOUS les scans bruts reçus (append-only par client_uuid)
+- attendances        : table canonique, UNE ligne par (student, checkpoint, trip)
+                       = le scan avec le timestamp le plus ancien (premier arrivé réel)
+- Idempotence        : client_uuid unique dans attendance_history
+- Fusion             : si nouvel arrivant a scanned_at < canonique existant → mise à jour
+- Anomalies          : détection des incohérences d'ordre entre checkpoints
 """
 
 import logging
 import uuid as uuid_module
+from datetime import datetime
 from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.attendance import Attendance
-from app.schemas.sync import ScanItem, SyncResponse
+from app.models.attendance import Attendance, AttendanceHistory
+from app.models.checkpoint import Checkpoint
+from app.schemas.sync import ScanItem, SyncResponse, TemporalAnomaly
 
 logger = logging.getLogger(__name__)
+
+_ACCEPTED       = "ACCEPTED"       # Premier scan → inséré comme canonique
+_MERGED_OLDEST  = "MERGED_OLDEST"  # Scan plus ancien → a remplacé le canonique
+_SUPERSEDED     = "SUPERSEDED"     # Scan plus récent → canonique (plus ancien) conservé
 
 
 def sync_attendances(
@@ -29,44 +36,46 @@ def sync_attendances(
     scanned_by: uuid_module.UUID | None = None,
 ) -> SyncResponse:
     """
-    Insère en batch les scans reçus depuis un appareil Flutter.
+    Reçoit un batch de scans et les fusionne intelligemment (US 3.2).
 
     Pour chaque scan :
-    1. Vérifie que client_uuid n'a pas déjà été reçu dans CE batch (set en mémoire)
-    2. Vérifie que client_uuid n'existe pas déjà en base de données
-    3. Si nouveau → crée l'enregistrement Attendance
-    4. Si doublon → l'ajoute à la liste `duplicate` (aucune erreur levée)
-
-    Toute la transaction est commitée en une seule fois.
+    1. Vérifie que client_uuid n'est pas un doublon (intra-batch ou déjà en history)
+    2. Insère dans attendance_history (archive brute)
+    3. UPSERT dans attendances (canonique) :
+       - Nouveau (student, checkpoint) → INSERT
+       - Existant ET nouveau plus ancien → UPDATE (fusion)
+       - Existant ET nouveau plus récent → aucun changement canonique (SUPERSEDED)
+    4. Détecte les anomalies temporelles entre checkpoints
     """
     accepted: List[str] = []
     duplicate: List[str] = []
+    merged: List[str] = []
 
-    # Ensemble des UUIDs déjà traités dans CE batch (protection contre doublons intra-batch)
-    # Nécessaire car autoflush=False → les INSERTs en attente ne sont pas visibles via SELECT
     seen_in_batch: set = set()
+    sync_session_id = uuid_module.uuid4()
 
     for scan in scans:
         client_uuid_str = str(scan.client_uuid)
 
-        # 1. Doublon intra-batch
+        # 1. Doublon intra-batch (même UUID deux fois dans le même envoi)
         if scan.client_uuid in seen_in_batch:
             duplicate.append(client_uuid_str)
-            logger.debug("Doublon intra-batch ignoré : %s", client_uuid_str)
             continue
 
-        # 2. Doublon inter-batch (déjà en base)
-        existing = db.execute(
-            select(Attendance).where(Attendance.client_uuid == scan.client_uuid)
+        # 2. Doublon inter-batch : client_uuid déjà archivé en history
+        already_known = db.execute(
+            select(AttendanceHistory).where(
+                AttendanceHistory.client_uuid == scan.client_uuid
+            )
         ).scalar()
 
-        if existing:
+        if already_known:
             duplicate.append(client_uuid_str)
-            logger.debug("UUID déjà synchronisé, ignoré : %s", client_uuid_str)
+            seen_in_batch.add(scan.client_uuid)
             continue
 
-        # 3. Nouveau scan → insérer
-        attendance = Attendance(
+        # 3. Insérer dans l'historique brut (toujours, sauf doublon UUID)
+        history = AttendanceHistory(
             client_uuid=scan.client_uuid,
             trip_id=scan.trip_id,
             checkpoint_id=scan.checkpoint_id,
@@ -78,21 +87,164 @@ def sync_attendances(
             is_manual=scan.is_manual,
             justification=scan.justification,
             comment=scan.comment,
+            device_id=device_id,
+            sync_session_id=sync_session_id,
+            merge_status=_ACCEPTED,
         )
-        db.add(attendance)
+        db.add(history)
+
+        # 4. Chercher le canonique existant pour (student, checkpoint, trip)
+        canonical = db.execute(
+            select(Attendance).where(
+                Attendance.student_id == scan.student_id,
+                Attendance.checkpoint_id == scan.checkpoint_id,
+                Attendance.trip_id == scan.trip_id,
+            )
+        ).scalar()
+
+        if canonical is None:
+            # Aucun scan précédent pour cet élève à ce checkpoint → créer le canonique
+            attendance = Attendance(
+                client_uuid=scan.client_uuid,
+                trip_id=scan.trip_id,
+                checkpoint_id=scan.checkpoint_id,
+                student_id=scan.student_id,
+                scanned_at=scan.scanned_at,
+                scanned_by=scanned_by,
+                scan_method=scan.scan_method,
+                scan_sequence=scan.scan_sequence,
+                is_manual=scan.is_manual,
+                justification=scan.justification,
+                comment=scan.comment,
+            )
+            db.add(attendance)
+            accepted.append(client_uuid_str)
+            logger.debug("Nouveau canonique : student=%s, cp=%s", scan.student_id, scan.checkpoint_id)
+
+        elif _is_strictly_older(scan.scanned_at, canonical.scanned_at):
+            # Nouveau scan plus ancien → remplace le canonique (on garde le plus ancien)
+            canonical.client_uuid = scan.client_uuid
+            canonical.scanned_at = scan.scanned_at
+            canonical.scanned_by = scanned_by
+            canonical.scan_method = scan.scan_method
+            canonical.scan_sequence = scan.scan_sequence
+            canonical.is_manual = scan.is_manual
+            canonical.justification = scan.justification
+            canonical.comment = scan.comment
+            history.merge_status = _MERGED_OLDEST
+            merged.append(client_uuid_str)
+            logger.info(
+                "Fusion : scan %s plus ancien → remplace canonique (student=%s, cp=%s)",
+                client_uuid_str, scan.student_id, scan.checkpoint_id,
+            )
+
+        else:
+            # Scan plus récent ou même timestamp → canonique existant déjà optimal
+            history.merge_status = _SUPERSEDED
+            logger.debug(
+                "Scan %s supersédé : canonique déjà plus ancien (student=%s, cp=%s)",
+                client_uuid_str, scan.student_id, scan.checkpoint_id,
+            )
+
         seen_in_batch.add(scan.client_uuid)
-        accepted.append(client_uuid_str)
+
+    db.flush()
+
+    # 5. Détecter les anomalies temporelles après la fusion canonique
+    anomalies = _detect_temporal_anomalies(db, scans)
 
     db.commit()
 
     logger.info(
-        "Sync device=%s : %d reçus, %d insérés, %d doublons",
-        device_id or "inconnu", len(scans), len(accepted), len(duplicate),
+        "Sync device=%s : %d reçus, %d insérés, %d fusionnés, %d doublons, %d anomalies",
+        device_id or "inconnu",
+        len(scans), len(accepted), len(merged), len(duplicate), len(anomalies),
     )
 
     return SyncResponse(
         accepted=accepted,
         duplicate=duplicate,
+        merged=merged,
+        temporal_anomalies=anomalies,
         total_received=len(scans),
         total_inserted=len(accepted),
+        total_merged=len(merged),
     )
+
+
+# ----------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------
+
+def _is_strictly_older(new_dt: datetime, existing_dt: datetime) -> bool:
+    """Retourne True si new_dt est strictement antérieur à existing_dt."""
+    # Normaliser naive/aware pour éviter TypeError
+    if new_dt.tzinfo is not None and existing_dt.tzinfo is None:
+        new_dt = new_dt.replace(tzinfo=None)
+    elif new_dt.tzinfo is None and existing_dt.tzinfo is not None:
+        existing_dt = existing_dt.replace(tzinfo=None)
+    return new_dt < existing_dt
+
+
+def _detect_temporal_anomalies(
+    db: Session,
+    scans: List[ScanItem],
+) -> List[TemporalAnomaly]:
+    """
+    Détecte les incohérences temporelles entre checkpoints pour les élèves synchronisés.
+
+    Règle : pour un élève et un voyage, scanned_at(CP A) doit être < scanned_at(CP B)
+    si sequence_order(A) < sequence_order(B).
+
+    Signale mais ne bloque pas — les anomalies sont retournées dans le rapport.
+    """
+    if not scans:
+        return []
+
+    # Paires (student_id, trip_id) uniques du batch
+    student_trips = {(scan.student_id, scan.trip_id) for scan in scans}
+    anomalies: List[TemporalAnomaly] = []
+
+    for student_id, trip_id in student_trips:
+        rows = db.execute(
+            select(
+                Attendance.scanned_at,
+                Checkpoint.sequence_order,
+                Checkpoint.name,
+            )
+            .join(Checkpoint, Attendance.checkpoint_id == Checkpoint.id)
+            .where(
+                Attendance.student_id == student_id,
+                Attendance.trip_id == trip_id,
+            )
+            .order_by(Checkpoint.sequence_order)
+        ).all()
+
+        if len(rows) < 2:
+            continue
+
+        for i in range(1, len(rows)):
+            prev_at, prev_seq, prev_name = rows[i - 1]
+            curr_at, curr_seq, curr_name = rows[i]
+
+            # Normaliser naive/aware
+            if prev_at.tzinfo is not None:
+                prev_at = prev_at.replace(tzinfo=None)
+            if curr_at.tzinfo is not None:
+                curr_at = curr_at.replace(tzinfo=None)
+
+            if curr_at < prev_at:
+                anomalies.append(TemporalAnomaly(
+                    student_id=str(student_id),
+                    trip_id=str(trip_id),
+                    checkpoint_before=prev_name,
+                    checkpoint_after=curr_name,
+                    scanned_at_before=prev_at.isoformat(),
+                    scanned_at_after=curr_at.isoformat(),
+                    description=(
+                        f"Incohérence temporelle : checkpoint '{curr_name}' "
+                        f"(ordre {curr_seq}) scanné avant '{prev_name}' (ordre {prev_seq})"
+                    ),
+                ))
+
+    return anomalies
