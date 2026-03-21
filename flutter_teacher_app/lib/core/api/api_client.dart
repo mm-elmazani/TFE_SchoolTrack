@@ -341,6 +341,51 @@ class ApiClient {
   }
 
   // ----------------------------------------------------------------
+  // Synchronisation offline → online (US 3.1)
+  // ----------------------------------------------------------------
+
+  /// POST /api/sync/attendances — Envoie un batch de presences au backend.
+  ///
+  /// Retourne la reponse parsee (accepted/duplicate) ou null si hors-ligne.
+  /// Le [deviceId] identifie l'appareil pour les logs de sync.
+  Future<SyncResult?> syncAttendances({
+    required List<Map<String, dynamic>> scans,
+    required String deviceId,
+  }) async {
+    if (scans.isEmpty) {
+      return SyncResult(accepted: [], duplicate: [], totalReceived: 0, totalInserted: 0);
+    }
+    try {
+      final body = jsonEncode({'scans': scans, 'device_id': deviceId});
+      final uri = Uri.parse('$baseUrl/api/sync/attendances');
+      var response = await _http
+          .post(uri, headers: _authHeaders, body: body)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .post(uri, headers: _authHeaders, body: body)
+            .timeout(const Duration(seconds: 30));
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return SyncResult.fromJson(data);
+      }
+      // Erreur de validation (422) → throw pour que le SyncService puisse reagir
+      if (response.statusCode == 422) {
+        throw ApiException('Batch invalide', statusCode: 422);
+      }
+      return null;
+    } on ApiException {
+      rethrow;
+    } catch (_) {
+      // Hors-ligne ou erreur reseau → retourne null (mode offline)
+      return null;
+    }
+  }
+
+  // ----------------------------------------------------------------
   // Authentification (US 6.1)
   // ----------------------------------------------------------------
 
@@ -364,5 +409,29 @@ class ApiClient {
     } catch (e) {
       throw ApiException('Impossible de contacter le serveur : $e');
     }
+  }
+}
+
+/// Reponse du backend apres synchronisation (POST /api/sync/attendances).
+class SyncResult {
+  final List<String> accepted;
+  final List<String> duplicate;
+  final int totalReceived;
+  final int totalInserted;
+
+  const SyncResult({
+    required this.accepted,
+    required this.duplicate,
+    required this.totalReceived,
+    required this.totalInserted,
+  });
+
+  factory SyncResult.fromJson(Map<String, dynamic> json) {
+    return SyncResult(
+      accepted: (json['accepted'] as List<dynamic>).cast<String>(),
+      duplicate: (json['duplicate'] as List<dynamic>).cast<String>(),
+      totalReceived: json['total_received'] as int,
+      totalInserted: json['total_inserted'] as int,
+    );
   }
 }

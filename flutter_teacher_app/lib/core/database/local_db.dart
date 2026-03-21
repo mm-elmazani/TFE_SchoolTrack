@@ -67,7 +67,7 @@ class LocalDb {
     if (testDatabasePath != null) {
       return sqflite_std.openDatabase(
         path,
-        version: 3,
+        version: 4,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       );
@@ -78,7 +78,7 @@ class LocalDb {
     try {
       return await sqlcipher.openDatabase(
         path,
-        version: 3,
+        version: 4,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -88,7 +88,7 @@ class LocalDb {
       await sqlcipher.deleteDatabase(path);
       return sqlcipher.openDatabase(
         path,
-        version: 3,
+        version: 4,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -173,10 +173,24 @@ class LocalDb {
     await db.execute(
       'CREATE INDEX idx_att_synced ON attendances(synced_at)',
     );
+
+    /// Table d'historique des synchronisations (US 3.1 — critere #6).
+    await db.execute('''
+      CREATE TABLE sync_history (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        synced_at         INTEGER NOT NULL,
+        records_sent      INTEGER NOT NULL,
+        records_accepted  INTEGER NOT NULL,
+        records_duplicate INTEGER NOT NULL,
+        records_failed    INTEGER NOT NULL DEFAULT 0,
+        status            TEXT NOT NULL
+      )
+    ''');
   }
 
-  /// Migration de version 1 → 2 : ajout de la table attendances (US 2.2).
+  /// Migrations incrementales.
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // v1 → v2 : ajout de la table attendances (US 2.2)
     if (oldVersion < 2) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS attendances (
@@ -199,6 +213,20 @@ class LocalDb {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_att_synced ON attendances(synced_at)',
       );
+    }
+    // v3 → v4 : ajout de la table sync_history (US 3.1)
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sync_history (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          synced_at         INTEGER NOT NULL,
+          records_sent      INTEGER NOT NULL,
+          records_accepted  INTEGER NOT NULL,
+          records_duplicate INTEGER NOT NULL,
+          records_failed    INTEGER NOT NULL DEFAULT 0,
+          status            TEXT NOT NULL
+        )
+      ''');
     }
   }
 
@@ -592,6 +620,48 @@ class LocalDb {
     );
   }
 
+  // ----------------------------------------------------------------
+  // Historique de synchronisation (US 3.1)
+  // ----------------------------------------------------------------
+
+  /// Enregistre une entree dans l'historique de synchronisation.
+  Future<void> insertSyncHistory({
+    required int recordsSent,
+    required int recordsAccepted,
+    required int recordsDuplicate,
+    required int recordsFailed,
+    required String status,
+  }) async {
+    final db = await database;
+    await db.insert('sync_history', {
+      'synced_at': DateTime.now().millisecondsSinceEpoch,
+      'records_sent': recordsSent,
+      'records_accepted': recordsAccepted,
+      'records_duplicate': recordsDuplicate,
+      'records_failed': recordsFailed,
+      'status': status,
+    });
+  }
+
+  /// Retourne l'historique des synchronisations (plus recentes en premier).
+  Future<List<SyncHistoryEntry>> getSyncHistory({int limit = 50}) async {
+    final db = await database;
+    final rows = await db.query(
+      'sync_history',
+      orderBy: 'synced_at DESC',
+      limit: limit,
+    );
+    return rows.map((r) => SyncHistoryEntry(
+      id: r['id'] as int,
+      syncedAt: DateTime.fromMillisecondsSinceEpoch(r['synced_at'] as int),
+      recordsSent: r['records_sent'] as int,
+      recordsAccepted: r['records_accepted'] as int,
+      recordsDuplicate: r['records_duplicate'] as int,
+      recordsFailed: r['records_failed'] as int,
+      status: r['status'] as String,
+    )).toList();
+  }
+
   OfflineCheckpoint _rowToCheckpoint(Map<String, dynamic> r) {
     return OfflineCheckpoint(
       id: r['id'] as String,
@@ -600,4 +670,27 @@ class LocalDb {
       status: r['status'] as String,
     );
   }
+}
+
+/// Entree dans l'historique de synchronisation (US 3.1).
+class SyncHistoryEntry {
+  final int id;
+  final DateTime syncedAt;
+  final int recordsSent;
+  final int recordsAccepted;
+  final int recordsDuplicate;
+  final int recordsFailed;
+  final String status;
+
+  const SyncHistoryEntry({
+    required this.id,
+    required this.syncedAt,
+    required this.recordsSent,
+    required this.recordsAccepted,
+    required this.recordsDuplicate,
+    required this.recordsFailed,
+    required this.status,
+  });
+
+  bool get isSuccess => status == 'SUCCESS';
 }

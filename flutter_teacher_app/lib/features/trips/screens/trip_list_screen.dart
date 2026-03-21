@@ -10,6 +10,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../core/services/sync_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../models/offline_bundle.dart';
@@ -61,6 +62,8 @@ class _TripListBody extends StatelessWidget {
               onPressed: () => context.push('/nfc-test'),
             ),
           ],
+          // Bouton sync (US 3.1)
+          _SyncButton(),
           // Bouton rafraichir
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -114,6 +117,8 @@ class _TripListBody extends StatelessWidget {
                 ),
               ],
             ),
+          // Banner de synchronisation (US 3.1)
+          const _SyncBanner(),
           Expanded(
             child: switch (provider.listState) {
               TripListState.loading => const _LoadingView(),
@@ -420,6 +425,180 @@ class _ErrorBanner extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ----------------------------------------------------------------
+// Widgets de synchronisation (US 3.1)
+// ----------------------------------------------------------------
+
+/// Bouton sync dans l'AppBar avec badge du nombre de presences en attente.
+class _SyncButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final sync = context.watch<SyncProvider>();
+
+    // Pas de presences en attente et pas en cours → icone historique seule
+    if (!sync.hasPending && sync.status != SyncStatus.syncing) {
+      return IconButton(
+        icon: const Icon(Icons.history),
+        tooltip: 'Historique sync',
+        onPressed: () => context.push('/sync-history'),
+      );
+    }
+
+    return Stack(
+      children: [
+        GestureDetector(
+          onLongPress: () => context.push('/sync-history'),
+          child: IconButton(
+            icon: sync.status == SyncStatus.syncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.sync),
+            tooltip: 'Synchroniser (appui long: historique)',
+            onPressed: sync.status == SyncStatus.syncing
+                ? null
+                : () => sync.syncNow(),
+          ),
+        ),
+        if (sync.hasPending)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                '${sync.pendingCount}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Banner informatif affiché sous l'AppBar quand des presences sont en attente.
+class _SyncBanner extends StatelessWidget {
+  const _SyncBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = context.watch<SyncProvider>();
+
+    // Rien a afficher si tout est synced et pas d'erreur
+    if (!sync.hasPending &&
+        sync.status != SyncStatus.syncing &&
+        sync.status != SyncStatus.error &&
+        sync.status != SyncStatus.synced) {
+      return const SizedBox.shrink();
+    }
+
+    // Sync reussie → bref message vert avec lien vers historique
+    if (sync.status == SyncStatus.synced && !sync.hasPending) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: Colors.green.shade600,
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Toutes les presences sont synchronisees',
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.push('/sync-history'),
+              child: const Text('Historique', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Erreur
+    if (sync.status == SyncStatus.error || sync.status == SyncStatus.offline) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: Colors.orange.shade700,
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                sync.lastError ?? 'Erreur de synchronisation',
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: () => sync.syncNow(),
+              child: const Text('Reessayer', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Presences en attente
+    if (sync.hasPending) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: const Color(0xFF1A73E8),
+        child: Row(
+          children: [
+            if (sync.status == SyncStatus.syncing) ...[
+              const SizedBox(
+                width: 14, height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Synchronisation en cours...',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ] else ...[
+              const Icon(Icons.cloud_upload_outlined, color: Colors.white, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${sync.pendingCount} presence${sync.pendingCount > 1 ? 's' : ''} en attente de synchronisation',
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              TextButton(
+                onPressed: () => sync.syncNow(),
+                child: const Text('Synchroniser', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 

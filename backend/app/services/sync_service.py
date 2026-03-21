@@ -26,6 +26,7 @@ def sync_attendances(
     db: Session,
     scans: List[ScanItem],
     device_id: str = "",
+    scanned_by: uuid_module.UUID | None = None,
 ) -> SyncResponse:
     """
     Insère en batch les scans reçus depuis un appareil Flutter.
@@ -71,6 +72,7 @@ def sync_attendances(
             checkpoint_id=scan.checkpoint_id,
             student_id=scan.student_id,
             scanned_at=scan.scanned_at,
+            scanned_by=scanned_by,
             scan_method=scan.scan_method,
             scan_sequence=scan.scan_sequence,
             is_manual=scan.is_manual,

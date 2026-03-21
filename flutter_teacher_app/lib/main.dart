@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'core/services/sync_provider.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/nfc_encoding/screens/nfc_encoding_screen.dart';
 import 'features/nfc_encoding/screens/token_stock_mobile_screen.dart';
 import 'features/nfc_test/screens/nfc_test_screen.dart';
+import 'features/sync/screens/sync_history_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
 import 'features/scan/screens/checkpoint_selection_screen.dart';
 import 'features/scan/screens/scan_screen.dart';
@@ -20,8 +22,24 @@ import 'features/scan/providers/scan_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final authProvider = AuthProvider();
+  final syncProvider = SyncProvider();
   await authProvider.init();
-  runApp(SchoolTrackApp(authProvider: authProvider));
+
+  // Demarrer l'auto-sync si deja authentifie
+  if (authProvider.isAuthenticated) {
+    syncProvider.startAutoSync();
+  }
+
+  // Ecouter les changements d'auth pour start/stop auto-sync
+  authProvider.addListener(() {
+    if (authProvider.isAuthenticated) {
+      syncProvider.startAutoSync();
+    } else {
+      syncProvider.stopAutoSync();
+    }
+  });
+
+  runApp(SchoolTrackApp(authProvider: authProvider, syncProvider: syncProvider));
 }
 
 // ----------------------------------------------------------------
@@ -66,6 +84,12 @@ GoRouter _buildRouter(AuthProvider auth) {
       GoRoute(
         path: '/nfc-test',
         builder: (context, state) => const NfcTestScreen(),
+      ),
+
+      // US 3.1 : historique des synchronisations
+      GoRoute(
+        path: '/sync-history',
+        builder: (context, state) => const SyncHistoryScreen(),
       ),
 
       // US 2.2 : selection checkpoint puis scan
@@ -114,13 +138,21 @@ GoRouter _buildRouter(AuthProvider auth) {
 
 class SchoolTrackApp extends StatelessWidget {
   final AuthProvider authProvider;
+  final SyncProvider syncProvider;
 
-  const SchoolTrackApp({super.key, required this.authProvider});
+  const SchoolTrackApp({
+    super.key,
+    required this.authProvider,
+    required this.syncProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: authProvider,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: authProvider),
+        ChangeNotifierProvider.value(value: syncProvider),
+      ],
       child: MaterialApp.router(
         title: 'SchoolTrack',
         debugShowCheckedModeBanner: false,
