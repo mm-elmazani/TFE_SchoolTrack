@@ -123,6 +123,20 @@ def get_token_stats(
     return assignment_service.get_token_stats(db)
 
 
+@router.get("/tokens/next-sequence",
+            summary="Prochain numero de sequence disponible pour un prefixe")
+def get_next_sequence(
+    prefix: str = Query("ST", description="Prefixe du token_uid (ex: ST)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne le prochain numero de sequence disponible pour le prefixe donne.
+    Exemple : si le dernier token est ST-042, retourne {"next_sequence": 43}.
+    """
+    return assignment_service.get_next_sequence(db, prefix)
+
+
 @router.delete("/tokens/{token_id}", status_code=204,
                summary="Supprimer un token du stock")
 def delete_token(

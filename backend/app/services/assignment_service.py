@@ -430,6 +430,28 @@ def get_token_stats(db: Session) -> TokenStatsResponse:
     )
 
 
+def get_next_sequence(db: Session, prefix: str) -> dict:
+    """
+    Retourne le prochain numero de sequence disponible pour un prefixe donne.
+    Scanne les token_uid existants au format PREFIX-NNN et retourne max + 1.
+    """
+    import re
+    pattern = f"{prefix}-"
+    rows = db.execute(
+        select(Token.token_uid).where(Token.token_uid.like(f"{pattern}%"))
+    ).scalars().all()
+
+    max_seq = 0
+    for uid in rows:
+        # Extraire la partie numerique apres le prefixe
+        suffix = uid[len(pattern):]
+        match = re.match(r"^(\d+)$", suffix)
+        if match:
+            max_seq = max(max_seq, int(match.group(1)))
+
+    return {"prefix": prefix, "next_sequence": max_seq + 1}
+
+
 def delete_token(db: Session, token_id: int) -> None:
     """
     Supprime un token du stock par son id.
