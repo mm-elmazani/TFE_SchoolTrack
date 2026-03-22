@@ -17,12 +17,12 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { CreateTripDialog } from '../components/CreateTripDialog';
 import { UpdateTripDialog } from '../components/UpdateTripDialog';
 import { ArchiveTripDialog } from '../components/ArchiveTripDialog';
-import { 
-  LayoutGrid, 
-  List as ListIcon, 
-  Plus, 
-  MapPin, 
-  Calendar, 
+import {
+  LayoutGrid,
+  List as ListIcon,
+  Plus,
+  MapPin,
+  Calendar,
   ChevronRight,
   Loader2,
   Search,
@@ -30,7 +30,9 @@ import {
   Clock,
   CheckCircle2,
   Activity,
-  Pencil
+  Pencil,
+  Download,
+  FileArchive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +53,38 @@ export default function TripListScreen() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const downloadWithAuth = (url: string, filename: string) => {
+    const token = useAuthStore.getState().token;
+    const a = document.createElement('a');
+    // On utilise fetch pour injecter le header auth puis telecharger via blob
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.blob())
+      .then(blob => {
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+  };
+
+  const handleExportSingle = (trip: Trip) => {
+    downloadWithAuth(tripApi.getExportUrl(trip.id), `presences-${trip.destination}.csv`);
+  };
+
+  const handleExportBulk = () => {
+    if (selectedIds.size === 0) return;
+    downloadWithAuth(tripApi.getBulkExportUrl([...selectedIds]), `presences-export.zip`);
+  };
 
   const { data: trips, isLoading, error } = useQuery({
     queryKey: ['trips'],
@@ -112,15 +146,27 @@ export default function TripListScreen() {
           <h2 className="text-3xl font-bold tracking-tight text-schooltrack-primary font-heading">Voyages</h2>
           <p className="text-slate-500 font-sans">Planifiez, gérez et suivez les sorties et voyages scolaires.</p>
         </div>
-        {isAdmin && (
-          <Button 
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-schooltrack-action hover:bg-blue-700 text-white rounded-xl h-11 px-6 shadow-md shadow-blue-900/10 flex items-center gap-2 transition-all active:scale-95 border-0 font-sans"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Nouveau Voyage</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {isAdmin && selectedIds.size > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleExportBulk}
+              className="rounded-xl h-11 px-5 flex items-center gap-2 font-sans"
+            >
+              <FileArchive className="w-4 h-4" />
+              <span>Export {selectedIds.size} voyage{selectedIds.size > 1 ? 's' : ''}</span>
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-schooltrack-action hover:bg-blue-700 text-white rounded-xl h-11 px-6 shadow-md shadow-blue-900/10 flex items-center gap-2 transition-all active:scale-95 border-0 font-sans"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nouveau Voyage</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Summary */}
@@ -240,31 +286,43 @@ export default function TripListScreen() {
                       
                       {isAdmin && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 bg-slate-50 border border-slate-100 rounded-lg text-slate-400 hover:text-green-600 hover:bg-white hover:shadow-sm"
+                            title="Export CSV"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleExportSingle(trip); }}
+                          >
+                            <Download className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-7 w-7 bg-slate-50 border border-slate-100 rounded-lg text-slate-400 hover:text-schooltrack-primary hover:bg-white hover:shadow-sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setTripToUpdate(trip);
-                            }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTripToUpdate(trip); }}
                           >
                             <Pencil className="w-3 h-3" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-7 w-7 bg-slate-50 border border-slate-100 rounded-lg text-slate-400 hover:text-schooltrack-warning hover:bg-white hover:shadow-sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setTripToArchive(trip);
-                            }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTripToArchive(trip); }}
                           >
                             <Archive className="w-3 h-3" />
                           </Button>
                         </div>
+                      )}
+                      {isAdmin && (
+                        <label className="flex items-center gap-1 mt-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(trip.id)}
+                            onChange={(e) => { e.stopPropagation(); toggleSelect(trip.id); }}
+                            className="rounded border-slate-300 text-schooltrack-primary"
+                          />
+                          <span className="text-[10px] text-slate-400">Selectionner</span>
+                        </label>
                       )}
                     </div>
                   </div>
@@ -337,18 +395,27 @@ export default function TripListScreen() {
                           </Link>
                           {isAdmin && trip.status !== 'ARCHIVED' && (
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-400 hover:text-green-600 rounded-lg"
+                                title="Export CSV"
+                                onClick={() => handleExportSingle(trip)}
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 text-slate-400 hover:text-schooltrack-primary rounded-lg"
                                 title="Modifier"
                                 onClick={() => setTripToUpdate(trip)}
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className="h-8 w-8 text-slate-400 hover:text-schooltrack-warning rounded-lg"
                                 title="Archiver"
                                 onClick={() => setTripToArchive(trip)}

@@ -14,6 +14,9 @@ import UserListScreen from '@/features/users/screens/UserListScreen';
 import AuditLogScreen from '@/features/audit/screens/AuditLogScreen';
 import TokenManagementScreen from '@/features/tokens/screens/TokenManagementScreen';
 import TokenStockScreen from '@/features/tokens/screens/TokenStockScreen';
+import AlertScreen from '@/features/alerts/screens/AlertScreen';
+import CheckpointTimelineScreen from '@/features/trips/screens/CheckpointTimelineScreen';
+import RoleRedirect from '@/shared/components/RoleRedirect';
 
 export const router = createBrowserRouter([
   {
@@ -30,7 +33,23 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '',
-        element: <DashboardScreen />,
+        element: <RoleRedirect />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute requireAdmin>
+            <DashboardScreen />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'alerts',
+        element: (
+          <ProtectedRoute requireAdmin>
+            <AlertScreen />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'students/import',
@@ -55,6 +74,14 @@ export const router = createBrowserRouter([
       {
         path: 'trips/:id',
         element: <TripDetailScreen />,
+      },
+      {
+        path: 'trips/:id/checkpoints',
+        element: (
+          <ProtectedRoute requireAdmin>
+            <CheckpointTimelineScreen />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'classes',

@@ -43,4 +43,44 @@ export const tripApi = {
   archive: async (id: string): Promise<void> => {
     await apiClient.delete(`/api/v1/trips/${id}`);
   },
+
+  getCheckpointsSummary: async (tripId: string): Promise<CheckpointsSummary> => {
+    const response = await apiClient.get(`/api/v1/trips/${tripId}/checkpoints-summary`);
+    return response.data;
+  },
+
+  getExportUrl: (tripId: string): string => {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    return `${base}/api/v1/trips/${tripId}/export`;
+  },
+
+  getBulkExportUrl: (tripIds: string[]): string => {
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    return `${base}/api/v1/trips/export-all?trip_ids=${tripIds.join(',')}`;
+  },
 };
+
+export interface CheckpointSummaryItem {
+  id: string;
+  name: string;
+  sequence_order: number;
+  status: string;
+  total_expected: number;
+  total_present: number;
+  attendance_rate: number;
+  closed_at: string | null;
+  created_at: string;
+  created_by_email: string | null;
+  duration_minutes: number | null;
+}
+
+export interface CheckpointsSummary {
+  trip_id: string;
+  trip_destination: string;
+  total_checkpoints: number;
+  active_checkpoints: number;
+  closed_checkpoints: number;
+  total_scans: number;
+  avg_duration_minutes: number | null;
+  checkpoints: CheckpointSummaryItem[];
+}

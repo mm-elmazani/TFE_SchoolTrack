@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { 
-  Users, 
-  School, 
-  Map as MapIcon, 
-  Rss, 
-  Upload, 
-  UserCog, 
-  ShieldCheck, 
-  LogOut, 
-  Menu, 
+import {
+  Users,
+  School,
+  Map as MapIcon,
+  Rss,
+  Upload,
+  UserCog,
+  ShieldCheck,
+  LogOut,
+  Menu,
   ChevronRight,
   LayoutDashboard,
-  Package
+  Package,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,7 +26,8 @@ export default function AppScaffold() {
   const isAdmin = getIsAdmin();
 
   const navItems = [
-    { label: 'Tableau de bord', path: '/', icon: LayoutDashboard },
+    ...(isAdmin ? [{ label: 'Vue d\'ensemble', path: '/dashboard', icon: LayoutDashboard }] : []),
+    ...(isAdmin ? [{ label: 'Alertes', path: '/alerts', icon: Bell }] : []),
     { label: 'Élèves', path: '/students', icon: Users },
     { label: 'Classes', path: '/classes', icon: School },
     { label: 'Voyages', path: '/trips', icon: MapIcon },
@@ -39,11 +41,14 @@ export default function AppScaffold() {
     { label: 'Logs d\'Audit', path: '/audit', icon: ShieldCheck },
   ];
 
-  const navLinkClass = (path: string) => 
+  const isActive = (path: string) =>
+    location.pathname === path || (path.length > 1 && location.pathname.startsWith(path));
+
+  const navLinkClass = (path: string) =>
     cn(
       "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-      location.pathname === path || (path !== '/' && location.pathname.startsWith(path))
-        ? "bg-schooltrack-primary text-white shadow-md shadow-blue-900/20" 
+      isActive(path)
+        ? "bg-schooltrack-primary text-white shadow-md shadow-blue-900/20"
         : "text-slate-600 hover:bg-blue-50 hover:text-schooltrack-primary"
     );
 
@@ -65,9 +70,9 @@ export default function AppScaffold() {
             className={navLinkClass(item.path)}
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            <item.icon className={cn("w-5 h-5", location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path)) ? "text-white" : "text-slate-400 group-hover:text-schooltrack-primary")} />
+            <item.icon className={cn("w-5 h-5", isActive(item.path) ? "text-white" : "text-slate-400 group-hover:text-schooltrack-primary")} />
             <span className="font-medium">{item.label}</span>
-            {(location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path))) && <ChevronRight className="ml-auto w-4 h-4" />}
+            {isActive(item.path) && <ChevronRight className="ml-auto w-4 h-4" />}
           </Link>
         ))}
 

@@ -37,7 +37,7 @@ export const auditApi = {
   },
 
   exportLogs: async (params?: Omit<AuditLogFilters, 'page' | 'page_size'>): Promise<Blob> => {
-    const response = await apiClient.get('/api/v1/audit/export', { 
+    const response = await apiClient.get('/api/v1/audit/logs/export', {
       params,
       responseType: 'blob' 
     });

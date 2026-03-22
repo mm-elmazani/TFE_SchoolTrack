@@ -15,7 +15,6 @@ import {
   School, 
   CheckCircle2, 
   Clock, 
-  FileText, 
   Plus, 
   Trash2,
   Loader2,
@@ -110,10 +109,14 @@ export default function TripDetailScreen() {
               Modifier le voyage
             </Button>
           )}
-          <Button className="bg-schooltrack-action hover:bg-blue-700 text-white rounded-xl h-11 px-6 shadow-md shadow-blue-900/10 transition-all active:scale-95 border-0">
-            <FileText className="w-4 h-4 mr-2" />
-            Rapport PDF
-          </Button>
+          {isAdmin && (
+            <Link to={`/trips/${trip.id}/checkpoints`}>
+              <Button className="bg-schooltrack-action hover:bg-blue-700 text-white rounded-xl h-11 px-6 shadow-md shadow-blue-900/10 transition-all active:scale-95 border-0">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Timeline Checkpoints
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
