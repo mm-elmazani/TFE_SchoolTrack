@@ -14,7 +14,7 @@ export interface Trip {
   description: string | null;
   status: 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
   total_students: number;
-  classes: ClassSummary[];
+  classes?: ClassSummary[];
   created_at: string;
   updated_at: string;
 }
@@ -60,17 +60,18 @@ export const tripApi = {
   },
 };
 
-export interface CheckpointSummaryItem {
+export interface CheckpointTimelineEntry {
   id: string;
   name: string;
+  description: string | null;
   sequence_order: number;
   status: string;
-  total_expected: number;
-  total_present: number;
-  attendance_rate: number;
+  created_at: string | null;
+  started_at: string | null;
   closed_at: string | null;
-  created_at: string;
-  created_by_email: string | null;
+  created_by_name: string | null;
+  scan_count: number;
+  student_count: number;
   duration_minutes: number | null;
 }
 
@@ -82,5 +83,5 @@ export interface CheckpointsSummary {
   closed_checkpoints: number;
   total_scans: number;
   avg_duration_minutes: number | null;
-  checkpoints: CheckpointSummaryItem[];
+  timeline: CheckpointTimelineEntry[];
 }

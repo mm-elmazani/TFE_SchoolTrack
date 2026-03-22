@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { tripApi } from '../api/tripApi';
+import { tripApi, type CheckpointTimelineEntry } from '../api/tripApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,21 +8,24 @@ import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useState } from 'react';
 import { UpdateTripDialog } from '../components/UpdateTripDialog';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Users, 
-  School, 
-  CheckCircle2, 
-  Clock, 
-  Plus, 
+import {
+  ArrowLeft,
+  Calendar,
+  Users,
+  School,
+  CheckCircle2,
+  Clock,
+  Plus,
   Trash2,
   Loader2,
   Info,
   Map as MapIcon,
   ChevronRight,
   Activity,
-  Pencil
+  Pencil,
+  ScanLine,
+  Timer,
+  Circle
 } from 'lucide-react';
 
 export default function TripDetailScreen() {
@@ -35,6 +38,13 @@ export default function TripDetailScreen() {
     queryKey: ['trips', id],
     queryFn: () => tripApi.getById(id!),
     enabled: !!id,
+  });
+
+  const { data: checkpointsSummary, isLoading: isLoadingCheckpoints } = useQuery({
+    queryKey: ['trips', id, 'checkpoints-summary'],
+    queryFn: () => tripApi.getCheckpointsSummary(id!),
+    enabled: !!id,
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) return (
@@ -153,7 +163,7 @@ export default function TripDetailScreen() {
                   )}
                 </CardHeader>
                 <CardContent className="p-0 font-sans">
-                  {trip.classes.length === 0 ? (
+                  {!trip.classes || trip.classes.length === 0 ? (
                     <div className="p-12 text-center">
                       <School className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                       <p className="text-slate-500">Aucune classe n'est assignée à ce voyage.</p>
@@ -206,20 +216,62 @@ export default function TripDetailScreen() {
                 <CardHeader className="flex flex-row items-center justify-between border-b border-slate-50">
                   <div className="space-y-1">
                     <CardTitle className="text-lg text-schooltrack-primary font-heading">Étapes du voyage</CardTitle>
-                    <CardDescription className="font-sans">Points de passage et de validation des présences.</CardDescription>
+                    <CardDescription className="font-sans">
+                      {checkpointsSummary
+                        ? `${checkpointsSummary.total_checkpoints} checkpoint(s) — ${checkpointsSummary.total_scans} scans`
+                        : 'Points de passage et de validation des présences.'}
+                    </CardDescription>
                   </div>
                   {isAdmin && (
-                    <Button size="sm" variant="outline" className="rounded-lg h-9 border-slate-200 font-sans">
-                      <Plus className="w-4 h-4 mr-1.5" /> Nouveau point
-                    </Button>
+                    <Link to={`/trips/${trip.id}/checkpoints`}>
+                      <Button size="sm" variant="outline" className="rounded-lg h-9 border-slate-200 font-sans">
+                        <MapIcon className="w-4 h-4 mr-1.5" /> Voir la timeline
+                      </Button>
+                    </Link>
                   )}
                 </CardHeader>
-                <CardContent className="p-12 text-center font-sans">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <MapIcon className="w-8 h-8 text-slate-200" />
-                  </div>
-                  <p className="text-slate-500 font-medium">Gestion des points de contrôle</p>
-                  <p className="text-sm text-slate-400 max-w-xs mx-auto mt-1">Configurez les lieux et horaires de scan pour ce voyage spécifique.</p>
+                <CardContent className="p-0 font-sans">
+                  {isLoadingCheckpoints ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+                    </div>
+                  ) : !checkpointsSummary?.timeline?.length ? (
+                    <div className="p-12 text-center">
+                      <MapIcon className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                      <p className="text-slate-500">Aucun checkpoint enregistré pour ce voyage.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-50">
+                      {checkpointsSummary.timeline.map((cp: CheckpointTimelineEntry) => {
+                        const isClosed = cp.status === 'CLOSED';
+                        return (
+                          <div key={cp.id} className="flex justify-between items-center p-4 hover:bg-slate-50/50 transition-colors group">
+                            <div className="flex items-center gap-4">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isClosed ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                                {isClosed ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-bold text-slate-900">{cp.name}</p>
+                                  <Badge variant="outline" className={`text-[10px] py-0 h-4 ${isClosed ? 'bg-green-50 text-green-700 border-green-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                    {isClosed ? 'Fermé' : 'Actif'}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+                                  <span className="flex items-center gap-1"><ScanLine className="w-3 h-3" /> {cp.scan_count} scans</span>
+                                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {cp.student_count} eleves</span>
+                                  {cp.duration_minutes != null && (
+                                    <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {cp.duration_minutes.toFixed(0)} min</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-xs text-slate-400">{cp.scan_count} scan{cp.scan_count !== 1 ? 's' : ''}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -250,7 +302,7 @@ export default function TripDetailScreen() {
                 </div>
                 <div className="bg-green-50/50 p-4 rounded-2xl border border-green-100 text-center">
                   <p className="text-[10px] text-schooltrack-success uppercase font-bold tracking-wider mb-1">Classes</p>
-                  <p className="text-3xl font-black text-schooltrack-success font-heading">{trip.classes.length}</p>
+                  <p className="text-3xl font-black text-schooltrack-success font-heading">{trip.classes?.length ?? 0}</p>
                 </div>
               </div>
 

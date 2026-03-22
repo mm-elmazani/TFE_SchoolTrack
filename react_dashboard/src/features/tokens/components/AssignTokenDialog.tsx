@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { tokenApi, type TripStudentInfo } from '../api/tokenApi';
 import {
   Dialog,
@@ -55,6 +55,14 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
   });
 
   const assignmentType = watch('assignment_type');
+  const isPhysical = assignmentType === 'NFC_PHYSICAL' || assignmentType === 'QR_PHYSICAL';
+
+  // Fetch available physical tokens when NFC or QR physical is selected
+  const { data: availableTokens, isLoading: isLoadingTokens } = useQuery({
+    queryKey: ['tokens', 'available', assignmentType],
+    queryFn: () => tokenApi.getAllTokens({ status: 'AVAILABLE', token_type: assignmentType }),
+    enabled: open && isPhysical,
+  });
 
   useEffect(() => {
     if (open) {
@@ -153,12 +161,41 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
 
           <div className="space-y-2">
             <Label htmlFor="token_uid" className="text-slate-700 font-bold">UID du Token</Label>
-            <Input 
-              id="token_uid" 
-              {...register('token_uid')} 
-              placeholder="Scanner ou saisir l'identifiant"
-              className="rounded-xl border-slate-200 h-11 focus:ring-schooltrack-primary font-mono" 
-            />
+            {isPhysical && availableTokens && availableTokens.length > 0 ? (
+              <>
+                <Select
+                  value={watch('token_uid') || ''}
+                  onValueChange={(val) => setValue('token_uid', val, { shouldValidate: true })}
+                >
+                  <SelectTrigger className="rounded-xl border-slate-200 h-11 font-mono">
+                    <SelectValue placeholder="Choisir un bracelet disponible" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200 shadow-xl max-h-[200px]">
+                    {availableTokens.map((token: any) => (
+                      <SelectItem key={token.id} value={token.token_uid} className="font-mono">
+                        {token.token_uid}
+                        {token.hardware_uid && (
+                          <span className="text-slate-400 ml-2 text-xs">({token.hardware_uid})</span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-slate-400 font-sans">{availableTokens.length} bracelet(s) disponible(s)</p>
+              </>
+            ) : isPhysical && isLoadingTokens ? (
+              <div className="flex items-center gap-2 h-11 px-3 border border-slate-200 rounded-xl">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                <span className="text-sm text-slate-400 font-sans">Chargement des bracelets...</span>
+              </div>
+            ) : (
+              <Input
+                id="token_uid"
+                {...register('token_uid')}
+                placeholder="Scanner ou saisir l'identifiant"
+                className="rounded-xl border-slate-200 h-11 focus:ring-schooltrack-primary font-mono"
+              />
+            )}
             {errors.token_uid && <p className="text-schooltrack-error text-[10px] font-bold mt-1 uppercase tracking-tight font-sans">{errors.token_uid.message}</p>}
           </div>
 

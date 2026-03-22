@@ -12,16 +12,36 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Loader2, 
-  Package, 
-  CheckCircle, 
-  User, 
-  AlertTriangle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import {
+  Loader2,
+  Package,
+  CheckCircle,
+  User,
+  AlertTriangle,
   SearchX,
   RefreshCw,
-  Trash2
-  } from 'lucide-react';import { cn } from '@/lib/utils';
+  Trash2,
+  Pencil,
+  Rss,
+  QrCode,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export default function TokenStockScreen() {
@@ -31,6 +51,8 @@ export default function TokenStockScreen() {
 
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [editingToken, setEditingToken] = useState<any>(null);
+  const [editStatus, setEditStatus] = useState<string>('');
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['tokenStats'],
@@ -258,26 +280,21 @@ export default function TokenStockScreen() {
                       <TableCell className="text-right py-4 px-6">
                         {isAdmin && token.status !== 'ASSIGNED' ? (
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {/* Action select for quick status change */}
-                            <select
-                              className="h-8 px-2 text-[11px] font-medium bg-white border border-slate-200 rounded-lg text-slate-600 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-schooltrack-primary/20 uppercase tracking-wider"
-                              value=""
-                              onChange={(e) => {
-                                if(e.target.value) {
-                                  updateStatusMutation.mutate({ id: token.id, status: e.target.value });
-                                }
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-schooltrack-primary hover:bg-blue-50 rounded-lg shrink-0"
+                              onClick={() => {
+                                setEditingToken(token);
+                                setEditStatus(token.status);
                               }}
-                              disabled={updateStatusMutation.isPending}
                             >
-                              <option value="" disabled>Changer statut...</option>
-                              {token.status !== 'AVAILABLE' && <option value="AVAILABLE">Mettre Disponible</option>}
-                              {token.status !== 'DAMAGED' && <option value="DAMAGED">Mettre Endommagé</option>}
-                              {token.status !== 'LOST' && <option value="LOST">Mettre Perdu</option>}
-                            </select>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
 
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-8 w-8 text-slate-400 hover:text-schooltrack-error hover:bg-red-50 rounded-lg shrink-0"
                               onClick={() => {
                                 if(confirm(`Supprimer définitivement le bracelet ${token.token_uid} ?`)) {
@@ -301,6 +318,90 @@ export default function TokenStockScreen() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Token Dialog */}
+      <Dialog open={!!editingToken} onOpenChange={(open) => !open && setEditingToken(null)}>
+        <DialogContent className="sm:max-w-[425px] rounded-2xl border-0 shadow-2xl overflow-hidden p-0">
+          <div className="h-2 bg-schooltrack-primary w-full" />
+          <div className="p-6">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl font-bold text-schooltrack-primary font-heading">Modifier le bracelet</DialogTitle>
+              <DialogDescription className="font-sans">
+                Modifiez le statut de ce bracelet physique.
+              </DialogDescription>
+            </DialogHeader>
+
+            {editingToken && (
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-bold">Token UID</Label>
+                  <div className="h-11 px-3 flex items-center bg-slate-50 border border-slate-200 rounded-xl">
+                    <code className="text-sm font-bold text-slate-700 font-mono">{editingToken.token_uid}</code>
+                  </div>
+                </div>
+
+                {editingToken.hardware_uid && (
+                  <div className="space-y-2">
+                    <Label className="text-slate-700 font-bold">Hardware UID</Label>
+                    <div className="h-11 px-3 flex items-center bg-slate-50 border border-slate-200 rounded-xl">
+                      <code className="text-xs text-slate-500 font-mono">{editingToken.hardware_uid}</code>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-bold">Type</Label>
+                  <div className="h-11 px-3 flex items-center bg-slate-50 border border-slate-200 rounded-xl gap-2">
+                    {editingToken.token_type === 'NFC_PHYSICAL'
+                      ? <><Rss className="w-4 h-4 text-blue-600" /> <span className="text-sm font-sans">NFC Physique</span></>
+                      : <><QrCode className="w-4 h-4 text-purple-600" /> <span className="text-sm font-sans">QR Physique</span></>
+                    }
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-bold">Statut</Label>
+                  <Select value={editStatus} onValueChange={setEditStatus}>
+                    <SelectTrigger className="rounded-xl border-slate-200 h-11 font-sans">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-200 shadow-xl">
+                      <SelectItem value="AVAILABLE">Disponible</SelectItem>
+                      <SelectItem value="DAMAGED">Endommagé</SelectItem>
+                      <SelectItem value="LOST">Perdu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-3 pt-4 border-t border-slate-50 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingToken(null)}
+                className="rounded-xl h-11 border-slate-200 flex-1 hover:bg-slate-50 font-sans"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={() => {
+                  if (editingToken && editStatus !== editingToken.status) {
+                    updateStatusMutation.mutate({ id: editingToken.id, status: editStatus });
+                  }
+                  setEditingToken(null);
+                }}
+                disabled={updateStatusMutation.isPending}
+                className="rounded-xl h-11 bg-schooltrack-primary hover:bg-blue-900 text-white px-8 flex-1 shadow-lg shadow-blue-900/20 transition-all active:scale-95 font-sans border-0"
+              >
+                {updateStatusMutation.isPending ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Mise à jour...</>
+                ) : 'Sauvegarder'}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

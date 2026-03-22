@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,24 +53,22 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
     enabled: open,
   });
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<TripForm>({
+  const tripValues: TripForm | undefined = trip && open ? {
+    destination: trip.destination,
+    date: trip.date,
+    description: trip.description || '',
+    status: trip.status,
+    class_ids: trip.classes?.map(c => c.id) || [],
+  } : undefined;
+
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<TripForm>({
     resolver: zodResolver(tripSchema),
+    values: tripValues,
+    resetOptions: { keepDirtyValues: true },
   });
 
   const currentStatus = watch('status');
   const selectedClassIds = watch('class_ids') || [];
-
-  useEffect(() => {
-    if (trip && open) {
-      reset({
-        destination: trip.destination,
-        date: trip.date,
-        description: trip.description || '',
-        status: trip.status,
-        class_ids: trip.classes?.map(c => c.id) || [],
-      });
-    }
-  }, [trip, open, reset]);
 
   const toggleClass = (id: string) => {
     const current = [...selectedClassIds];
@@ -232,27 +230,34 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
               />
             </div>
 
-            <DialogFooter className="gap-3 pt-4 border-t border-slate-50 mt-6">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-                className="rounded-xl h-11 border-slate-200 flex-1 hover:bg-slate-50 font-sans"
-              >
-                Annuler
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={updateMutation.isPending}
-                className="rounded-xl h-11 bg-schooltrack-primary hover:bg-blue-900 text-white px-8 flex-1 shadow-lg shadow-blue-900/20 transition-all active:scale-95 font-sans"
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Mise à jour...
-                  </>
-                ) : 'Sauvegarder les changements'}
-              </Button>
+            <DialogFooter className="gap-3 pt-4 border-t border-slate-50 mt-6 flex-col">
+              {Object.keys(errors).length > 0 && !serverError && (
+                <p className="text-schooltrack-error text-xs font-bold text-center w-full animate-in fade-in duration-200">
+                  Veuillez corriger les erreurs ci-dessus avant de sauvegarder.
+                </p>
+              )}
+              <div className="flex gap-3 w-full">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-xl h-11 border-slate-200 flex-1 hover:bg-slate-50 font-sans"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateMutation.isPending}
+                  className="rounded-xl h-11 bg-schooltrack-primary hover:bg-blue-900 text-white px-8 flex-1 shadow-lg shadow-blue-900/20 transition-all active:scale-95 font-sans"
+                >
+                  {updateMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Mise à jour...
+                    </>
+                  ) : 'Sauvegarder les changements'}
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </div>

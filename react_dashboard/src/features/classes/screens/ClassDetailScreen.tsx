@@ -5,21 +5,22 @@ import { studentApi } from '@/features/students/api/studentApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { useState } from 'react';
-import { 
-  ArrowLeft, 
-  Users, 
-  Mail, 
-  UserPlus, 
+import { useState, useEffect } from 'react';
+import {
+  ArrowLeft,
+  Users,
+  Mail,
+  UserPlus,
   Plus,
-  Trash2, 
-  Loader2, 
-  School, 
-  Calendar, 
-  Search, 
-  X, 
+  Trash2,
+  Loader2,
+  School,
+  Calendar,
+  Search,
+  X,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,49 @@ export default function ClassDetailScreen() {
     queryKey: ['students'],
     queryFn: studentApi.getAll,
   });
+
+  // Fetch all classes to detect students already assigned elsewhere
+  const { data: allClasses } = useQuery({
+    queryKey: ['classes'],
+    queryFn: classApi.getAll,
+  });
+
+  // Build a map of studentId → className for students in OTHER classes
+  const [studentClassMap, setStudentClassMap] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!allClasses || !id) return;
+    const otherClasses = allClasses.filter(c => c.id !== id);
+    if (otherClasses.length === 0) {
+      setStudentClassMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    const fetchMemberships = async () => {
+      const map = new Map<string, string>();
+      await Promise.all(
+        otherClasses.map(async (cls) => {
+          try {
+            const studentIds = await classApi.getStudents(cls.id);
+            studentIds.forEach((sid: string) => map.set(sid, cls.name));
+          } catch { /* ignore errors for individual classes */ }
+        })
+      );
+      if (!cancelled) setStudentClassMap(map);
+    };
+    fetchMemberships();
+    return () => { cancelled = true; };
+  }, [allClasses, id]);
+
+  const handleAssignStudent = (student: { id: string; first_name: string; last_name: string }) => {
+    const existingClass = studentClassMap.get(student.id);
+    if (existingClass) {
+      if (!confirm(`${student.first_name} ${student.last_name} est déjà assigné(e) à la classe "${existingClass}".\n\nVoulez-vous quand même l'assigner à cette classe ?`)) {
+        return;
+      }
+    }
+    assignStudentMutation.mutate({ id: student.id, name: `${student.first_name} ${student.last_name}` });
+  };
 
   const assignStudentMutation = useMutation({
     mutationFn: (student: { id: string, name: string }) => classApi.assignStudents(id!, [student.id]),
@@ -168,27 +212,39 @@ export default function ClassDetailScreen() {
                   {filteredAvailable.length === 0 ? (
                     <p className="col-span-full text-center py-8 text-sm text-slate-400 italic">Aucun élève disponible</p>
                   ) : (
-                    filteredAvailable.map(student => (
-                      <div key={student.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl hover:border-schooltrack-action/50 transition-all group">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-900 text-sm">{student.last_name} {student.first_name}</span>
-                          <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Disponible</span>
+                    filteredAvailable.map(student => {
+                      const existingClass = studentClassMap.get(student.id);
+                      return (
+                        <div key={student.id} className={cn(
+                          "flex justify-between items-center p-3 bg-white border rounded-xl hover:border-schooltrack-action/50 transition-all group",
+                          existingClass ? "border-orange-200" : "border-slate-100"
+                        )}>
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-slate-900 text-sm">{student.last_name} {student.first_name}</span>
+                            {existingClass ? (
+                              <span className="text-[10px] text-orange-500 font-semibold flex items-center gap-1">
+                                <AlertTriangle className="w-3 h-3" /> Déjà dans : {existingClass}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 uppercase tracking-tighter">Disponible</span>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-schooltrack-action hover:bg-blue-50 rounded-lg disabled:opacity-50"
+                            disabled={assignStudentMutation.isPending}
+                            onClick={() => handleAssignStudent(student)}
+                          >
+                            {assignStudentMutation.isPending && assignStudentMutation.variables?.id === student.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Plus className="w-4 h-4" />
+                            )}
+                          </Button>
                         </div>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-schooltrack-action hover:bg-blue-50 rounded-lg disabled:opacity-50"
-                          disabled={assignStudentMutation.isPending}
-                          onClick={() => assignStudentMutation.mutate({ id: student.id, name: `${student.first_name} ${student.last_name}` })}
-                        >
-                          {assignStudentMutation.isPending && assignStudentMutation.variables?.id === student.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Plus className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </CardContent>

@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { tripApi, type CheckpointSummaryItem } from '../api/tripApi';
+import { tripApi, type CheckpointTimelineEntry } from '../api/tripApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,7 +63,7 @@ export default function CheckpointTimelineScreen() {
       </div>
 
       {/* Timeline */}
-      {summary.checkpoints.length === 0 ? (
+      {!summary.timeline?.length ? (
         <p className="text-center text-slate-400 py-12">Aucun checkpoint enregistre.</p>
       ) : (
         <div className="relative ml-6">
@@ -71,7 +71,7 @@ export default function CheckpointTimelineScreen() {
           <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-slate-200" />
 
           <div className="space-y-4">
-            {summary.checkpoints.map((cp) => (
+            {summary.timeline.map((cp) => (
               <TimelineEntry key={cp.id} checkpoint={cp} />
             ))}
           </div>
@@ -107,11 +107,9 @@ function StatCard({ label, value, icon: Icon, color, bg }: {
 
 // ─── Timeline Entry ─────────────────────────────────────────────────────
 
-function TimelineEntry({ checkpoint: cp }: { checkpoint: CheckpointSummaryItem }) {
+function TimelineEntry({ checkpoint: cp }: { checkpoint: CheckpointTimelineEntry }) {
   const isClosed = cp.status === 'CLOSED';
   const dotColor = isClosed ? 'bg-green-500' : 'bg-blue-500';
-  const rate = cp.attendance_rate;
-  const rateColor = rate >= 80 ? 'text-green-600' : rate >= 50 ? 'text-orange-500' : 'text-red-600';
 
   return (
     <div className="relative pl-10">
@@ -131,18 +129,18 @@ function TimelineEntry({ checkpoint: cp }: { checkpoint: CheckpointSummaryItem }
 
               <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
                 <span className="flex items-center gap-1">
-                  <ScanLine className="h-3 w-3" /> {cp.total_present} scans
+                  <ScanLine className="h-3 w-3" /> {cp.scan_count} scans
                 </span>
                 <span className="flex items-center gap-1">
-                  <Users className="h-3 w-3" /> {cp.total_present}/{cp.total_expected} eleves
+                  <Users className="h-3 w-3" /> {cp.student_count} eleves
                 </span>
                 {cp.duration_minutes != null && (
                   <span className="flex items-center gap-1">
                     <Timer className="h-3 w-3" /> {cp.duration_minutes.toFixed(0)} min
                   </span>
                 )}
-                {cp.created_by_email && (
-                  <span className="text-slate-400">par {cp.created_by_email}</span>
+                {cp.created_by_name && (
+                  <span className="text-slate-400">par {cp.created_by_name}</span>
                 )}
               </div>
 
@@ -153,7 +151,9 @@ function TimelineEntry({ checkpoint: cp }: { checkpoint: CheckpointSummaryItem }
               )}
             </div>
 
-            <span className={`text-lg font-bold ${rateColor}`}>{rate.toFixed(0)}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">{cp.scan_count} scan{cp.scan_count !== 1 ? 's' : ''}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
