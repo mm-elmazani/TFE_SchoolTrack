@@ -29,3 +29,12 @@ class TripStudent(Base):
     trip_id = Column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), primary_key=True)
     student_id = Column(UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"), primary_key=True)
     added_at = Column(DateTime, server_default=func.now())
+
+
+class TripClass(Base):
+    """Association voyage ↔ classes sélectionnées explicitement."""
+    __tablename__ = "trip_classes"
+
+    trip_id = Column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), primary_key=True)
+    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), primary_key=True)
+    added_at = Column(DateTime, server_default=func.now())

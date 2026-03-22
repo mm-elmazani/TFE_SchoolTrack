@@ -278,7 +278,7 @@ export default function TokenStockScreen() {
                           : <span className="italic text-slate-400">—</span>}
                       </TableCell>
                       <TableCell className="text-right py-4 px-6">
-                        {isAdmin && token.status !== 'ASSIGNED' ? (
+                        {isAdmin ? (
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
@@ -292,23 +292,23 @@ export default function TokenStockScreen() {
                               <Pencil className="w-4 h-4" />
                             </Button>
 
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-slate-400 hover:text-schooltrack-error hover:bg-red-50 rounded-lg shrink-0"
-                              onClick={() => {
-                                if(confirm(`Supprimer définitivement le bracelet ${token.token_uid} ?`)) {
-                                  deleteTokenMutation.mutate(token.id);
-                                }
-                              }}
-                              disabled={deleteTokenMutation.isPending}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            {token.status !== 'ASSIGNED' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-400 hover:text-schooltrack-error hover:bg-red-50 rounded-lg shrink-0"
+                                onClick={() => {
+                                  if(confirm(`Supprimer définitivement le bracelet ${token.token_uid} ?`)) {
+                                    deleteTokenMutation.mutate(token.id);
+                                  }
+                                }}
+                                disabled={deleteTokenMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-300 italic px-2">Non modifiable</span>
-                        )}
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))
@@ -333,6 +333,19 @@ export default function TokenStockScreen() {
 
             {editingToken && (
               <div className="space-y-5">
+                {editingToken.status === 'ASSIGNED' && (
+                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-sm flex items-start gap-3 animate-in fade-in duration-200">
+                    <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                    <div className="font-sans">
+                      <p className="font-bold text-orange-700">Bracelet actuellement assigné</p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Ce bracelet est assigné à un élève.
+                        Modifier son statut le désassignera automatiquement.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label className="text-slate-700 font-bold">Token UID</Label>
                   <div className="h-11 px-3 flex items-center bg-slate-50 border border-slate-200 rounded-xl">
@@ -367,6 +380,7 @@ export default function TokenStockScreen() {
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                       <SelectItem value="AVAILABLE">Disponible</SelectItem>
+                      <SelectItem value="ASSIGNED" disabled>Assigné</SelectItem>
                       <SelectItem value="DAMAGED">Endommagé</SelectItem>
                       <SelectItem value="LOST">Perdu</SelectItem>
                     </SelectContent>
@@ -387,6 +401,11 @@ export default function TokenStockScreen() {
               <Button
                 onClick={() => {
                   if (editingToken && editStatus !== editingToken.status) {
+                    if (editingToken.status === 'ASSIGNED') {
+                      if (!confirm(`Ce bracelet (${editingToken.token_uid}) est actuellement assigné.\n\nChanger son statut le désassignera. Confirmer ?`)) {
+                        return;
+                      }
+                    }
                     updateStatusMutation.mutate({ id: editingToken.id, status: editStatus });
                   }
                   setEditingToken(null);

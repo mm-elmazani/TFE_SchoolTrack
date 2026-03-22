@@ -17,7 +17,7 @@ from app.models.attendance import Attendance
 from app.models.checkpoint import Checkpoint
 from app.models.school_class import ClassStudent, SchoolClass
 from app.models.student import Student
-from app.models.trip import Trip, TripStudent
+from app.models.trip import Trip, TripClass, TripStudent
 from app.schemas.trip import ClassSummary, TripCreate, TripResponse, TripUpdate
 from app.services import assignment_service
 
@@ -43,6 +43,10 @@ def create_trip(db: Session, data: TripCreate, created_by: Optional[uuid.UUID] =
     )
     db.add(trip)
     db.flush()  # Obtenir l'ID avant le commit
+
+    # Sauvegarder les classes sélectionnées explicitement
+    for cid in data.class_ids:
+        db.add(TripClass(trip_id=trip.id, class_id=cid))
 
     # Récupérer les élèves des classes sélectionnées (dédupliqué)
     student_ids = db.execute(
@@ -107,12 +111,19 @@ def update_trip(db: Session, trip_id: uuid.UUID, data: TripUpdate) -> Optional[T
     for field, value in update_data.items():
         setattr(trip, field, value)
 
-    # Recalcul des élèves si de nouvelles classes sont fournies
+    # Recalcul des élèves et classes si de nouvelles classes sont fournies
     if data.class_ids is not None:
-        # Supprimer les anciennes associations élèves
+        # Supprimer les anciennes associations classes et élèves
+        db.execute(
+            delete(TripClass).where(TripClass.trip_id == trip.id)
+        )
         db.execute(
             delete(TripStudent).where(TripStudent.trip_id == trip.id)
         )
+
+        # Sauvegarder les nouvelles classes sélectionnées
+        for cid in data.class_ids:
+            db.add(TripClass(trip_id=trip.id, class_id=cid))
 
         # Récupérer les élèves des nouvelles classes (dédupliqué)
         student_ids = db.execute(
@@ -162,17 +173,19 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
         .where(TripStudent.trip_id == trip.id)
     ).scalar() or 0
 
-    # Classes représentées dans le voyage (trip_students → class_students → classes)
+    # Classes explicitement sélectionnées pour le voyage (trip_classes)
     class_rows = db.execute(
         select(SchoolClass.name, func.count(TripStudent.student_id).label("cnt"))
-        .join(ClassStudent, ClassStudent.class_id == SchoolClass.id)
-        .join(
+        .join(TripClass, TripClass.class_id == SchoolClass.id)
+        .outerjoin(ClassStudent, ClassStudent.class_id == SchoolClass.id)
+        .outerjoin(
             TripStudent,
             and_(
                 TripStudent.student_id == ClassStudent.student_id,
                 TripStudent.trip_id == trip.id,
             ),
         )
+        .where(TripClass.trip_id == trip.id)
         .group_by(SchoolClass.id, SchoolClass.name)
         .order_by(SchoolClass.name)
     ).all()

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,6 +45,7 @@ interface UpdateTripDialogProps {
 
 export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: classes, isLoading: loadingClasses } = useQuery({
@@ -53,19 +54,26 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
     enabled: open,
   });
 
-  const tripValues: TripForm | undefined = trip && open ? {
-    destination: trip.destination,
-    date: trip.date,
-    description: trip.description || '',
-    status: trip.status,
-    class_ids: trip.classes?.map(c => c.id) || [],
-  } : undefined;
-
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<TripForm>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm<TripForm>({
     resolver: zodResolver(tripSchema),
-    values: tripValues,
-    resetOptions: { keepDirtyValues: true },
   });
+
+  // Initialize form once when dialog opens and classes are loaded
+  useEffect(() => {
+    if (trip && open && classes && !hasInitialized) {
+      const tripClassNames = new Set(trip.classes?.map(c => c.name) || []);
+      const matchedIds = classes.filter(c => tripClassNames.has(c.name)).map(c => c.id);
+      reset({
+        destination: trip.destination,
+        date: trip.date,
+        description: trip.description || '',
+        status: trip.status,
+        class_ids: matchedIds,
+      });
+      setHasInitialized(true);
+    }
+    if (!open) setHasInitialized(false);
+  }, [trip, open, classes, hasInitialized, reset]);
 
   const currentStatus = watch('status');
   const selectedClassIds = watch('class_ids') || [];
@@ -73,9 +81,9 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
   const toggleClass = (id: string) => {
     const current = [...selectedClassIds];
     if (current.includes(id)) {
-      setValue('class_ids', current.filter(cid => cid !== id), { shouldValidate: true });
+      setValue('class_ids', current.filter(cid => cid !== id), { shouldValidate: true, shouldDirty: true });
     } else {
-      setValue('class_ids', [...current, id], { shouldValidate: true });
+      setValue('class_ids', [...current, id], { shouldValidate: true, shouldDirty: true });
     }
   };
 
@@ -162,7 +170,7 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
                 </Label>
                 <Select 
                   value={currentStatus} 
-                  onValueChange={(val: any) => setValue('status', val)}
+                  onValueChange={(val: any) => setValue('status', val, { shouldDirty: true })}
                 >
                   <SelectTrigger className="rounded-xl border-slate-200 h-11 focus:ring-schooltrack-primary font-sans">
                     <SelectValue placeholder="Choisir un statut" />
