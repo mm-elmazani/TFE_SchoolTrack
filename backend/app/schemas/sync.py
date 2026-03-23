@@ -72,5 +72,50 @@ class SyncResponse(BaseModel):
 
     # US 3.2 — fusion multi-enseignants
     merged: List[str] = []        # client_uuids dont le scan (plus ancien) a remplacé le canonique
+    rejected: List[str] = []      # client_uuids rejetés (checkpoint supprimé, etc.)
     temporal_anomalies: List[TemporalAnomaly] = []  # incohérences d'ordre entre checkpoints
     total_merged: int = 0
+
+
+# ----------------------------------------------------------------
+# Réponses pour l'écran de suivi des synchronisations
+# ----------------------------------------------------------------
+
+class SyncLogOut(BaseModel):
+    """Une entrée du journal de synchronisation."""
+
+    id: int
+    user_id: Optional[str] = None
+    user_email: Optional[str] = None
+    trip_id: Optional[str] = None
+    trip_name: Optional[str] = None
+    device_id: Optional[str] = None
+    records_synced: int = 0
+    conflicts_detected: int = 0
+    status: Optional[str] = None
+    error_details: Optional[dict] = None
+    synced_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SyncLogPage(BaseModel):
+    """Page paginée de sync_logs."""
+
+    items: List[SyncLogOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class SyncStats(BaseModel):
+    """Statistiques globales de synchronisation."""
+
+    total_syncs: int = 0
+    total_records_synced: int = 0
+    total_conflicts: int = 0
+    success_count: int = 0
+    partial_count: int = 0
+    failed_count: int = 0
+    last_sync_at: Optional[datetime] = None

@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.models.attendance import Attendance, AttendanceHistory
 from app.models.checkpoint import Checkpoint
+from app.models.sync_log import SyncLog
 from app.schemas.sync import ScanItem, SyncResponse, TemporalAnomaly
 
 logger = logging.getLogger(__name__)
@@ -50,8 +51,14 @@ def sync_attendances(
     accepted: List[str] = []
     duplicate: List[str] = []
     merged: List[str] = []
+    rejected: List[str] = []
 
     seen_in_batch: set = set()
+    # Cache des checkpoint_ids valides (evite N requetes pour le meme checkpoint)
+    valid_checkpoints: dict[uuid_module.UUID, bool] = {}
+    # Cache des canoniques crees dans ce batch (evite le doublon intra-batch
+    # quand 2 scans du meme (student, checkpoint, trip) ont des client_uuid differents)
+    batch_canonicals: dict[tuple, "Attendance"] = {}
     sync_session_id = uuid_module.uuid4()
 
     for scan in scans:
@@ -74,6 +81,22 @@ def sync_attendances(
             seen_in_batch.add(scan.client_uuid)
             continue
 
+        # 2b. Vérifier que le checkpoint existe toujours en DB
+        if scan.checkpoint_id not in valid_checkpoints:
+            cp_exists = db.execute(
+                select(Checkpoint.id).where(Checkpoint.id == scan.checkpoint_id)
+            ).scalar() is not None
+            valid_checkpoints[scan.checkpoint_id] = cp_exists
+
+        if not valid_checkpoints[scan.checkpoint_id]:
+            rejected.append(client_uuid_str)
+            seen_in_batch.add(scan.client_uuid)
+            logger.warning(
+                "Scan %s rejeté : checkpoint %s supprimé",
+                client_uuid_str, scan.checkpoint_id,
+            )
+            continue
+
         # 3. Insérer dans l'historique brut (toujours, sauf doublon UUID)
         history = AttendanceHistory(
             client_uuid=scan.client_uuid,
@@ -94,16 +117,20 @@ def sync_attendances(
         db.add(history)
 
         # 4. Chercher le canonique existant pour (student, checkpoint, trip)
-        canonical = db.execute(
-            select(Attendance).where(
-                Attendance.student_id == scan.student_id,
-                Attendance.checkpoint_id == scan.checkpoint_id,
-                Attendance.trip_id == scan.trip_id,
-            )
-        ).scalar()
+        #    D'abord dans le cache intra-batch, puis en DB
+        canon_key = (scan.student_id, scan.checkpoint_id, scan.trip_id)
+        canonical = batch_canonicals.get(canon_key)
+        if canonical is None:
+            canonical = db.execute(
+                select(Attendance).where(
+                    Attendance.student_id == scan.student_id,
+                    Attendance.checkpoint_id == scan.checkpoint_id,
+                    Attendance.trip_id == scan.trip_id,
+                )
+            ).scalar()
 
         if canonical is None:
-            # Aucun scan précédent pour cet élève à ce checkpoint → créer le canonique
+            # Aucun scan precedent pour cet eleve a ce checkpoint → creer le canonique
             attendance = Attendance(
                 client_uuid=scan.client_uuid,
                 trip_id=scan.trip_id,
@@ -118,6 +145,7 @@ def sync_attendances(
                 comment=scan.comment,
             )
             db.add(attendance)
+            batch_canonicals[canon_key] = attendance
             accepted.append(client_uuid_str)
             logger.debug("Nouveau canonique : student=%s, cp=%s", scan.student_id, scan.checkpoint_id)
 
@@ -153,18 +181,41 @@ def sync_attendances(
     # 5. Détecter les anomalies temporelles après la fusion canonique
     anomalies = _detect_temporal_anomalies(db, scans)
 
+    # 6. Enregistrer dans sync_logs
+    has_failures = len(rejected) > 0
+    status = "SUCCESS" if not has_failures and not anomalies else "PARTIAL"
+    trip_ids = {scan.trip_id for scan in scans}
+    sync_log = SyncLog(
+        user_id=scanned_by,
+        trip_id=next(iter(trip_ids)) if len(trip_ids) == 1 else None,
+        device_id=device_id or None,
+        records_synced=len(accepted) + len(merged),
+        conflicts_detected=len(duplicate) + len(rejected),
+        status=status,
+        error_details={
+            "total_received": len(scans),
+            "accepted": len(accepted),
+            "merged": len(merged),
+            "duplicate": len(duplicate),
+            "rejected": len(rejected),
+            "anomalies": len(anomalies),
+        },
+    )
+    db.add(sync_log)
+
     db.commit()
 
     logger.info(
-        "Sync device=%s : %d reçus, %d insérés, %d fusionnés, %d doublons, %d anomalies",
+        "Sync device=%s : %d reçus, %d insérés, %d fusionnés, %d doublons, %d rejetés, %d anomalies",
         device_id or "inconnu",
-        len(scans), len(accepted), len(merged), len(duplicate), len(anomalies),
+        len(scans), len(accepted), len(merged), len(duplicate), len(rejected), len(anomalies),
     )
 
     return SyncResponse(
         accepted=accepted,
         duplicate=duplicate,
         merged=merged,
+        rejected=rejected,
         temporal_anomalies=anomalies,
         total_received=len(scans),
         total_inserted=len(accepted),
