@@ -137,6 +137,21 @@ def get_next_sequence(
     return assignment_service.get_next_sequence(db, prefix)
 
 
+@router.get("/tokens/{token_id}/assignment-info",
+            summary="Info assignation active d'un token")
+def get_token_assignment_info(
+    token_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retourne les details de l'assignation active (eleve + voyage) si le token est assigne.
+    Retourne null si pas d'assignation active.
+    """
+    info = assignment_service.get_token_assignment_info(db, token_id)
+    return info or {"assignment_id": None}
+
+
 @router.delete("/tokens/{token_id}", status_code=204,
                summary="Supprimer un token du stock")
 def delete_token(
@@ -305,6 +320,37 @@ def release_trip_tokens(
     )
 
     return {"trip_id": str(trip_id), "released_count": count}
+
+
+@router.post(
+    "/assignments/{assignment_id}/release",
+    status_code=200,
+    summary="Desassigner un bracelet individuel",
+)
+def release_assignment(
+    assignment_id: int,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Libere une assignation individuelle (released_at = NOW()).
+    Remet le token physique en AVAILABLE.
+    """
+    try:
+        result = assignment_service.release_assignment(db, assignment_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    log_audit(
+        db, user_id=current_user.id, action="TOKEN_RELEASED",
+        resource_type="ASSIGNMENT", resource_id=None,
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details=result,
+    )
+
+    return result
 
 
 @router.get("/trips/{trip_id}/assignments/export",

@@ -110,7 +110,9 @@ def delete_class(db: Session, class_id: uuid.UUID) -> bool:
 def assign_students(db: Session, class_id: uuid.UUID, data: ClassStudentsAssign) -> ClassResponse:
     """
     Assigne des élèves à une classe.
-    Les élèves déjà assignés sont ignorés (pas de doublon).
+    Un élève ne peut appartenir qu'à une seule classe : s'il est déjà dans
+    une autre classe, il en est retiré automatiquement avant d'être ajouté.
+    Les élèves déjà dans cette classe sont ignorés (pas de doublon).
     """
     school_class = db.get(SchoolClass, class_id)
     if school_class is None:
@@ -122,13 +124,20 @@ def assign_students(db: Session, class_id: uuid.UUID, data: ClassStudentsAssign)
         .where(ClassStudent.class_id == class_id)
     ).scalars().all())
 
-    to_insert = [
-        {"class_id": class_id, "student_id": sid}
-        for sid in data.student_ids
-        if sid not in existing
-    ]
+    to_insert = []
+    for sid in data.student_ids:
+        if sid in existing:
+            continue
+        # Retirer l'élève de son ancienne classe (s'il en a une)
+        old_link = db.execute(
+            select(ClassStudent).where(ClassStudent.student_id == sid)
+        ).scalar()
+        if old_link:
+            db.delete(old_link)
+        to_insert.append({"class_id": class_id, "student_id": sid})
 
     if to_insert:
+        db.flush()  # S'assurer que les DELETE sont envoyés avant les INSERT
         db.bulk_insert_mappings(ClassStudent, to_insert)
         db.commit()
 
