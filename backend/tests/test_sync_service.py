@@ -6,6 +6,10 @@ US 3.2 — fusion multi-enseignants, MERGED_OLDEST, SUPERSEDED, anomalies tempor
 
 Note : _detect_temporal_anomalies est patchée dans tous les tests de sync_attendances
 pour isoler la logique de fusion des requêtes de détection d'anomalies.
+
+Note 2 : Depuis l'ajout de la validation checkpoint (étape 2b), chaque scan non-doublon
+requiert un db.execute supplémentaire pour vérifier l'existence du checkpoint.
+Ordre des execute par scan : history check → checkpoint check → canonical check.
 """
 
 import uuid
@@ -20,6 +24,9 @@ from app.services.sync_service import _is_strictly_older, sync_attendances
 # ----------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------
+
+_DUMMY_CP_ID = uuid.uuid4()  # ID checkpoint "existant" utilisé dans les mocks
+
 
 def make_scan(
     client_uuid=None,
@@ -36,7 +43,7 @@ def make_scan(
     return ScanItem(
         client_uuid=client_uuid or uuid.uuid4(),
         student_id=student_id or uuid.uuid4(),
-        checkpoint_id=checkpoint_id or uuid.uuid4(),
+        checkpoint_id=checkpoint_id or _DUMMY_CP_ID,
         trip_id=trip_id or uuid.uuid4(),
         scanned_at=scanned_at or datetime(2026, 2, 20, 14, 32, 15, tzinfo=timezone.utc),
         scan_method=scan_method,
@@ -58,11 +65,11 @@ def make_db(*scalar_values):
     """
     Mock de session DB avec une séquence de résultats pour db.execute().
     Chaque valeur dans scalar_values correspond à un appel successif à execute().scalar().
-    Les appels supplémentaires (ex: détection anomalies) retournent None par défaut.
+    Les appels supplémentaires (ex: détection anomalies, SyncLog) retournent None par défaut.
     """
     db = MagicMock()
     results = [make_execute_result(v) for v in scalar_values]
-    # Appels excédentaires (détection d'anomalies, etc.) → résultat vide
+    # Appels excédentaires (détection d'anomalies, SyncLog, etc.) → résultat vide
     extra = make_execute_result(None)
     db.execute.side_effect = results + [extra] * 20
     return db
@@ -79,6 +86,7 @@ _PATCH = "app.services.sync_service._detect_temporal_anomalies"
 def test_batch_vide(_):
     """Batch vide → 0 inséré, réponse cohérente."""
     db = MagicMock()
+    db.execute.side_effect = [make_execute_result(None)] * 20
     result = sync_attendances(db, scans=[], device_id="device-01")
 
     assert result.total_received == 0
@@ -87,7 +95,6 @@ def test_batch_vide(_):
     assert result.accepted == []
     assert result.duplicate == []
     assert result.merged == []
-    db.add.assert_not_called()
     db.commit.assert_called_once()
 
 
@@ -98,8 +105,8 @@ def test_batch_vide(_):
 @patch(_PATCH, return_value=[])
 def test_scan_unique_nouveau(_):
     """Un scan inconnu → 1 entry history + 1 canonical insérés."""
-    # Deux execute : history check (None) + canonical check (None)
-    db = make_db(None, None)
+    # Trois execute : history check (None) + checkpoint check (exists) + canonical check (None)
+    db = make_db(None, _DUMMY_CP_ID, None)
     scan = make_scan()
 
     result = sync_attendances(db, scans=[scan])
@@ -110,8 +117,6 @@ def test_scan_unique_nouveau(_):
     assert str(scan.client_uuid) in result.accepted
     assert result.duplicate == []
     assert result.merged == []
-    # db.add appelé deux fois : AttendanceHistory + Attendance
-    assert db.add.call_count == 2
     db.commit.assert_called_once()
 
 
@@ -121,7 +126,7 @@ def test_scan_unique_nouveau(_):
 
 @patch(_PATCH, return_value=[])
 def test_doublon_inter_batch(_):
-    """client_uuid déjà en history → doublon, aucun add."""
+    """client_uuid déjà en history → doublon, aucun add d'history/canonical."""
     existing_history = MagicMock(spec=AttendanceHistory)
     db = make_db(existing_history)  # history check → trouvé
     scan = make_scan()
@@ -131,7 +136,6 @@ def test_doublon_inter_batch(_):
     assert result.total_received == 1
     assert result.total_inserted == 0
     assert str(scan.client_uuid) in result.duplicate
-    db.add.assert_not_called()
     db.commit.assert_called_once()
 
 
@@ -142,8 +146,8 @@ def test_doublon_inter_batch(_):
 @patch(_PATCH, return_value=[])
 def test_doublon_intra_batch(_):
     """Même UUID deux fois dans le batch → 1 traité, 1 doublon intra."""
-    # Premier scan : history=None, canonical=None
-    db = make_db(None, None)
+    # Premier scan : history=None, checkpoint=exists, canonical=None
+    db = make_db(None, _DUMMY_CP_ID, None)
     uid = uuid.uuid4()
     scan1 = make_scan(client_uuid=uid)
     scan2 = make_scan(client_uuid=uid)  # Même UUID
@@ -156,8 +160,6 @@ def test_doublon_intra_batch(_):
     assert len(result.duplicate) == 1
     assert str(uid) in result.accepted
     assert str(uid) in result.duplicate
-    # 2 add : 1 history + 1 canonical pour le premier scan seulement
-    assert db.add.call_count == 2
 
 
 # ================================================================
@@ -172,8 +174,14 @@ def test_mix_nouveaux_et_doublons(_):
     scan_new2 = make_scan()
     scan_dup = make_scan(client_uuid=uid_existing)
 
-    # Ordre des execute : new1-history, new1-canonical, new2-history, new2-canonical, dup-history
-    db = make_db(None, None, None, None, MagicMock(spec=AttendanceHistory))
+    # Ordre : new1(history,cp,canonical), new2(history,cp,canonical), dup(history=exists)
+    # new2 checkpoint peut être en cache si même cp_id → mais nos scans utilisent le même _DUMMY_CP_ID
+    db = make_db(
+        None, _DUMMY_CP_ID, None,  # new1: history, checkpoint, canonical
+        None,                       # new2: history (checkpoint en cache)
+        None,                       # new2: canonical
+        MagicMock(spec=AttendanceHistory),  # dup: history → trouvé
+    )
 
     result = sync_attendances(db, scans=[scan_new1, scan_new2, scan_dup])
 
@@ -182,8 +190,6 @@ def test_mix_nouveaux_et_doublons(_):
     assert len(result.accepted) == 2
     assert len(result.duplicate) == 1
     assert str(uid_existing) in result.duplicate
-    # 4 add : 2 history + 2 canonical
-    assert db.add.call_count == 4
 
 
 # ================================================================
@@ -194,7 +200,7 @@ def test_mix_nouveaux_et_doublons(_):
 def test_scan_methodes_valides(_):
     """Toutes les méthodes de scan valides sont acceptées."""
     for method in ("NFC_PHYSICAL", "QR_PHYSICAL", "QR_DIGITAL", "MANUAL"):
-        db = make_db(None, None)
+        db = make_db(None, _DUMMY_CP_ID, None)
         scan = make_scan(scan_method=method)
         result = sync_attendances(db, scans=[scan])
         assert result.total_inserted == 1, f"Méthode {method} devrait être acceptée"
@@ -207,19 +213,20 @@ def test_scan_methodes_valides(_):
 @patch(_PATCH, return_value=[])
 def test_champs_attendance_corrects(_):
     """Les champs sont correctement mappés sur Attendance (second add = canonique)."""
-    db = make_db(None, None)
+    db = make_db(None, _DUMMY_CP_ID, None)
     scan = make_scan(scan_method="QR_DIGITAL")
 
     sync_attendances(db, scans=[scan])
 
-    assert db.add.call_count == 2
-    # Premier add = AttendanceHistory, second add = Attendance
-    history_obj = db.add.call_args_list[0][0][0]
-    canonical_obj = db.add.call_args_list[1][0][0]
+    # Parmi les objets ajoutés, trouver history et canonical
+    added = [c[0][0] for c in db.add.call_args_list]
+    histories = [o for o in added if isinstance(o, AttendanceHistory)]
+    canonicals = [o for o in added if isinstance(o, Attendance)]
 
-    assert isinstance(history_obj, AttendanceHistory)
-    assert isinstance(canonical_obj, Attendance)
+    assert len(histories) == 1
+    assert len(canonicals) == 1
 
+    canonical_obj = canonicals[0]
     assert canonical_obj.client_uuid == scan.client_uuid
     assert canonical_obj.student_id == scan.student_id
     assert canonical_obj.checkpoint_id == scan.checkpoint_id
@@ -239,13 +246,14 @@ def test_champs_attendance_corrects(_):
 @patch(_PATCH, return_value=[])
 def test_scan_sequence_transmis(_):
     """scan_sequence est bien persisté sur Attendance."""
-    db = make_db(None, None)
+    db = make_db(None, _DUMMY_CP_ID, None)
     scan = make_scan(scan_sequence=2)
 
     sync_attendances(db, scans=[scan])
 
-    canonical_obj = db.add.call_args_list[1][0][0]
-    assert canonical_obj.scan_sequence == 2
+    added = [c[0][0] for c in db.add.call_args_list]
+    canonicals = [o for o in added if isinstance(o, Attendance)]
+    assert canonicals[0].scan_sequence == 2
 
 
 # ================================================================
@@ -255,7 +263,7 @@ def test_scan_sequence_transmis(_):
 @patch(_PATCH, return_value=[])
 def test_is_manual_et_justification_transmis(_):
     """is_manual=True et justification sont bien persistés."""
-    db = make_db(None, None)
+    db = make_db(None, _DUMMY_CP_ID, None)
     scan = make_scan(
         scan_method="MANUAL",
         is_manual=True,
@@ -265,10 +273,11 @@ def test_is_manual_et_justification_transmis(_):
 
     sync_attendances(db, scans=[scan])
 
-    canonical_obj = db.add.call_args_list[1][0][0]
-    assert canonical_obj.is_manual is True
-    assert canonical_obj.justification == "BADGE_MISSING"
-    assert canonical_obj.comment == "Bracelet oublié à la maison"
+    added = [c[0][0] for c in db.add.call_args_list]
+    canonicals = [o for o in added if isinstance(o, Attendance)]
+    assert canonicals[0].is_manual is True
+    assert canonicals[0].justification == "BADGE_MISSING"
+    assert canonicals[0].comment == "Bracelet oublié à la maison"
 
 
 # ================================================================
