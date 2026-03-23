@@ -15,9 +15,16 @@ export interface TripStudentInfo {
   first_name: string;
   last_name: string;
   is_assigned: boolean;
+  // Assignation primaire (physique)
+  assignment_id: number | null;
   token_uid: string | null;
   assignment_type: 'NFC_PHYSICAL' | 'QR_PHYSICAL' | 'QR_DIGITAL' | null;
   assigned_at: string | null;
+  // Assignation secondaire (QR digital)
+  secondary_assignment_id: number | null;
+  secondary_token_uid: string | null;
+  secondary_assignment_type: 'QR_DIGITAL' | null;
+  secondary_assigned_at: string | null;
 }
 
 export interface TripStudentsResponse {
@@ -26,6 +33,7 @@ export interface TripStudentsResponse {
   total: number;
   assigned: number;
   unassigned: number;
+  assigned_digital: number;
 }
 
 export interface TripAssignmentStatus {
@@ -96,6 +104,16 @@ export const tokenApi = {
 
   deleteToken: async (tokenId: number | string): Promise<void> => {
     await apiClient.delete(`/api/v1/tokens/${tokenId}`);
-  }
+  },
+
+  getTokenAssignmentInfo: async (tokenId: number | string): Promise<{ assignment_id: number | null, student_name?: string, trip_name?: string, assigned_at?: string }> => {
+    const response = await apiClient.get(`/api/v1/tokens/${tokenId}/assignment-info`);
+    return response.data;
+  },
+
+  releaseAssignment: async (assignmentId: number): Promise<{ assignment_id: number, token_uid: string, student_name: string, trip_name: string }> => {
+    const response = await apiClient.post(`/api/v1/assignments/${assignmentId}/release`);
+    return response.data;
+  },
 };
 

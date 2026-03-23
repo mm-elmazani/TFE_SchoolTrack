@@ -5,21 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { 
-  Rss, 
-  MapPin, 
-  Users, 
-  CheckCircle, 
-  AlertTriangle, 
-  Trash2, 
-  Loader2, 
-  ChevronRight, 
-  RefreshCw, 
-  Download, 
-  Mail, 
+import {
+  Rss,
+  MapPin,
+  Users,
+  CheckCircle,
+  AlertTriangle,
+  Trash2,
+  Loader2,
+  ChevronRight,
+  RefreshCw,
+  Download,
+  Mail,
   Search,
   CheckCircle2,
-  X
+  X,
+  Unlink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ export default function TokenManagementScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [studentToAssign, setStudentToAssign] = useState<TripStudentInfo | null>(null);
   const [isReassign, setIsReassign] = useState(false);
+  const [forceDigital, setForceDigital] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // Fetch trips
@@ -73,6 +75,21 @@ export default function TokenManagementScreen() {
     }
   });
 
+  const releaseOneMutation = useMutation({
+    mutationFn: tokenApi.releaseAssignment,
+    onSuccess: (data) => {
+      setActionFeedback({
+        type: 'success',
+        message: `Bracelet ${data.token_uid} désassigné de ${data.student_name}.`
+      });
+      queryClient.invalidateQueries({ queryKey: ['tokens', 'students', selectedTripId] });
+      setTimeout(() => setActionFeedback(null), 5000);
+    },
+    onError: () => {
+      setActionFeedback({ type: 'error', message: "Erreur lors de la désassignation du bracelet." });
+    }
+  });
+
   const sendQrMutation = useMutation({
     mutationFn: tokenApi.sendQrEmails,
     onSuccess: (data) => {
@@ -88,10 +105,12 @@ export default function TokenManagementScreen() {
     }
   });
 
-  const filteredStudents = tripData?.students.filter(s => 
-    `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.token_uid && s.token_uid.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) || [];
+  const filteredStudents = tripData?.students.filter(s => {
+    const term = searchTerm.toLowerCase();
+    return `${s.first_name} ${s.last_name}`.toLowerCase().includes(term) ||
+      (s.token_uid && s.token_uid.toLowerCase().includes(term)) ||
+      (s.secondary_token_uid && s.secondary_token_uid.toLowerCase().includes(term));
+  }) || [];
 
   const handleExport = () => {
     if (!selectedTripId) return;
@@ -158,17 +177,26 @@ export default function TokenManagementScreen() {
             </Button>
             {isAdmin && (
               <>
-                <Button 
-                  className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl gap-2 font-sans border-0 shadow-md"
+                <Button
+                  className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl gap-2 font-sans border-0 shadow-md min-w-[140px]"
                   onClick={() => {
-                    if(confirm("Envoyer les QR codes digitaux par email à tous les élèves du voyage ?")) {
+                    if(confirm("Envoyer les QR codes digitaux par email a tous les eleves du voyage ?")) {
                       sendQrMutation.mutate(selectedTripId);
                     }
                   }}
                   disabled={sendQrMutation.isPending}
                 >
-                  <Mail className="w-4 h-4" />
-                  <span>Envoyer QR</span>
+                  {sendQrMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Envoi en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" />
+                      <span>Envoyer QR</span>
+                    </>
+                  )}
                 </Button>
                 <Button 
                   variant="destructive"
@@ -243,7 +271,7 @@ export default function TokenManagementScreen() {
               )}
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-sans">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-sans">
                 <Card className="border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
                   <div className="h-1 bg-slate-200" />
                   <CardContent className="p-6 flex items-center gap-4">
@@ -265,7 +293,20 @@ export default function TokenManagementScreen() {
                     </div>
                     <div>
                       <p className="text-2xl font-black text-slate-900 font-heading">{tripData?.assigned || 0}</p>
-                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Assignés</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Physiques</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <div className="h-1 bg-teal-500" />
+                  <CardContent className="p-6 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600">
+                      <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-slate-900 font-heading">{tripData?.assigned_digital || 0}</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">QR Digitaux</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -278,7 +319,7 @@ export default function TokenManagementScreen() {
                     </div>
                     <div>
                       <p className="text-2xl font-black text-slate-900 font-heading">{tripData?.unassigned || 0}</p>
-                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Non assignés</p>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Non assignes</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -304,23 +345,24 @@ export default function TokenManagementScreen() {
                       <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-b-slate-100">
                           <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Nom</TableHead>
-                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Prénom</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Prenom</TableHead>
                           <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Token UID</TableHead>
                           <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 text-center">Type</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 text-center">QR Digital</TableHead>
                           <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-6">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {isLoadingStudents ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="h-48 text-center">
+                            <TableCell colSpan={6} className="h-48 text-center">
                               <Loader2 className="w-8 h-8 animate-spin mx-auto text-slate-200" />
                             </TableCell>
                           </TableRow>
                         ) : filteredStudents.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="h-48 text-center text-slate-400 italic font-sans">
-                              Aucun élève trouvé
+                            <TableCell colSpan={6} className="h-48 text-center text-slate-400 italic font-sans">
+                              Aucun eleve trouve
                             </TableCell>
                           </TableRow>
                         ) : (
@@ -340,24 +382,87 @@ export default function TokenManagementScreen() {
                               <TableCell className="text-center py-4 px-6">
                                 {getAssignmentBadge(student.assignment_type)}
                               </TableCell>
+                              <TableCell className="text-center py-4 px-6">
+                                {student.secondary_token_uid ? (
+                                  <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-100 text-[10px]">
+                                    QR Digital
+                                  </Badge>
+                                ) : (
+                                  <span className="text-slate-300 italic text-[11px]">—</span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-right py-4 px-6">
                                 {isAdmin && (
-                                  <Button 
-                                    variant={student.token_uid ? "ghost" : "outline"}
-                                    size="sm"
-                                    className={cn(
-                                      "h-8 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all font-sans",
-                                      student.token_uid 
-                                        ? "text-slate-400 hover:text-schooltrack-primary hover:bg-blue-50" 
-                                        : "bg-schooltrack-action text-white hover:bg-blue-700 border-0 shadow-sm"
+                                  <div className="flex items-center justify-end gap-1">
+                                    {/* Desassigner le bracelet physique */}
+                                    {student.token_uid && student.assignment_id && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-2 rounded-lg text-[11px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600 hover:bg-red-50 transition-all font-sans"
+                                        disabled={releaseOneMutation.isPending}
+                                        onClick={() => {
+                                          if (confirm(`Desassigner le bracelet ${student.token_uid} de ${student.first_name} ${student.last_name} ?`)) {
+                                            releaseOneMutation.mutate(student.assignment_id!);
+                                          }
+                                        }}
+                                      >
+                                        <Unlink className="w-3.5 h-3.5 mr-1" />
+                                        Desassigner
+                                      </Button>
                                     )}
-                                    onClick={() => {
-                                      setIsReassign(!!student.token_uid);
-                                      setStudentToAssign(student);
-                                    }}
-                                  >
-                                    {student.token_uid ? 'Réassigner' : 'Assigner'}
-                                  </Button>
+                                    {/* Retirer le QR digital */}
+                                    {student.secondary_assignment_id && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-2 rounded-lg text-[11px] font-bold uppercase tracking-wider text-teal-500 hover:text-teal-700 hover:bg-teal-50 transition-all font-sans"
+                                        disabled={releaseOneMutation.isPending}
+                                        onClick={() => {
+                                          if (confirm(`Retirer le QR digital de ${student.first_name} ${student.last_name} ?`)) {
+                                            releaseOneMutation.mutate(student.secondary_assignment_id!);
+                                          }
+                                        }}
+                                      >
+                                        <Unlink className="w-3.5 h-3.5 mr-1" />
+                                        Retirer QR
+                                      </Button>
+                                    )}
+                                    {/* Ajouter QR digital (si physique assigne mais pas de digital) */}
+                                    {student.token_uid && !student.secondary_token_uid && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-2 rounded-lg text-[11px] font-bold uppercase tracking-wider text-teal-600 hover:text-teal-700 hover:bg-teal-50 transition-all font-sans"
+                                        onClick={() => {
+                                          setIsReassign(false);
+                                          setForceDigital(true);
+                                          setStudentToAssign(student);
+                                        }}
+                                      >
+                                        <Mail className="w-3.5 h-3.5 mr-1" />
+                                        + QR
+                                      </Button>
+                                    )}
+                                    {/* Assigner / Reassigner physique */}
+                                    <Button
+                                      variant={student.token_uid ? "ghost" : "outline"}
+                                      size="sm"
+                                      className={cn(
+                                        "h-8 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all font-sans",
+                                        student.token_uid
+                                          ? "text-slate-400 hover:text-schooltrack-primary hover:bg-blue-50"
+                                          : "bg-schooltrack-action text-white hover:bg-blue-700 border-0 shadow-sm"
+                                      )}
+                                      onClick={() => {
+                                        setIsReassign(!!student.token_uid);
+                                        setForceDigital(false);
+                                        setStudentToAssign(student);
+                                      }}
+                                    >
+                                      {student.token_uid ? 'Reassigner' : 'Assigner'}
+                                    </Button>
+                                  </div>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -381,12 +486,18 @@ export default function TokenManagementScreen() {
         </div>
       </div>
 
-      <AssignTokenDialog 
+      <AssignTokenDialog
         student={studentToAssign}
         tripId={selectedTripId}
         open={!!studentToAssign}
-        onOpenChange={(open) => !open && setStudentToAssign(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setStudentToAssign(null);
+            setForceDigital(false);
+          }
+        }}
         isReassign={isReassign}
+        forceDigital={forceDigital}
       />
     </div>
   );

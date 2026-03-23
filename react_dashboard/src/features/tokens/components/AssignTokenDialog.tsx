@@ -28,7 +28,16 @@ import { Loader2, Rss, QrCode, AlignLeft } from 'lucide-react';
 const assignSchema = z.object({
   token_uid: z.string().min(1, 'L\'UID du token est requis'),
   assignment_type: z.enum(['NFC_PHYSICAL', 'QR_PHYSICAL', 'QR_DIGITAL']),
-  justification: z.string().optional(),
+  justification: z.string().optional().or(z.literal('')),
+  _isReassign: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (data._isReassign && (!data.justification || !data.justification.trim())) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'La justification est obligatoire pour une réassignation',
+      path: ['justification'],
+    });
+  }
 });
 
 type AssignForm = z.infer<typeof assignSchema>;
@@ -39,9 +48,10 @@ interface AssignTokenDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isReassign?: boolean;
+  forceDigital?: boolean;
 }
 
-export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReassign }: AssignTokenDialogProps) {
+export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReassign, forceDigital }: AssignTokenDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -67,17 +77,19 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
   useEffect(() => {
     if (open) {
       reset({
-        token_uid: student?.token_uid || '',
-        assignment_type: student?.assignment_type || 'NFC_PHYSICAL',
+        token_uid: forceDigital ? '' : (student?.token_uid || ''),
+        assignment_type: forceDigital ? 'QR_DIGITAL' : (student?.assignment_type || 'NFC_PHYSICAL'),
         justification: '',
+        _isReassign: !!isReassign,
       });
     }
-  }, [open, student, reset]);
+  }, [open, student, isReassign, forceDigital, reset]);
 
   const mutation = useMutation({
     mutationFn: (data: AssignForm) => {
+      const { _isReassign, ...rest } = data;
       const payload = {
-        ...data,
+        ...rest,
         trip_id: tripId!,
         student_id: student!.id,
       };
@@ -113,7 +125,7 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
       <DialogContent className="sm:max-w-[425px] rounded-2xl font-sans border-0 shadow-2xl overflow-hidden p-6">
         <DialogHeader className="mb-6">
           <DialogTitle className="text-2xl font-bold text-schooltrack-primary font-heading">
-            {isReassign ? 'Réassigner un bracelet' : 'Assigner un bracelet'}
+            {forceDigital ? 'Ajouter un QR Digital' : isReassign ? 'Reassigner un bracelet' : 'Assigner un bracelet'}
           </DialogTitle>
           <DialogDescription className="font-sans">
             Élève : <span className="font-bold text-slate-900">{student?.first_name} {student?.last_name}</span>
@@ -129,9 +141,10 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
 
           <div className="space-y-2">
             <Label htmlFor="assignment_type" className="text-slate-700 font-bold">Type de support</Label>
-            <Select 
-              value={assignmentType} 
+            <Select
+              value={assignmentType}
               onValueChange={(val: any) => setValue('assignment_type', val)}
+              disabled={forceDigital}
             >
               <SelectTrigger className="rounded-xl border-slate-200 h-11 font-sans">
                 <SelectValue placeholder="Choisir un type" />
@@ -202,14 +215,15 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
           {isReassign && (
             <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
               <Label htmlFor="justification" className="text-slate-700 font-bold flex items-center gap-2">
-                <AlignLeft className="w-4 h-4 text-schooltrack-action" /> Justification (optionnelle)
+                <AlignLeft className="w-4 h-4 text-schooltrack-action" /> Justification (obligatoire)
               </Label>
-              <Textarea 
-                id="justification" 
-                {...register('justification')} 
+              <Textarea
+                id="justification"
+                {...register('justification')}
                 placeholder="Ex: Bracelet perdu, changement de support..."
-                className="rounded-xl border-slate-200 min-h-[80px] focus:ring-schooltrack-primary resize-none font-sans" 
+                className="rounded-xl border-slate-200 min-h-[80px] focus:ring-schooltrack-primary resize-none font-sans"
               />
+              {errors.justification && <p className="text-schooltrack-error text-[10px] font-bold mt-1 uppercase tracking-tight font-sans">{errors.justification.message}</p>}
             </div>
           )}
 

@@ -232,8 +232,8 @@ export default function TokenStockScreen() {
                   <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Token UID</TableHead>
                   <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Type</TableHead>
                   <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Statut</TableHead>
+                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Assigné à</TableHead>
                   <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Créé le</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Dernière Assignation</TableHead>
                   <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-6 font-heading">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -269,13 +269,18 @@ export default function TokenStockScreen() {
                       <TableCell className="py-4 px-6">
                         {getStatusBadge(token.status)}
                       </TableCell>
-                      <TableCell className="py-4 px-6 text-sm text-slate-600">
-                        {new Date(token.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      <TableCell className="py-4 px-6">
+                        {token.assigned_to ? (
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-800">{token.assigned_to}</span>
+                            <span className="text-[11px] text-slate-400">{token.assigned_trip}</span>
+                          </div>
+                        ) : (
+                          <span className="italic text-slate-300 text-[11px]">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="py-4 px-6 text-sm text-slate-600">
-                        {token.last_assigned_at 
-                          ? new Date(token.last_assigned_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                          : <span className="italic text-slate-400">—</span>}
+                        {new Date(token.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
                       <TableCell className="text-right py-4 px-6">
                         {isAdmin ? (
@@ -338,8 +343,21 @@ export default function TokenStockScreen() {
                     <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
                     <div className="font-sans">
                       <p className="font-bold text-orange-700">Bracelet actuellement assigné</p>
-                      <p className="text-orange-600 text-xs mt-1">
-                        Ce bracelet est assigné à un élève.
+                      {editingToken.assigned_to ? (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-orange-800 text-xs">
+                            <span className="font-semibold">Élève :</span> {editingToken.assigned_to}
+                          </p>
+                          <p className="text-orange-800 text-xs">
+                            <span className="font-semibold">Voyage :</span> {editingToken.assigned_trip}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-orange-600 text-xs mt-1">
+                          Ce bracelet est assigné à un élève.
+                        </p>
+                      )}
+                      <p className="text-orange-600 text-xs mt-2 italic">
                         Modifier son statut le désassignera automatiquement.
                       </p>
                     </div>
@@ -402,7 +420,10 @@ export default function TokenStockScreen() {
                 onClick={() => {
                   if (editingToken && editStatus !== editingToken.status) {
                     if (editingToken.status === 'ASSIGNED') {
-                      if (!confirm(`Ce bracelet (${editingToken.token_uid}) est actuellement assigné.\n\nChanger son statut le désassignera. Confirmer ?`)) {
+                      const who = editingToken.assigned_to
+                        ? `\n\nÉlève : ${editingToken.assigned_to}\nVoyage : ${editingToken.assigned_trip}`
+                        : '';
+                      if (!confirm(`Ce bracelet (${editingToken.token_uid}) est actuellement assigné.${who}\n\nChanger son statut le désassignera. Confirmer ?`)) {
                         return;
                       }
                     }
