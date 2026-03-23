@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.models.assignment import Assignment, Token
 from app.models.student import Student
-from app.models.trip import TripStudent
+from app.models.trip import Trip, TripStudent
 from app.schemas.assignment import (
     AssignmentCreate,
     AssignmentReassign,
@@ -29,6 +29,13 @@ from app.schemas.assignment import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Categorie physique vs digitale pour la double assignation
+PHYSICAL_TYPES = {"NFC_PHYSICAL", "QR_PHYSICAL"}
+
+
+def _is_physical(assignment_type: str) -> bool:
+    return assignment_type in PHYSICAL_TYPES
 
 
 def assign_token(
@@ -56,7 +63,7 @@ def assign_token(
     if not is_participant:
         raise ValueError("Cet élève n'est pas inscrit à ce voyage.")
 
-    # 2. Vérifier que le token n'est pas déjà assigné sur ce voyage
+    # 2. Verifier que le token n'est pas deja assigne sur ce voyage
     token_taken = db.execute(
         select(Assignment)
         .where(
@@ -67,20 +74,37 @@ def assign_token(
     ).scalar()
 
     if token_taken:
-        raise ValueError(f"Le bracelet '{data.token_uid}' est déjà assigné sur ce voyage.")
+        # Verifier si l'assignation est orpheline (eleve retire du voyage)
+        still_enrolled = db.execute(
+            select(TripStudent).where(
+                TripStudent.student_id == token_taken.student_id,
+                TripStudent.trip_id == token_taken.trip_id,
+            )
+        ).scalar()
+        if not still_enrolled:
+            # Assignation orpheline → liberer automatiquement
+            token_taken.released_at = datetime.now()
+            logger.info("Assignation orpheline #%d liberee (eleve retire du voyage)", token_taken.id)
+            db.flush()
+        else:
+            raise ValueError(f"Le bracelet '{data.token_uid}' est deja assigne sur ce voyage.")
 
-    # 3. Vérifier que l'élève n'a pas déjà un bracelet actif sur ce voyage
-    student_taken = db.execute(
+    # 3. Verifier que l'eleve n'a pas deja un bracelet de la MEME categorie sur ce voyage
+    #    (physique OU digital — permet d'avoir 1 physique + 1 digital simultanément)
+    new_is_physical = _is_physical(data.assignment_type)
+    student_assignments = db.execute(
         select(Assignment)
         .where(
             Assignment.student_id == data.student_id,
             Assignment.trip_id == data.trip_id,
             Assignment.released_at.is_(None),
         )
-    ).scalar()
+    ).scalars().all()
 
-    if student_taken:
-        raise ValueError("Cet élève a déjà un bracelet assigné sur ce voyage.")
+    for existing in student_assignments:
+        if _is_physical(existing.assignment_type) == new_is_physical:
+            category = "physique" if new_is_physical else "digital"
+            raise ValueError(f"Cet eleve a deja un bracelet {category} assigne sur ce voyage.")
 
     assignment = Assignment(
         token_uid=data.token_uid,
@@ -122,19 +146,24 @@ def reassign_token(
 
     if old_token:
         old_token.released_at = datetime.now()
+        # Remettre l'ancien token en AVAILABLE
+        _update_token_status(db, old_token.token_uid, "AVAILABLE")
 
-    # Libérer l'assignation active de l'élève sur ce voyage (si elle existe)
-    old_student = db.execute(
+    # Liberer l'assignation active de l'eleve de MEME CATEGORIE sur ce voyage
+    new_is_physical = _is_physical(data.assignment_type)
+    old_student_assignments = db.execute(
         select(Assignment)
         .where(
             Assignment.student_id == data.student_id,
             Assignment.trip_id == data.trip_id,
             Assignment.released_at.is_(None),
         )
-    ).scalar()
+    ).scalars().all()
 
-    if old_student and old_student is not old_token:
-        old_student.released_at = datetime.now()
+    for old_assign in old_student_assignments:
+        if old_assign is not old_token and _is_physical(old_assign.assignment_type) == new_is_physical:
+            old_assign.released_at = datetime.now()
+            _update_token_status(db, old_assign.token_uid, "AVAILABLE")
 
     # Forcer l'envoi des UPDATEs à PostgreSQL AVANT l'INSERT.
     # Sans flush(), SQLAlchemy peut envoyer l'INSERT avant les UPDATEs,
@@ -179,7 +208,8 @@ def get_trip_assignment_status(db: Session, trip_id: uuid.UUID) -> TripAssignmen
         )
     ).scalars().all()
 
-    assigned_students = len(assignments)
+    # Compter les eleves distincts avec au moins une assignation
+    assigned_students = len({a.student_id for a in assignments})
 
     return TripAssignmentStatus(
         trip_id=trip_id,
@@ -223,52 +253,79 @@ def get_trip_students_with_assignments(
     db: Session, trip_id: uuid.UUID
 ) -> TripStudentsResponse:
     """
-    Retourne la liste des élèves inscrits à un voyage avec leur bracelet actif (si assigné).
-    Utilisé par le dashboard web pour l'écran d'assignation (US 1.5).
+    Retourne la liste des eleves inscrits a un voyage avec leurs assignations
+    (primaire physique + secondaire digitale).
+    Utilise par le dashboard web pour l'ecran d'assignation (US 1.5).
     """
-    rows = db.execute(
-        select(Student, Assignment)
+    # 1. Tous les eleves du voyage
+    students_rows = db.execute(
+        select(Student)
         .join(TripStudent, TripStudent.student_id == Student.id)
-        .outerjoin(
-            Assignment,
-            and_(
-                Assignment.student_id == Student.id,
-                Assignment.trip_id == trip_id,
-                Assignment.released_at.is_(None),
-            ),
-        )
         .where(TripStudent.trip_id == trip_id)
-    ).all()
+    ).scalars().all()
 
-    # Tri alphabetique en Python (colonnes chiffrees, US 6.3)
-    rows = sorted(rows, key=lambda r: ((r[0].last_name or "").lower(), (r[0].first_name or "").lower()))
+    # 2. Toutes les assignations actives du voyage
+    assignments = db.execute(
+        select(Assignment)
+        .where(
+            Assignment.trip_id == trip_id,
+            Assignment.released_at.is_(None),
+        )
+    ).scalars().all()
 
+    # 3. Map student_id → {primary: Assignment, secondary: Assignment}
+    assignment_map: dict[uuid.UUID, dict[str, Assignment]] = {}
+    for a in assignments:
+        key = "primary" if _is_physical(a.assignment_type) else "secondary"
+        assignment_map.setdefault(a.student_id, {})[key] = a
+
+    # 4. Tri alphabetique en Python (colonnes chiffrees, US 6.3)
+    students_rows = sorted(
+        students_rows,
+        key=lambda s: ((s.last_name or "").lower(), (s.first_name or "").lower()),
+    )
+
+    # 5. Construire la reponse avec les 2 sets de champs
     students = []
-    assigned_count = 0
-    for student, assignment in rows:
-        if assignment is not None:
-            assigned_count += 1
+    primary_count = 0
+    digital_count = 0
+    for student in students_rows:
+        student_assigns = assignment_map.get(student.id, {})
+        primary = student_assigns.get("primary")
+        secondary = student_assigns.get("secondary")
+
+        if primary:
+            primary_count += 1
+        if secondary:
+            digital_count += 1
+
         students.append(
             TripStudentWithAssignment(
                 id=student.id,
                 first_name=student.first_name,
                 last_name=student.last_name,
                 email=student.email,
-                token_uid=assignment.token_uid if assignment else None,
-                assignment_type=assignment.assignment_type if assignment else None,
-                assigned_at=assignment.assigned_at if assignment else None,
+                assignment_id=primary.id if primary else None,
+                token_uid=primary.token_uid if primary else None,
+                assignment_type=primary.assignment_type if primary else None,
+                assigned_at=primary.assigned_at if primary else None,
+                secondary_assignment_id=secondary.id if secondary else None,
+                secondary_token_uid=secondary.token_uid if secondary else None,
+                secondary_assignment_type=secondary.assignment_type if secondary else None,
+                secondary_assigned_at=secondary.assigned_at if secondary else None,
             )
         )
 
     logger.info(
-        "Statut assignations voyage %s : %d/%d élèves assignés",
-        trip_id, assigned_count, len(students)
+        "Statut assignations voyage %s : %d/%d physiques, %d digitaux",
+        trip_id, primary_count, len(students), digital_count,
     )
     return TripStudentsResponse(
         trip_id=trip_id,
         total=len(students),
-        assigned=assigned_count,
-        unassigned=len(students) - assigned_count,
+        assigned=primary_count,
+        unassigned=len(students) - primary_count,
+        assigned_digital=digital_count,
         students=students,
     )
 
@@ -297,10 +354,59 @@ def release_trip_tokens(db: Session, trip_id: uuid.UUID) -> int:
     now = datetime.now()
     for a in assignments:
         a.released_at = now
+        # Remettre le token physique en AVAILABLE
+        _update_token_status(db, a.token_uid, "AVAILABLE")
 
     db.commit()
     logger.info("Voyage %s : %d bracelet(s) libéré(s)", trip_id, count)
     return count
+
+
+def release_assignment(db: Session, assignment_id: int) -> dict:
+    """
+    Libere une assignation individuelle en settant released_at = NOW().
+    Remet le token physique en AVAILABLE.
+    Retourne les details de l'assignation liberee (student, token, trip).
+    Leve ValueError si l'assignation est introuvable ou deja liberee.
+    """
+    assignment = db.execute(
+        select(Assignment).where(Assignment.id == assignment_id)
+    ).scalar()
+
+    if assignment is None:
+        raise ValueError("Assignation introuvable.")
+
+    if assignment.released_at is not None:
+        raise ValueError("Cette assignation est deja liberee.")
+
+    # Recuperer les infos pour la reponse avant de modifier
+    from app.models.student import Student
+    from app.models.trip import Trip
+    student = db.get(Student, assignment.student_id)
+    trip = db.get(Trip, assignment.trip_id)
+
+    # Liberer l'assignation
+    assignment.released_at = datetime.now()
+
+    # Remettre le token physique en AVAILABLE
+    _update_token_status(db, assignment.token_uid, "AVAILABLE")
+
+    db.commit()
+
+    student_name = f"{student.first_name} {student.last_name}" if student else "Inconnu"
+    trip_name = trip.destination if trip else "Inconnu"
+
+    logger.info(
+        "Assignation %d liberee : token %s, eleve %s, voyage %s",
+        assignment_id, assignment.token_uid, student_name, trip_name,
+    )
+
+    return {
+        "assignment_id": assignment_id,
+        "token_uid": assignment.token_uid,
+        "student_name": student_name,
+        "trip_name": trip_name,
+    }
 
 
 def _update_token_status(db: Session, token_uid: str, status: str) -> None:
@@ -391,6 +497,7 @@ def list_tokens(
 ) -> List[TokenResponse]:
     """
     Liste tous les tokens du stock, avec filtres optionnels.
+    Enrichit les tokens ASSIGNED avec le nom de l'eleve et du voyage.
     """
     query = select(Token).order_by(Token.token_uid)
 
@@ -400,7 +507,32 @@ def list_tokens(
         query = query.where(Token.token_type == token_type)
 
     tokens = db.execute(query).scalars().all()
-    return [TokenResponse.model_validate(t) for t in tokens]
+
+    # Charger les assignations actives en une seule requete
+    assigned_uids = [t.token_uid for t in tokens if t.status == "ASSIGNED"]
+    assignment_map: dict[str, tuple[str, str]] = {}
+    if assigned_uids:
+        rows = db.execute(
+            select(Assignment.token_uid, Student.first_name, Student.last_name, Trip.destination)
+            .join(Student, Student.id == Assignment.student_id)
+            .join(Trip, Trip.id == Assignment.trip_id)
+            .where(
+                Assignment.token_uid.in_(assigned_uids),
+                Assignment.released_at.is_(None),
+            )
+        ).all()
+        for token_uid, first_name, last_name, destination in rows:
+            assignment_map[token_uid] = (f"{first_name} {last_name}", destination)
+
+    results = []
+    for t in tokens:
+        resp = TokenResponse.model_validate(t)
+        if t.token_uid in assignment_map:
+            resp.assigned_to = assignment_map[t.token_uid][0]
+            resp.assigned_trip = assignment_map[t.token_uid][1]
+        results.append(resp)
+
+    return results
 
 
 def get_token_stats(db: Session) -> TokenStatsResponse:
@@ -452,6 +584,39 @@ def get_next_sequence(db: Session, prefix: str) -> dict:
     return {"prefix": prefix, "next_sequence": max_seq + 1}
 
 
+def get_token_assignment_info(db: Session, token_id: int) -> Optional[dict]:
+    """
+    Retourne les infos de l'assignation active d'un token (eleve + voyage).
+    Retourne None si le token n'est pas assigne.
+    """
+    token = db.execute(select(Token).where(Token.id == token_id)).scalar()
+    if token is None or token.status != "ASSIGNED":
+        return None
+
+    assignment = db.execute(
+        select(Assignment)
+        .where(
+            Assignment.token_uid == token.token_uid,
+            Assignment.released_at.is_(None),
+        )
+    ).scalar()
+
+    if assignment is None:
+        return None
+
+    student = db.get(Student, assignment.student_id)
+    trip = db.get(Trip, assignment.trip_id)
+
+    return {
+        "assignment_id": assignment.id,
+        "student_name": f"{student.first_name} {student.last_name}" if student else "Inconnu",
+        "student_id": str(assignment.student_id),
+        "trip_name": trip.destination if trip else "Inconnu",
+        "trip_id": str(assignment.trip_id),
+        "assigned_at": assignment.assigned_at.isoformat() if assignment.assigned_at else None,
+    }
+
+
 def delete_token(db: Session, token_id: int) -> None:
     """
     Supprime un token du stock par son id.
@@ -474,11 +639,28 @@ def delete_token(db: Session, token_id: int) -> None:
 def update_token_status_by_id(db: Session, token_id: int, status: str) -> TokenResponse:
     """
     Met a jour le statut d'un token par son id.
+    Si le token etait ASSIGNED et passe a un autre statut,
+    l'assignment actif est automatiquement libere.
     """
     token = db.execute(select(Token).where(Token.id == token_id)).scalar()
 
     if not token:
         raise ValueError(f"Token avec id={token_id} introuvable.")
+
+    # Si le token etait assigne, liberer l'assignment actif
+    if token.status == "ASSIGNED" and status != "ASSIGNED":
+        active_assignment = db.execute(
+            select(Assignment).where(
+                Assignment.token_uid == token.token_uid,
+                Assignment.released_at.is_(None),
+            )
+        ).scalar()
+        if active_assignment:
+            active_assignment.released_at = datetime.utcnow()
+            logger.info(
+                "Assignment #%d libere automatiquement (token %s → %s)",
+                active_assignment.id, token.token_uid, status,
+            )
 
     token.status = status
     db.commit()

@@ -46,38 +46,55 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
     if trip.status == "ARCHIVED":
         raise ValueError("Les données offline ne sont pas disponibles pour un voyage archivé.")
 
-    # Élèves inscrits au voyage + leur assignation active (LEFT JOIN)
-    rows = db.execute(
-        select(Student, Assignment)
+    # Eleves inscrits au voyage (sans JOIN assignation pour eviter les doublons)
+    students_rows = db.execute(
+        select(Student)
         .join(TripStudent, TripStudent.student_id == Student.id)
-        .outerjoin(
-            Assignment,
-            and_(
-                Assignment.student_id == Student.id,
-                Assignment.trip_id == trip_id,
-                Assignment.released_at.is_(None),
-            ),
-        )
         .where(TripStudent.trip_id == trip_id)
-    ).all()
+    ).scalars().all()
+
+    # Assignations actives du voyage
+    assignments = db.execute(
+        select(Assignment)
+        .where(
+            Assignment.trip_id == trip_id,
+            Assignment.released_at.is_(None),
+        )
+    ).scalars().all()
+
+    # Map student_id → liste de toutes les assignations actives
+    assignment_map: dict[uuid.UUID, list[Assignment]] = {}
+    for a in assignments:
+        assignment_map.setdefault(a.student_id, []).append(a)
 
     # Tri alphabetique en Python (colonnes chiffrees, US 6.3)
-    rows = sorted(rows, key=lambda r: ((r[0].last_name or "").lower(), (r[0].first_name or "").lower()))
+    students_rows = sorted(
+        students_rows,
+        key=lambda s: ((s.last_name or "").lower(), (s.first_name or "").lower()),
+    )
 
     students = []
-    for student, assignment in rows:
-        offline_assignment = None
-        if assignment:
-            offline_assignment = OfflineAssignment(
-                token_uid=assignment.token_uid,
-                assignment_type=assignment.assignment_type,
+    for student in students_rows:
+        student_assignments = assignment_map.get(student.id, [])
+        offline_assignments = [
+            OfflineAssignment(
+                token_uid=a.token_uid,
+                assignment_type=a.assignment_type,
             )
+            for a in student_assignments
+        ]
+        # Rétro-compat : assignment = physique en priorité, sinon premier disponible
+        primary = next(
+            (oa for oa in offline_assignments if oa.assignment_type in ("NFC_PHYSICAL", "QR_PHYSICAL")),
+            offline_assignments[0] if offline_assignments else None,
+        )
         students.append(
             OfflineStudent(
                 id=student.id,
                 first_name=student.first_name,
                 last_name=student.last_name,
-                assignment=offline_assignment,
+                assignment=primary,
+                assignments=offline_assignments,
             )
         )
 
