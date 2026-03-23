@@ -67,7 +67,7 @@ class LocalDb {
     if (testDatabasePath != null) {
       return sqflite_std.openDatabase(
         path,
-        version: 4,
+        version: 5,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       );
@@ -78,7 +78,7 @@ class LocalDb {
     try {
       return await sqlcipher.openDatabase(
         path,
-        version: 4,
+        version: 5,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -88,7 +88,7 @@ class LocalDb {
       await sqlcipher.deleteDatabase(path);
       return sqlcipher.openDatabase(
         path,
-        version: 4,
+        version: 5,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -186,6 +186,20 @@ class LocalDb {
         status            TEXT NOT NULL
       )
     ''');
+
+    /// Table des assignations multiples par eleve (physique + QR digital).
+    await db.execute('''
+      CREATE TABLE student_assignments (
+        student_id      TEXT NOT NULL,
+        trip_id         TEXT NOT NULL,
+        token_uid       TEXT NOT NULL,
+        assignment_type TEXT NOT NULL,
+        PRIMARY KEY (student_id, trip_id, token_uid)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_sa_token ON student_assignments(token_uid, trip_id)',
+    );
   }
 
   /// Migrations incrementales.
@@ -228,6 +242,21 @@ class LocalDb {
         )
       ''');
     }
+    // v4 → v5 : table student_assignments (support double assignation physique + QR digital)
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS student_assignments (
+          student_id      TEXT NOT NULL,
+          trip_id         TEXT NOT NULL,
+          token_uid       TEXT NOT NULL,
+          assignment_type TEXT NOT NULL,
+          PRIMARY KEY (student_id, trip_id, token_uid)
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sa_token ON student_assignments(token_uid, trip_id)',
+      );
+    }
   }
 
   // ----------------------------------------------------------------
@@ -244,6 +273,7 @@ class LocalDb {
 
     await db.transaction((txn) async {
       // Nettoyer les données existantes pour ce voyage (sauf attendances)
+      await txn.delete('student_assignments', where: 'trip_id = ?', whereArgs: [tripId]);
       await txn.delete('checkpoints', where: 'trip_id = ?', whereArgs: [tripId]);
       await txn.delete('students', where: 'trip_id = ?', whereArgs: [tripId]);
       await txn.delete('trips', where: 'id = ?', whereArgs: [tripId]);
@@ -275,6 +305,24 @@ class LocalDb {
         );
       }
       await studentBatch.commit(noResult: true);
+
+      // Insérer toutes les assignations dans student_assignments
+      final assignBatch = txn.batch();
+      for (final s in bundle.students) {
+        for (final a in s.assignments) {
+          assignBatch.insert(
+            'student_assignments',
+            {
+              'student_id': s.id,
+              'trip_id': tripId,
+              'token_uid': a.tokenUid,
+              'assignment_type': a.assignmentType,
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+      }
+      await assignBatch.commit(noResult: true);
 
       // Insérer les checkpoints en batch
       final cpBatch = txn.batch();
@@ -498,9 +546,40 @@ class LocalDb {
   }
 
   /// Résout un UID de token en OfflineStudent pour un voyage donné.
+  /// Cherche dans student_assignments (physique + QR digital).
   /// Utilisé par HybridIdentityReader après scan NFC/QR.
   Future<OfflineStudent?> resolveUid(String uid, String tripId) async {
     final db = await database;
+
+    // Chercher dans student_assignments (supporte double assignation)
+    final assignRows = await db.query(
+      'student_assignments',
+      where: 'token_uid = ? AND trip_id = ?',
+      whereArgs: [uid, tripId],
+    );
+
+    if (assignRows.isNotEmpty) {
+      final studentId = assignRows.first['student_id'] as String;
+      final studentRows = await db.query(
+        'students',
+        where: 'id = ? AND trip_id = ?',
+        whereArgs: [studentId, tripId],
+      );
+      if (studentRows.isNotEmpty) {
+        final r = studentRows.first;
+        return OfflineStudent(
+          id: r['id'] as String,
+          firstName: r['first_name'] as String,
+          lastName: r['last_name'] as String,
+          assignment: OfflineAssignment(
+            tokenUid: uid,
+            assignmentType: assignRows.first['assignment_type'] as String,
+          ),
+        );
+      }
+    }
+
+    // Fallback : ancienne colonne token_uid dans students (rétro-compat)
     final rows = await db.query(
       'students',
       where: 'token_uid = ? AND trip_id = ?',
