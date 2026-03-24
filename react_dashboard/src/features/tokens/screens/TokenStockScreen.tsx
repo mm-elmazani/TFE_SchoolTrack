@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tokenApi } from '../api/tokenApi';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,6 +40,9 @@ import {
   Pencil,
   Rss,
   QrCode,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -53,6 +56,8 @@ export default function TokenStockScreen() {
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [editingToken, setEditingToken] = useState<any>(null);
   const [editStatus, setEditStatus] = useState<string>('');
+  const [sortColumn, setSortColumn] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const { data: stats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['tokenStats'],
@@ -83,6 +88,43 @@ export default function TokenStockScreen() {
       queryClient.invalidateQueries({ queryKey: ['tokenStats'] });
     }
   });
+
+  const toggleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="w-3.5 h-3.5 text-schooltrack-primary" />
+      : <ArrowDown className="w-3.5 h-3.5 text-schooltrack-primary" />;
+  };
+
+  const sortedTokens = useMemo(() => {
+    if (!tokens || tokens.length === 0) return [];
+    return [...tokens].sort((a: any, b: any) => {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      switch (sortColumn) {
+        case 'token_uid':
+          return dir * (a.token_uid || '').localeCompare(b.token_uid || '');
+        case 'token_type':
+          return dir * (a.token_type || '').localeCompare(b.token_type || '');
+        case 'status':
+          return dir * (a.status || '').localeCompare(b.status || '');
+        case 'assigned_to':
+          return dir * (a.assigned_to || '').localeCompare(b.assigned_to || '');
+        case 'created_at':
+          return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        default:
+          return 0;
+      }
+    });
+  }, [tokens, sortColumn, sortDirection]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -229,11 +271,31 @@ export default function TokenStockScreen() {
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-b-slate-100">
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Token UID</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Type</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Statut</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Assigné à</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 font-heading">Créé le</TableHead>
+                  <TableHead className="py-4 px-6 font-heading">
+                    <button onClick={() => toggleSort('token_uid')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
+                      Token UID <SortIcon column="token_uid" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="py-4 px-6 font-heading">
+                    <button onClick={() => toggleSort('token_type')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
+                      Type <SortIcon column="token_type" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="py-4 px-6 font-heading">
+                    <button onClick={() => toggleSort('status')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
+                      Statut <SortIcon column="status" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="py-4 px-6 font-heading">
+                    <button onClick={() => toggleSort('assigned_to')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
+                      Assigné à <SortIcon column="assigned_to" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="py-4 px-6 font-heading">
+                    <button onClick={() => toggleSort('created_at')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
+                      Créé le <SortIcon column="created_at" />
+                    </button>
+                  </TableHead>
                   <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-6 font-heading">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -244,14 +306,14 @@ export default function TokenStockScreen() {
                       <Loader2 className="w-8 h-8 animate-spin mx-auto text-slate-300" />
                     </TableCell>
                   </TableRow>
-                ) : !tokens || tokens.length === 0 ? (
+                ) : sortedTokens.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-48 text-center text-slate-500 italic font-sans">
                       Aucun bracelet trouvé pour ces critères.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  tokens.map((token: any) => (
+                  sortedTokens.map((token: any) => (
                     <TableRow key={token.id} className="hover:bg-slate-50/50 transition-colors group font-sans">
                       <TableCell className="py-4 px-6">
                         <div className="flex flex-col">
