@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '../api/userApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,22 @@ export default function UserListScreen() {
   const { getIsAdmin, user: currentUser } = useAuthStore();
   const isAdmin = getIsAdmin();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['users'],
     queryFn: userApi.getAll,
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => userApi.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); },
+  });
+
+  const handleDelete = (user: { id: string; first_name: string; last_name: string }) => {
+    if (!confirm(`Supprimer l'utilisateur ${user.first_name} ${user.last_name} ? Cette action est irréversible.`)) return;
+    deleteMutation.mutate(user.id);
+  };
 
   if (isLoading) return (
     <div className="flex h-64 items-center justify-center">
@@ -122,8 +133,16 @@ export default function UserListScreen() {
                       </TableCell>
                       <TableCell className="text-right py-4 px-6">
                         {isAdmin && u.id !== currentUser?.id ? (
-                          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg">
-                            <Trash2 className="w-4 h-4" />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => handleDelete(u)}
+                          >
+                            {deleteMutation.isPending && deleteMutation.variables === u.id
+                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              : <Trash2 className="w-4 h-4" />}
                           </Button>
                         ) : (
                           <span className="text-[10px] text-slate-300 italic px-2 font-sans">Action restreinte</span>

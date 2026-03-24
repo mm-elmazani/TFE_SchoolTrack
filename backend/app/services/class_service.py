@@ -128,11 +128,11 @@ def assign_students(db: Session, class_id: uuid.UUID, data: ClassStudentsAssign)
     for sid in data.student_ids:
         if sid in existing:
             continue
-        # Retirer l'élève de son ancienne classe (s'il en a une)
-        old_link = db.execute(
+        # Retirer l'élève de toutes ses anciennes classes (un élève = une seule classe)
+        old_links = db.execute(
             select(ClassStudent).where(ClassStudent.student_id == sid)
-        ).scalar()
-        if old_link:
+        ).scalars().all()
+        for old_link in old_links:
             db.delete(old_link)
         to_insert.append({"class_id": class_id, "student_id": sid})
 
