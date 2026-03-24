@@ -31,10 +31,13 @@ from app.services.auth_service import (
     create_refresh_token,
     disable_2fa,
     enable_2fa,
+    enable_2fa_email,
     hash_password,
     refresh_access_token,
     register_user,
+    send_email_otp,
     verify_and_activate_2fa,
+    verify_and_activate_2fa_email,
 )
 
 _admin = require_role("DIRECTION", "ADMIN_TECH")
@@ -218,6 +221,94 @@ def disable_two_factor(
     )
 
     return MessageResponse(message="2FA desactive")
+
+
+# ---------------------------------------------------------------------------
+# POST /enable-2fa-email
+# ---------------------------------------------------------------------------
+@router.post("/enable-2fa-email", response_model=MessageResponse)
+def enable_two_factor_email(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Initie l'activation de la 2FA par email : envoie un code de verification."""
+    if current_user.is_2fa_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="2FA deja active",
+        )
+    try:
+        enable_2fa_email(db, current_user)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'envoi du code : {e}",
+        )
+
+    log_audit(
+        db, user_id=current_user.id, action="2FA_EMAIL_INITIATED",
+        resource_type="AUTH",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    return MessageResponse(message="Code de verification envoye par email")
+
+
+# ---------------------------------------------------------------------------
+# POST /verify-2fa-email
+# ---------------------------------------------------------------------------
+@router.post("/verify-2fa-email", response_model=MessageResponse)
+def verify_two_factor_email(
+    body: Verify2FARequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verifie le code email OTP et active definitivement la 2FA par email."""
+    try:
+        success = verify_and_activate_2fa_email(db, current_user, body.totp_code)
+    except AuthError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Code invalide",
+        )
+
+    log_audit(
+        db, user_id=current_user.id, action="2FA_ENABLED",
+        resource_type="AUTH",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        details={"method": "EMAIL"},
+    )
+
+    return MessageResponse(message="2FA par email activee avec succes")
+
+
+# ---------------------------------------------------------------------------
+# POST /resend-2fa-code
+# ---------------------------------------------------------------------------
+@router.post("/resend-2fa-code", response_model=MessageResponse)
+def resend_two_factor_code(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Renvoie un nouveau code OTP par email (pour configuration ou login)."""
+    try:
+        send_email_otp(db, current_user)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de l'envoi du code : {e}",
+        )
+    return MessageResponse(message="Nouveau code envoye")
 
 
 # ---------------------------------------------------------------------------

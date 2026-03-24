@@ -7,6 +7,8 @@ export interface User {
   role: 'DIRECTION' | 'TEACHER' | 'OBSERVER' | 'ADMIN_TECH';
   first_name?: string;
   last_name?: string;
+  is_2fa_enabled?: boolean;
+  two_fa_method?: string | null;
 }
 
 interface AuthState {
@@ -15,6 +17,7 @@ interface AuthState {
   user: User | null;
   setAuth: (token: string, refreshToken: string, user: User) => void;
   setTokens: (token: string, refreshToken: string) => void;
+  updateUser: (patch: Partial<User>) => void;
   logout: () => void;
   getIsAdmin: () => boolean;
   getCanManageStudents: () => boolean;
@@ -29,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setAuth: (token, refreshToken, user) => set({ token, refreshToken, user }),
       setTokens: (token, refreshToken) => set({ token, refreshToken }),
+      updateUser: (patch) => set((state) => ({ user: state.user ? { ...state.user, ...patch } : null })),
       logout: () => set({ token: null, refreshToken: null, user: null }),
       getIsAdmin: () => {
         const role = get().user?.role;

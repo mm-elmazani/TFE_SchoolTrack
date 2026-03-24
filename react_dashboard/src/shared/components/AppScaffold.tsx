@@ -10,6 +10,7 @@ import {
   UserCog,
   ShieldCheck,
   LogOut,
+  UserCircle,
   Menu,
   ChevronRight,
   LayoutDashboard,
@@ -96,11 +97,18 @@ export default function AppScaffold() {
       </nav>
 
       <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="mb-4 px-2">
-          <p className="text-xs font-medium text-slate-900 truncate">{user?.first_name} {user?.last_name}</p>
-          <p className="text-xs text-slate-500 truncate">{user?.email}</p>
-          <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-1">{user?.role}</p>
-        </div>
+        <Link
+          to="/profile"
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="flex items-center gap-3 mb-4 px-2 py-2 -mx-1 rounded-xl hover:bg-blue-50 transition-colors group cursor-pointer"
+        >
+          <UserCircle className="w-5 h-5 text-slate-400 group-hover:text-schooltrack-primary shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-900 truncate group-hover:text-schooltrack-primary">{user?.first_name} {user?.last_name}</p>
+            <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">{user?.role}</p>
+          </div>
+        </Link>
         <Button 
           variant="destructive" 
           onClick={logout} 
@@ -159,9 +167,9 @@ export default function AppScaffold() {
               <span className="text-sm font-medium text-slate-700">{user?.first_name} {user?.last_name}</span>
               <span className="text-[10px] text-slate-500 uppercase tracking-tighter">{user?.role}</span>
             </div>
-            <div className="w-9 h-9 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shadow-inner">
+            <Link to="/profile" className="w-9 h-9 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shadow-inner hover:bg-blue-50 hover:border-schooltrack-primary transition-colors">
               {user?.email?.[0].toUpperCase()}
-            </div>
+            </Link>
           </div>
         </header>
 

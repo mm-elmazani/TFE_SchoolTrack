@@ -17,6 +17,7 @@ import TokenStockScreen from '@/features/tokens/screens/TokenStockScreen';
 import AlertScreen from '@/features/alerts/screens/AlertScreen';
 import CheckpointTimelineScreen from '@/features/trips/screens/CheckpointTimelineScreen';
 import RoleRedirect from '@/shared/components/RoleRedirect';
+import ProfileScreen from '@/features/auth/screens/ProfileScreen';
 
 export const router = createBrowserRouter([
   {
@@ -110,6 +111,10 @@ export const router = createBrowserRouter([
       {
         path: 'tokens',
         element: <TokenManagementScreen />,
+      },
+      {
+        path: 'profile',
+        element: <ProfileScreen />,
       },
       {
         path: 'tokens/stock',

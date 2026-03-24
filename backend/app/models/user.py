@@ -23,6 +23,9 @@ class User(Base):
     role = Column(String(50), nullable=False)  # DIRECTION, TEACHER, OBSERVER, ADMIN_TECH
     totp_secret = Column(EncryptedString(), nullable=True)
     is_2fa_enabled = Column(Boolean, default=False)
+    two_fa_method = Column(String(10), nullable=True)  # 'APP' ou 'EMAIL'
+    email_otp_code = Column(String(10), nullable=True)
+    email_otp_expires = Column(DateTime, nullable=True)
     failed_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)

@@ -23,6 +23,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [needs2FA, setNeeds2FA] = useState(false);
+  const [twoFAMethod, setTwoFAMethod] = useState<'APP' | 'EMAIL'>('APP');
   const [totpCode, setTotpCode] = useState('');
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
@@ -44,8 +45,9 @@ export default function LoginScreen() {
       navigate('/students', { replace: true });
     } catch (err: any) {
       const detail = err.response?.data?.detail || '';
-      if (detail === '2FA_REQUIRED') {
+      if (detail === '2FA_REQUIRED' || detail === '2FA_REQUIRED_EMAIL') {
         setNeeds2FA(true);
+        setTwoFAMethod(detail === '2FA_REQUIRED_EMAIL' ? 'EMAIL' : 'APP');
         setError(null);
       } else {
         setError(detail || 'Une erreur est survenue lors de la connexion');
@@ -76,7 +78,9 @@ export default function LoginScreen() {
           <CardTitle className="text-3xl font-bold tracking-tight text-schooltrack-primary">SchoolTrack</CardTitle>
           <CardDescription className="text-slate-500 text-base">
             {needs2FA
-              ? 'Entrez le code de votre application d\'authentification.'
+              ? (twoFAMethod === 'EMAIL'
+                ? 'Un code de verification a ete envoye a votre adresse email.'
+                : 'Entrez le code de votre application d\'authentification.')
               : 'Gérez vos élèves et voyages scolaires en toute sécurité.'}
           </CardDescription>
         </CardHeader>
