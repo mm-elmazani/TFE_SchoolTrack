@@ -122,10 +122,14 @@ CREATE UNIQUE INDEX idx_assignments_active_token_trip
 ON assignments(token_uid, trip_id)
 WHERE released_at IS NULL;
 
--- ⭐ v4.2: Empêcher 2 assignations actives simultanées pour même élève+voyage
-CREATE UNIQUE INDEX idx_assignments_active_student_trip
+-- ⭐ v4.3: Permettre double assignation (physique + QR digital) par eleve par voyage
+CREATE UNIQUE INDEX idx_assignments_active_student_trip_physical
 ON assignments(student_id, trip_id)
-WHERE released_at IS NULL;
+WHERE released_at IS NULL AND assignment_type != 'QR_DIGITAL';
+
+CREATE UNIQUE INDEX idx_assignments_active_student_trip_digital
+ON assignments(student_id, trip_id)
+WHERE released_at IS NULL AND assignment_type = 'QR_DIGITAL';
 
 COMMENT ON COLUMN assignments.token_uid IS
 'UID physique (ex: ST-001) pour NFC/QR physique OU hash généré (ex: QR-a3f2c8) pour QR digital envoyé par email';

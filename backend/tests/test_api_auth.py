@@ -83,7 +83,7 @@ class TestLogin:
         assert resp.status_code == 423
 
     def test_login_2fa_required(self, client):
-        with patch("app.routers.auth.authenticate_user", side_effect=TwoFactorRequiredError("Code 2FA requis")):
+        with patch("app.routers.auth.authenticate_user", side_effect=TwoFactorRequiredError("2FA_REQUIRED")):
             resp = client.post("/api/v1/auth/login", json={
                 "email": "test@school.be",
                 "password": "Test1234!",

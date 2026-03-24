@@ -60,6 +60,9 @@ class TokenResponse(BaseModel):
     hardware_uid: Optional[str] = None
     created_at: datetime
     last_assigned_at: Optional[datetime]
+    # Infos assignation active (remplies si status == ASSIGNED)
+    assigned_to: Optional[str] = None
+    assigned_trip: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -160,22 +163,30 @@ class TripAssignmentStatus(BaseModel):
 
 
 class TripStudentWithAssignment(BaseModel):
-    """Élève inscrit à un voyage avec son statut d'assignation bracelet."""
+    """Eleve inscrit a un voyage avec ses assignations (primaire physique + secondaire digitale)."""
     id: uuid.UUID
     first_name: str
     last_name: str
     email: Optional[str]
+    # Assignation primaire (NFC_PHYSICAL ou QR_PHYSICAL)
+    assignment_id: Optional[int] = None
     token_uid: Optional[str] = None
     assignment_type: Optional[str] = None
     assigned_at: Optional[datetime] = None
+    # Assignation secondaire (QR_DIGITAL)
+    secondary_assignment_id: Optional[int] = None
+    secondary_token_uid: Optional[str] = None
+    secondary_assignment_type: Optional[str] = None
+    secondary_assigned_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
 
 class TripStudentsResponse(BaseModel):
-    """Liste complète des élèves d'un voyage avec leur statut d'assignation."""
+    """Liste complete des eleves d'un voyage avec leur statut d'assignation."""
     trip_id: uuid.UUID
     total: int
     assigned: int
     unassigned: int
+    assigned_digital: int = 0
     students: List[TripStudentWithAssignment]

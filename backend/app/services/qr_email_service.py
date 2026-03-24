@@ -87,19 +87,19 @@ def send_qr_emails_for_trip(db: Session, trip_id: uuid.UUID) -> QrEmailSendResul
             result.no_email_count += 1
             continue
 
-        # Skip si l'élève a déjà une assignation active sur ce voyage (quel que soit le type).
-        # Raison : idx_assignments_active_student_trip impose l'unicité (student_id, trip_id)
-        # WHERE released_at IS NULL. Tenter d'insérer un QR_DIGITAL pour un élève ayant déjà
-        # un NFC/QR physique provoquerait une violation de contrainte et un rollback global.
-        existing = db.execute(
+        # Skip si l'eleve a deja une assignation QR_DIGITAL active sur ce voyage.
+        # Les assignations physiques (NFC/QR) ne bloquent plus l'envoi du QR digital
+        # (double assignation primaire + secondaire autorisee depuis v4.3).
+        existing_digital = db.execute(
             select(Assignment).where(
                 Assignment.student_id == student.id,
                 Assignment.trip_id == trip_id,
                 Assignment.released_at.is_(None),
+                Assignment.assignment_type == "QR_DIGITAL",
             )
         ).scalar()
 
-        if existing:
+        if existing_digital:
             result.already_sent_count += 1
             continue
 

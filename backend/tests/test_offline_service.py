@@ -34,10 +34,13 @@ def make_student(first_name="Alice", last_name="Dupont"):
     return s
 
 
-def make_assignment(token_uid="ST-001", assignment_type="NFC_PHYSICAL"):
+def make_assignment(student_id, trip_id, token_uid="ST-001", assignment_type="NFC_PHYSICAL"):
     a = MagicMock(spec=Assignment)
+    a.student_id = student_id
+    a.trip_id = trip_id
     a.token_uid = token_uid
     a.assignment_type = assignment_type
+    a.released_at = None
     return a
 
 
@@ -50,11 +53,10 @@ def make_checkpoint(name="Départ", sequence_order=1, status="DRAFT"):
     return cp
 
 
-def make_db(trip=None, student_rows=None, checkpoints=None):
+def make_db(trip=None, students=None, assignments=None, checkpoints=None):
     """
     Construit un mock de session DB.
-    student_rows : liste de tuples (Student, Assignment|None)
-    checkpoints  : liste de Checkpoint
+    Execute order: trip, students (scalars), assignments (scalars), checkpoints (scalars).
     """
     db = MagicMock()
 
@@ -62,12 +64,15 @@ def make_db(trip=None, student_rows=None, checkpoints=None):
     trip_result.scalar.return_value = trip
 
     students_result = MagicMock()
-    students_result.all.return_value = student_rows or []
+    students_result.scalars.return_value.all.return_value = students or []
+
+    assignments_result = MagicMock()
+    assignments_result.scalars.return_value.all.return_value = assignments or []
 
     checkpoints_result = MagicMock()
     checkpoints_result.scalars.return_value.all.return_value = checkpoints or []
 
-    db.execute.side_effect = [trip_result, students_result, checkpoints_result]
+    db.execute.side_effect = [trip_result, students_result, assignments_result, checkpoints_result]
     return db
 
 
@@ -97,7 +102,7 @@ def test_voyage_archive():
 def test_bundle_voyage_sans_eleves():
     """Voyage sans élèves → students=[], checkpoints=[]."""
     trip = make_trip()
-    db = make_db(trip=trip, student_rows=[], checkpoints=[])
+    db = make_db(trip=trip)
 
     result = get_offline_data(db, trip.id)
 
@@ -116,7 +121,7 @@ def test_eleves_sans_assignation():
     """Élèves inscrits mais sans bracelet → assignment=None."""
     trip = make_trip()
     s = make_student()
-    db = make_db(trip=trip, student_rows=[(s, None)], checkpoints=[])
+    db = make_db(trip=trip, students=[s], assignments=[])
 
     result = get_offline_data(db, trip.id)
 
@@ -134,8 +139,8 @@ def test_eleves_avec_assignation_nfc():
     """Élève avec bracelet NFC → assignment présent avec token_uid."""
     trip = make_trip()
     s = make_student()
-    a = make_assignment(token_uid="ST-042", assignment_type="NFC_PHYSICAL")
-    db = make_db(trip=trip, student_rows=[(s, a)], checkpoints=[])
+    a = make_assignment(s.id, trip.id, token_uid="ST-042", assignment_type="NFC_PHYSICAL")
+    db = make_db(trip=trip, students=[s], assignments=[a])
 
     result = get_offline_data(db, trip.id)
 
@@ -148,8 +153,8 @@ def test_eleves_avec_assignation_qr_digital():
     """Élève avec QR digital → assignment_type=QR_DIGITAL."""
     trip = make_trip()
     s = make_student()
-    a = make_assignment(token_uid="QRD-A1B2C3D4", assignment_type="QR_DIGITAL")
-    db = make_db(trip=trip, student_rows=[(s, a)], checkpoints=[])
+    a = make_assignment(s.id, trip.id, token_uid="QRD-A1B2C3D4", assignment_type="QR_DIGITAL")
+    db = make_db(trip=trip, students=[s], assignments=[a])
 
     result = get_offline_data(db, trip.id)
 
@@ -166,7 +171,7 @@ def test_checkpoints_presents():
     trip = make_trip()
     cp1 = make_checkpoint(name="Départ bus", sequence_order=1, status="CLOSED")
     cp2 = make_checkpoint(name="Entrée musée", sequence_order=2, status="ACTIVE")
-    db = make_db(trip=trip, student_rows=[], checkpoints=[cp1, cp2])
+    db = make_db(trip=trip, checkpoints=[cp1, cp2])
 
     result = get_offline_data(db, trip.id)
 
@@ -186,12 +191,13 @@ def test_bundle_complet():
     trip = make_trip(status="ACTIVE")
     s1 = make_student("Alice", "Dupont")
     s2 = make_student("Bob", "Martin")
-    a1 = make_assignment(token_uid="ST-001", assignment_type="NFC_PHYSICAL")
+    a1 = make_assignment(s1.id, trip.id, token_uid="ST-001", assignment_type="NFC_PHYSICAL")
     cp = make_checkpoint(name="Visite", sequence_order=1)
 
     db = make_db(
         trip=trip,
-        student_rows=[(s1, a1), (s2, None)],
+        students=[s1, s2],
+        assignments=[a1],
         checkpoints=[cp],
     )
 
@@ -199,7 +205,10 @@ def test_bundle_complet():
 
     assert result.trip.status == "ACTIVE"
     assert len(result.students) == 2
+    # Tri alphabétique : Dupont < Martin
+    assert result.students[0].first_name == "Alice"
     assert result.students[0].assignment is not None
+    assert result.students[1].first_name == "Bob"
     assert result.students[1].assignment is None
     assert len(result.checkpoints) == 1
     assert result.checkpoints[0].name == "Visite"

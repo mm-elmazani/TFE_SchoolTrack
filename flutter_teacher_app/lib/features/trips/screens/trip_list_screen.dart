@@ -438,58 +438,61 @@ class _SyncButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final sync = context.watch<SyncProvider>();
 
-    // Pas de presences en attente et pas en cours → icone historique seule
-    if (!sync.hasPending && sync.status != SyncStatus.syncing) {
-      return IconButton(
-        icon: const Icon(Icons.history),
-        tooltip: 'Historique sync',
-        onPressed: () => context.push('/sync-history'),
-      );
-    }
-
-    return Stack(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
-          onLongPress: () => context.push('/sync-history'),
-          child: IconButton(
-            icon: sync.status == SyncStatus.syncing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+        // Bouton sync / spinner
+        Stack(
+          children: [
+            IconButton(
+              icon: sync.status == SyncStatus.syncing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(
+                      sync.hasPending ? Icons.sync : Icons.sync,
+                      color: sync.hasPending ? Colors.amber.shade200 : Colors.white,
                     ),
-                  )
-                : const Icon(Icons.sync),
-            tooltip: 'Synchroniser (appui long: historique)',
-            onPressed: sync.status == SyncStatus.syncing
-                ? null
-                : () => sync.syncNow(),
-          ),
-        ),
-        if (sync.hasPending)
-          Positioned(
-            right: 4,
-            top: 4,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.red,
-                shape: BoxShape.circle,
-              ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                '${sync.pendingCount}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
+              tooltip: sync.hasPending ? 'Synchroniser' : 'Rien a synchroniser',
+              onPressed: sync.status == SyncStatus.syncing || !sync.hasPending
+                  ? null
+                  : () => sync.syncNow(),
             ),
-          ),
+            if (sync.hasPending)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                  child: Text(
+                    '${sync.pendingCount}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        // Bouton historique — toujours visible
+        IconButton(
+          icon: const Icon(Icons.history),
+          tooltip: 'Historique des synchronisations',
+          onPressed: () => context.push('/sync-history'),
+        ),
       ],
     );
   }

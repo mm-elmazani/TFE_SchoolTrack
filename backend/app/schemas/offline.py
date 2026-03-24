@@ -31,11 +31,12 @@ class OfflineAssignment(BaseModel):
 
 
 class OfflineStudent(BaseModel):
-    """Élève avec son assignation de bracelet/QR (null si non assigné)."""
+    """Élève avec ses assignations de bracelet/QR."""
     id: uuid.UUID
     first_name: str
     last_name: str
-    assignment: Optional[OfflineAssignment]  # None si aucun bracelet assigné
+    assignment: Optional[OfflineAssignment] = None  # Rétro-compat : assignation primaire
+    assignments: List[OfflineAssignment] = []        # Toutes les assignations actives
 
 
 class OfflineCheckpoint(BaseModel):

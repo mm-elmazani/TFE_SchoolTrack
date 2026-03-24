@@ -79,6 +79,7 @@ class NfcEncodingProvider extends ChangeNotifier {
 
   set prefix(String value) {
     _prefix = value.toUpperCase();
+    _loadNextSequence();
     notifyListeners();
   }
 
@@ -89,7 +90,7 @@ class NfcEncodingProvider extends ChangeNotifier {
     }
   }
 
-  /// Verifie la disponibilite NFC au demarrage.
+  /// Verifie la disponibilite NFC au demarrage et charge le prochain numero.
   Future<void> init() async {
     try {
       final availability = await NfcManager.instance.checkAvailability();
@@ -98,6 +99,7 @@ class NfcEncodingProvider extends ChangeNotifier {
       _nfcAvailable = false;
     }
     await loadStats();
+    await _loadNextSequence();
     notifyListeners();
   }
 
@@ -109,6 +111,15 @@ class NfcEncodingProvider extends ChangeNotifier {
       // Pas critique, on continue
     }
     notifyListeners();
+  }
+
+  /// Charge le prochain numero de sequence depuis l'API.
+  Future<void> _loadNextSequence() async {
+    try {
+      _nextSequence = await _api.getNextSequence(prefix: _prefix);
+    } catch (_) {
+      // Fallback : garde la valeur actuelle (1 par defaut)
+    }
   }
 
   /// Demarre la session NFC et attend un tag.

@@ -340,6 +340,35 @@ class ApiClient {
     }
   }
 
+  /// GET /api/v1/tokens/next-sequence — Prochain numero de sequence disponible.
+  Future<int> getNextSequence({String prefix = 'ST'}) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/tokens/next-sequence?prefix=$prefix');
+      var response = await _http
+          .get(uri, headers: _authHeaders)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 10));
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['next_sequence'] as int;
+      }
+      throw ApiException(
+        'Erreur serveur (${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
   // ----------------------------------------------------------------
   // Synchronisation offline → online (US 3.1)
   // ----------------------------------------------------------------

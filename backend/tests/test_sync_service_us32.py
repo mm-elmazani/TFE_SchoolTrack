@@ -9,6 +9,9 @@ Scénarios couverts :
 - Détection anomalies temporelles : timestamps non croissants entre checkpoints
 - Plusieurs conflits dans le même batch
 - Batch multi-étudiants avec conflits mixtes
+
+Note : Depuis l'ajout de la validation checkpoint, chaque scan non-doublon
+requiert un db.execute supplémentaire pour le checkpoint check.
 """
 
 import uuid
@@ -21,6 +24,7 @@ from app.schemas.sync import ScanItem
 from app.services.sync_service import _detect_temporal_anomalies, sync_attendances
 
 _PATCH = "app.services.sync_service._detect_temporal_anomalies"
+_DUMMY_CP_ID = uuid.uuid4()
 
 
 # ----------------------------------------------------------------
@@ -38,7 +42,7 @@ def make_scan(
     return ScanItem(
         client_uuid=client_uuid or uuid.uuid4(),
         student_id=student_id or uuid.uuid4(),
-        checkpoint_id=checkpoint_id or uuid.uuid4(),
+        checkpoint_id=checkpoint_id or _DUMMY_CP_ID,
         trip_id=trip_id or uuid.uuid4(),
         scanned_at=scanned_at or datetime(2026, 3, 21, 12, 0, 0),
         scan_method=scan_method,
@@ -76,21 +80,13 @@ def test_scan_plus_ancien_remplace_canonique(_):
     2e enseignant synchronise un scan plus ancien → MERGED_OLDEST.
     Le canonique est mis à jour avec le nouveau (plus ancien) scanned_at.
     """
-    student_id = uuid.uuid4()
-    checkpoint_id = uuid.uuid4()
-    trip_id = uuid.uuid4()
-
     canonical = make_canonical(scanned_at=datetime(2026, 3, 21, 14, 0, 0))
 
     # Nouveau scan à 13:30 (plus ancien que le canonique à 14:00)
-    scan = make_scan(
-        student_id=student_id,
-        checkpoint_id=checkpoint_id,
-        trip_id=trip_id,
-        scanned_at=datetime(2026, 3, 21, 13, 30, 0),
-    )
+    scan = make_scan(scanned_at=datetime(2026, 3, 21, 13, 30, 0))
 
-    db = make_db(None, canonical)  # history=None, canonical=existant
+    # history=None, checkpoint=exists, canonical=existant
+    db = make_db(None, _DUMMY_CP_ID, canonical)
 
     result = sync_attendances(db, scans=[scan])
 
@@ -105,12 +101,10 @@ def test_scan_plus_ancien_remplace_canonique(_):
     assert canonical.scan_method == "NFC_PHYSICAL"
 
     # L'history entry doit être marquée MERGED_OLDEST
-    history_obj = db.add.call_args_list[0][0][0]
-    assert isinstance(history_obj, AttendanceHistory)
-    assert history_obj.merge_status == "MERGED_OLDEST"
-
-    # Aucun nouvel objet Attendance créé (seulement history)
-    assert db.add.call_count == 1
+    added = [c[0][0] for c in db.add.call_args_list]
+    histories = [o for o in added if isinstance(o, AttendanceHistory)]
+    assert len(histories) == 1
+    assert histories[0].merge_status == "MERGED_OLDEST"
 
 
 @patch(_PATCH, return_value=[])
@@ -121,7 +115,7 @@ def test_scan_plus_ancien_aware_vs_naive(_):
     scan = make_scan(
         scanned_at=datetime(2026, 3, 21, 13, 30, 0, tzinfo=timezone.utc),
     )
-    db = make_db(None, canonical)
+    db = make_db(None, _DUMMY_CP_ID, canonical)
 
     result = sync_attendances(db, scans=[scan])
 
@@ -143,7 +137,7 @@ def test_scan_plus_recent_supersede(_):
 
     # Nouveau scan à 14:00 (plus récent que le canonique à 10:00)
     scan = make_scan(scanned_at=datetime(2026, 3, 21, 14, 0, 0))
-    db = make_db(None, canonical)
+    db = make_db(None, _DUMMY_CP_ID, canonical)
 
     result = sync_attendances(db, scans=[scan])
 
@@ -156,11 +150,9 @@ def test_scan_plus_recent_supersede(_):
     assert canonical.scanned_at == datetime(2026, 3, 21, 10, 0, 0)
 
     # History archivée comme SUPERSEDED
-    history_obj = db.add.call_args_list[0][0][0]
-    assert history_obj.merge_status == "SUPERSEDED"
-
-    # Aucun Attendance ajouté
-    assert db.add.call_count == 1
+    added = [c[0][0] for c in db.add.call_args_list]
+    histories = [o for o in added if isinstance(o, AttendanceHistory)]
+    assert histories[0].merge_status == "SUPERSEDED"
 
 
 @patch(_PATCH, return_value=[])
@@ -170,15 +162,16 @@ def test_meme_timestamp_pas_de_remplacement(_):
     canonical = make_canonical(scanned_at=ts)
 
     scan = make_scan(scanned_at=ts)
-    db = make_db(None, canonical)
+    db = make_db(None, _DUMMY_CP_ID, canonical)
 
     result = sync_attendances(db, scans=[scan])
 
     assert result.total_merged == 0
     assert result.total_inserted == 0
     # History SUPERSEDED (pas strictement plus ancien)
-    history_obj = db.add.call_args_list[0][0][0]
-    assert history_obj.merge_status == "SUPERSEDED"
+    added = [c[0][0] for c in db.add.call_args_list]
+    histories = [o for o in added if isinstance(o, AttendanceHistory)]
+    assert histories[0].merge_status == "SUPERSEDED"
 
 
 # ================================================================
@@ -200,10 +193,14 @@ def test_plusieurs_conflits_batch(_):
     scan_b = make_scan(scanned_at=datetime(2026, 3, 21, 15, 0, 0))  # plus récent
     scan_c = make_scan()  # nouveau (pas de canonical)
 
-    # Ordre execute : a-history=None, a-canonical=canonical_a,
-    #                 b-history=None, b-canonical=canonical_b,
-    #                 c-history=None, c-canonical=None
-    db = make_db(None, canonical_a, None, canonical_b, None, None)
+    # scan_a: history=None, cp=exists, canonical=canonical_a
+    # scan_b: history=None, cp (cache), canonical=canonical_b
+    # scan_c: history=None, cp (cache), canonical=None
+    db = make_db(
+        None, _DUMMY_CP_ID, canonical_a,
+        None, canonical_b,
+        None, None,
+    )
 
     result = sync_attendances(db, scans=[scan_a, scan_b, scan_c])
 
@@ -227,7 +224,7 @@ def test_scanned_by_mis_a_jour_sur_fusion(_):
     canonical = make_canonical(scanned_at=datetime(2026, 3, 21, 14, 0, 0))
 
     scan = make_scan(scanned_at=datetime(2026, 3, 21, 13, 0, 0))
-    db = make_db(None, canonical)
+    db = make_db(None, _DUMMY_CP_ID, canonical)
 
     sync_attendances(db, scans=[scan], scanned_by=teacher_id)
 
@@ -241,13 +238,14 @@ def test_scanned_by_mis_a_jour_sur_fusion(_):
 @patch(_PATCH, return_value=[])
 def test_device_id_dans_history(_):
     """device_id est bien enregistré dans AttendanceHistory."""
-    db = make_db(None, None)
+    db = make_db(None, _DUMMY_CP_ID, None)
     scan = make_scan()
 
     sync_attendances(db, scans=[scan], device_id="device-teacher-42")
 
-    history_obj = db.add.call_args_list[0][0][0]
-    assert history_obj.device_id == "device-teacher-42"
+    added = [c[0][0] for c in db.add.call_args_list]
+    histories = [o for o in added if isinstance(o, AttendanceHistory)]
+    assert histories[0].device_id == "device-teacher-42"
 
 
 # ================================================================

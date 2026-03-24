@@ -1,9 +1,14 @@
 """
 Service d'authentification (US 6.1).
-Hachage bcrypt, JWT access/refresh, verrouillage de compte, TOTP 2FA.
+Hachage bcrypt, JWT access/refresh, verrouillage de compte, TOTP 2FA, Email OTP.
 """
 
+import logging
+import secrets
+import smtplib
 from datetime import datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import bcrypt
 import pyotp
@@ -12,6 +17,10 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+EMAIL_OTP_EXPIRY_MINUTES = 10
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
@@ -101,10 +110,19 @@ def authenticate_user(
     # Verifier 2FA si active
     if user.is_2fa_enabled:
         if not totp_code:
-            raise TwoFactorRequiredError("Code 2FA requis")
-        totp = pyotp.TOTP(user.totp_secret)
-        if not totp.verify(totp_code, valid_window=1):
-            raise AuthError("Code 2FA invalide")
+            # Pour la methode EMAIL, envoyer un code avant de lever l'erreur
+            if user.two_fa_method == "EMAIL":
+                send_email_otp(db, user)
+                raise TwoFactorRequiredError("2FA_REQUIRED_EMAIL")
+            raise TwoFactorRequiredError("2FA_REQUIRED")
+        # Verification selon la methode
+        if user.two_fa_method == "EMAIL":
+            if not verify_email_otp(db, user, totp_code):
+                raise AuthError("Code 2FA invalide ou expire")
+        else:
+            totp = pyotp.TOTP(user.totp_secret)
+            if not totp.verify(totp_code, valid_window=1):
+                raise AuthError("Code 2FA invalide")
 
     # Succes : reset compteur + mise a jour last_login
     user.failed_attempts = 0
@@ -169,22 +187,24 @@ def generate_totp_secret(user: User) -> tuple[str, str]:
 
 
 def enable_2fa(db: Session, user: User) -> tuple[str, str]:
-    """Active le 2FA pour un utilisateur. Retourne (secret, provisioning_uri)."""
+    """Active le 2FA (methode APP) pour un utilisateur. Retourne (secret, provisioning_uri)."""
     secret, uri = generate_totp_secret(user)
     user.totp_secret = secret
+    user.two_fa_method = "APP"
     # Ne pas encore mettre is_2fa_enabled=True : attendre la verification
     db.commit()
     return secret, uri
 
 
 def verify_and_activate_2fa(db: Session, user: User, totp_code: str) -> bool:
-    """Verifie le code TOTP et active definitivement le 2FA."""
+    """Verifie le code TOTP et active definitivement le 2FA (methode APP)."""
     if not user.totp_secret:
         raise AuthError("2FA non initialisee. Appelez d'abord enable-2fa.")
     totp = pyotp.TOTP(user.totp_secret)
     if not totp.verify(totp_code, valid_window=1):
         return False
     user.is_2fa_enabled = True
+    user.two_fa_method = "APP"
     db.commit()
     return True
 
@@ -193,7 +213,110 @@ def disable_2fa(db: Session, user: User) -> None:
     """Desactive le 2FA pour un utilisateur."""
     user.totp_secret = None
     user.is_2fa_enabled = False
+    user.two_fa_method = None
+    user.email_otp_code = None
+    user.email_otp_expires = None
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# 2FA Email OTP
+# ---------------------------------------------------------------------------
+
+def _generate_otp_code() -> str:
+    """Genere un code OTP a 6 chiffres."""
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _send_otp_email(to_email: str, code: str) -> None:
+    """Envoie un email contenant le code OTP 2FA."""
+    msg = MIMEMultipart("alternative")
+    msg["From"] = settings.SMTP_FROM
+    msg["To"] = to_email
+    msg["Subject"] = f"SchoolTrack — Votre code de verification : {code}"
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
+        <h2 style="color: #1a73e8;">SchoolTrack — Code de verification</h2>
+        <p>Voici votre code de verification :</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px;
+                       background: #f1f5f9; padding: 16px 32px; border-radius: 12px;
+                       display: inline-block; color: #1a73e8;">{code}</span>
+        </div>
+        <p>Ce code expire dans <strong>{EMAIL_OTP_EXPIRY_MINUTES} minutes</strong>.</p>
+        <p>Si vous n'avez pas demande ce code, ignorez cet email.</p>
+        <hr style="border: none; border-top: 1px solid #eee;" />
+        <p style="font-size: 12px; color: #888;">
+          Ce message est genere automatiquement par SchoolTrack.
+        </p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(html, "html", "utf-8"))
+
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        if settings.SMTP_USE_TLS:
+            server.starttls()
+        if settings.SMTP_USERNAME:
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+        server.send_message(msg)
+
+    logger.info("Code OTP 2FA envoye a %s", to_email)
+
+
+def send_email_otp(db: Session, user: User) -> None:
+    """Genere un code OTP, le stocke en base et l'envoie par email."""
+    code = _generate_otp_code()
+    user.email_otp_code = code
+    user.email_otp_expires = datetime.utcnow() + timedelta(minutes=EMAIL_OTP_EXPIRY_MINUTES)
+    db.commit()
+    _send_otp_email(user.email, code)
+
+
+def enable_2fa_email(db: Session, user: User) -> None:
+    """Initie l'activation de la 2FA par email : envoie un code de verification."""
+    user.two_fa_method = "EMAIL"
+    db.commit()
+    send_email_otp(db, user)
+
+
+def verify_and_activate_2fa_email(db: Session, user: User, code: str) -> bool:
+    """Verifie le code email OTP et active definitivement la 2FA (methode EMAIL)."""
+    if not user.email_otp_code or not user.email_otp_expires:
+        raise AuthError("Aucun code OTP en attente. Appelez d'abord enable-2fa-email.")
+    if datetime.utcnow() > user.email_otp_expires:
+        user.email_otp_code = None
+        user.email_otp_expires = None
+        db.commit()
+        raise AuthError("Code OTP expire. Demandez un nouveau code.")
+    if user.email_otp_code != code:
+        return False
+    user.is_2fa_enabled = True
+    user.two_fa_method = "EMAIL"
+    user.email_otp_code = None
+    user.email_otp_expires = None
+    db.commit()
+    return True
+
+
+def verify_email_otp(db: Session, user: User, code: str) -> bool:
+    """Verifie un code email OTP (utilise au login). Retourne True si valide."""
+    if not user.email_otp_code or not user.email_otp_expires:
+        return False
+    if datetime.utcnow() > user.email_otp_expires:
+        user.email_otp_code = None
+        user.email_otp_expires = None
+        db.commit()
+        return False
+    if user.email_otp_code != code:
+        return False
+    # Code valide — nettoyer
+    user.email_otp_code = None
+    user.email_otp_expires = None
+    db.commit()
+    return True
 
 
 # ---------------------------------------------------------------------------

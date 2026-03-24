@@ -86,6 +86,7 @@ class UserInfo(BaseModel):
     last_name: Optional[str] = None
     role: str
     is_2fa_enabled: bool
+    two_fa_method: Optional[str] = None
 
     class Config:
         from_attributes = True

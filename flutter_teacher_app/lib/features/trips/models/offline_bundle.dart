@@ -53,31 +53,39 @@ class OfflineAssignment {
       );
 }
 
-/// Élève avec son assignation de bracelet/QR (null si non assigné).
+/// Élève avec ses assignations de bracelet/QR.
 class OfflineStudent {
   final String id;
   final String firstName;
   final String lastName;
-  final OfflineAssignment? assignment;
+  final OfflineAssignment? assignment;        // Rétro-compat : assignation primaire
+  final List<OfflineAssignment> assignments;  // Toutes les assignations actives
 
   const OfflineStudent({
     required this.id,
     required this.firstName,
     required this.lastName,
     this.assignment,
+    this.assignments = const [],
   });
 
   String get fullName => '$lastName $firstName';
 
-  factory OfflineStudent.fromJson(Map<String, dynamic> j) => OfflineStudent(
-        id: j['id'] as String,
-        firstName: j['first_name'] as String,
-        lastName: j['last_name'] as String,
-        assignment: j['assignment'] != null
-            ? OfflineAssignment.fromJson(
-                j['assignment'] as Map<String, dynamic>)
-            : null,
-      );
+  factory OfflineStudent.fromJson(Map<String, dynamic> j) {
+    final assignmentsList = (j['assignments'] as List<dynamic>?)
+        ?.map((a) => OfflineAssignment.fromJson(a as Map<String, dynamic>))
+        .toList() ?? [];
+    return OfflineStudent(
+      id: j['id'] as String,
+      firstName: j['first_name'] as String,
+      lastName: j['last_name'] as String,
+      assignment: j['assignment'] != null
+          ? OfflineAssignment.fromJson(
+              j['assignment'] as Map<String, dynamic>)
+          : null,
+      assignments: assignmentsList,
+    );
+  }
 }
 
 /// Point de contrôle existant sur le voyage.

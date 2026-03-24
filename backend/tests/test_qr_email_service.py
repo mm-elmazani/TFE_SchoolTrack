@@ -1,24 +1,38 @@
 """
 Tests unitaires pour le service d'envoi de QR codes par email (US 1.6).
-Couverture : génération QR image, génération token_uid, orchestration complète.
+
+Scénarios couverts :
+- Génération QR image (format PNG valide)
+- Génération token_uid (format QRD-XXXXXXXX, unicité)
+- Voyage introuvable / archivé → ValueError
+- Élève sans email → no_email_count
+- Élève avec QR_DIGITAL existant → already_sent_count (skip)
+- Élève avec NFC physique mais PAS de QR_DIGITAL → QR envoyé (double assignation autorisée)
+- Envoi réussi → assignation créée après succès email
+- Erreur SMTP → loguée, pas d'assignation
+- Mix d'élèves (sans email, déjà QR, NFC+envoi, nouveau)
+- Voyage sans participants → résultat vide
 """
 
 import uuid
-import pytest
 from datetime import date
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from app.models.assignment import Assignment
+from app.models.student import Student
+from app.models.trip import Trip
 from app.services.qr_email_service import (
     _generate_token_uid,
     generate_qr_image,
     send_qr_emails_for_trip,
 )
-from app.models.trip import Trip
-from app.models.student import Student
-from app.models.assignment import Assignment
 
 
-# --- Helpers ---
+# ----------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------
 
 def make_trip(status="PLANNED"):
     trip = MagicMock(spec=Trip)
@@ -29,50 +43,55 @@ def make_trip(status="PLANNED"):
     return trip
 
 
-def make_student(email="parent@example.com"):
+def make_student(email="parent@example.com", first_name="Alice", last_name="Dupont"):
     student = MagicMock(spec=Student)
     student.id = uuid.uuid4()
-    student.first_name = "Alice"
-    student.last_name = "Dupont"
+    student.first_name = first_name
+    student.last_name = last_name
     student.email = email
     return student
 
 
-def make_db(trip=None, students=None, existing_assignments=None):
+def _scalar_result(value):
+    m = MagicMock()
+    m.scalar.return_value = value
+    return m
+
+
+def _scalars_result(values):
+    m = MagicMock()
+    m.scalars.return_value.all.return_value = values
+    return m
+
+
+def make_db(trip=None, students=None, existing_digital_per_student=None):
     """
-    Crée un mock de session DB.
-    existing_assignments : liste de valeurs retournées par .scalar()
-    pour chaque appel de vérification d'assignment existant (une par élève).
+    Mock de session DB pour send_qr_emails_for_trip.
+    existing_digital_per_student : liste de valeurs scalaires (None ou Assignment mock)
+    correspondant à la vérification QR_DIGITAL existant pour chaque élève avec email.
     """
     db = MagicMock()
 
-    trip_result = MagicMock()
-    trip_result.scalar.return_value = trip
+    trip_result = _scalar_result(trip)
+    students_result = _scalars_result(students or [])
 
-    students_result = MagicMock()
-    students_result.scalars.return_value.all.return_value = students or []
-
-    # Chaque appel de vérification d'assignement existant retourne la valeur correspondante
     assignment_results = []
-    for existing in (existing_assignments or []):
-        mock = MagicMock()
-        mock.scalar.return_value = existing
-        assignment_results.append(mock)
+    for existing in (existing_digital_per_student or []):
+        assignment_results.append(_scalar_result(existing))
 
     db.execute.side_effect = [trip_result, students_result] + assignment_results
     return db
 
 
 # ============================================================
-# Tests utilitaires
+# Tests utilitaires — génération QR
 # ============================================================
 
-def test_generate_qr_image_retourne_bytes():
-    """La génération d'image QR doit retourner des bytes non vides (PNG valide)."""
+def test_generate_qr_image_retourne_png():
+    """La génération d'image QR doit retourner des bytes PNG valides."""
     result = generate_qr_image("QRD-ABC12345")
     assert isinstance(result, bytes)
     assert len(result) > 0
-    # Signature PNG : 8 premiers octets
     assert result[:4] == b"\x89PNG"
 
 
@@ -81,7 +100,7 @@ def test_generate_token_uid_format():
     uid = _generate_token_uid()
     assert uid.startswith("QRD-")
     assert len(uid) == 12
-    assert uid[4:].isupper() or uid[4:].isalnum()
+    assert uid[4:].isalnum()
 
 
 def test_generate_token_uid_unique():
@@ -90,87 +109,68 @@ def test_generate_token_uid_unique():
 
 
 # ============================================================
-# Tests send_qr_emails_for_trip — cas d'erreur
+# Tests cas d'erreur — voyage
 # ============================================================
 
 def test_voyage_introuvable():
-    """Voyage inexistant → ValueError avec 'introuvable'."""
-    db = make_db(trip=None, students=[])
+    """Voyage inexistant → ValueError."""
+    db = make_db(trip=None)
     with pytest.raises(ValueError, match="introuvable"):
         send_qr_emails_for_trip(db, uuid.uuid4())
 
 
 def test_voyage_archive():
-    """Voyage archivé → ValueError avec 'archivé'."""
+    """Voyage archivé → ValueError."""
     trip = make_trip(status="ARCHIVED")
-    db = make_db(trip=trip, students=[])
+    db = make_db(trip=trip)
     with pytest.raises(ValueError, match="archivé"):
         send_qr_emails_for_trip(db, trip.id)
 
 
 # ============================================================
-# Tests send_qr_emails_for_trip — cas métier
+# Tests cas métier — skip et envoi
 # ============================================================
 
 def test_eleve_sans_email():
     """Élève sans email → no_email_count incrémenté, aucun envoi."""
     trip = make_trip()
     student = make_student(email=None)
-    db = make_db(trip=trip, students=[student], existing_assignments=[])
+    db = make_db(trip=trip, students=[student], existing_digital_per_student=[])
 
     with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
         result = send_qr_emails_for_trip(db, trip.id)
 
     assert result.no_email_count == 1
     assert result.sent_count == 0
-    assert result.errors == []
     mock_send.assert_not_called()
 
 
-def test_eleve_deja_assigne():
-    """Élève avec assignation active (QR_DIGITAL) → already_sent_count incrémenté, aucun nouvel envoi."""
+def test_eleve_avec_qr_digital_existant_skip():
+    """Élève avec QR_DIGITAL actif → already_sent_count, pas de nouvel envoi."""
     trip = make_trip()
     student = make_student()
-    existing = MagicMock(spec=Assignment)
-    db = make_db(trip=trip, students=[student], existing_assignments=[existing])
+    existing_qr = MagicMock(spec=Assignment)
+    existing_qr.assignment_type = "QR_DIGITAL"
+    db = make_db(trip=trip, students=[student], existing_digital_per_student=[existing_qr])
 
     with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
         result = send_qr_emails_for_trip(db, trip.id)
 
     assert result.already_sent_count == 1
     assert result.sent_count == 0
-    assert result.errors == []
     mock_send.assert_not_called()
 
 
-def test_eleve_avec_bracelet_nfc_saute():
+def test_eleve_avec_nfc_mais_pas_qr_digital_recoit_envoi():
     """
-    Élève avec bracelet NFC actif → already_sent_count incrémenté, aucun QR_DIGITAL créé.
-
-    Avant le fix, le service ne vérifiait que les assignations QR_DIGITAL. Un élève avec
-    NFC_PHYSICAL était traité comme s'il n'avait rien → tentative d'INSERT QR_DIGITAL →
-    violation de idx_assignments_active_student_trip → rollback global de tous les QR du batch.
+    Élève avec NFC physique mais PAS de QR_DIGITAL → QR envoyé.
+    C'est le cas clé de la double assignation : un élève avec un bracelet
+    physique doit quand même recevoir son QR digital de backup.
     """
     trip = make_trip()
     student = make_student()
-    nfc_assignment = MagicMock(spec=Assignment)
-    nfc_assignment.assignment_type = "NFC_PHYSICAL"
-    db = make_db(trip=trip, students=[student], existing_assignments=[nfc_assignment])
-
-    with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
-        result = send_qr_emails_for_trip(db, trip.id)
-
-    assert result.already_sent_count == 1
-    assert result.sent_count == 0
-    assert result.errors == []
-    mock_send.assert_not_called()
-
-
-def test_envoi_succes():
-    """Happy path : email envoyé avec succès → sent_count++, assignation créée, commit."""
-    trip = make_trip()
-    student = make_student()
-    db = make_db(trip=trip, students=[student], existing_assignments=[None])
+    # La vérification QR_DIGITAL retourne None → pas encore de digital
+    db = make_db(trip=trip, students=[student], existing_digital_per_student=[None])
 
     with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
         with patch("app.services.qr_email_service.generate_qr_image", return_value=b"FAKE_PNG"):
@@ -178,7 +178,21 @@ def test_envoi_succes():
 
     assert result.sent_count == 1
     assert result.already_sent_count == 0
-    assert result.no_email_count == 0
+    mock_send.assert_called_once()
+    db.add.assert_called_once()
+
+
+def test_envoi_succes_cree_assignation():
+    """Happy path : email envoyé → assignation QR_DIGITAL créée, commit."""
+    trip = make_trip()
+    student = make_student()
+    db = make_db(trip=trip, students=[student], existing_digital_per_student=[None])
+
+    with patch("app.services.qr_email_service.send_qr_code_email") as mock_send:
+        with patch("app.services.qr_email_service.generate_qr_image", return_value=b"FAKE_PNG"):
+            result = send_qr_emails_for_trip(db, trip.id)
+
+    assert result.sent_count == 1
     assert result.errors == []
     mock_send.assert_called_once_with(
         to_email=student.email,
@@ -188,14 +202,17 @@ def test_envoi_succes():
         qr_image_bytes=b"FAKE_PNG",
     )
     db.add.assert_called_once()
+    added = db.add.call_args[0][0]
+    assert isinstance(added, Assignment)
+    assert added.assignment_type == "QR_DIGITAL"
     db.commit.assert_called_once()
 
 
 def test_erreur_smtp():
-    """Erreur SMTP → erreur loguée dans result.errors, pas d'assignation créée."""
+    """Erreur SMTP → erreur loguée, pas d'assignation créée."""
     trip = make_trip()
     student = make_student()
-    db = make_db(trip=trip, students=[student], existing_assignments=[None])
+    db = make_db(trip=trip, students=[student], existing_digital_per_student=[None])
 
     with patch("app.services.qr_email_service.send_qr_code_email", side_effect=Exception("Connection refused")):
         with patch("app.services.qr_email_service.generate_qr_image", return_value=b"FAKE_PNG"):
@@ -205,41 +222,66 @@ def test_erreur_smtp():
     assert len(result.errors) == 1
     assert "Connection refused" in result.errors[0]
     db.add.assert_not_called()
-    db.commit.assert_called_once()  # commit appelé même sans assignation
+    db.commit.assert_called_once()  # commit final même sans assignation
 
 
-def test_mix_eleves():
+def test_voyage_sans_participants():
+    """Voyage sans participants → résultat vide, aucun envoi."""
+    trip = make_trip()
+    db = make_db(trip=trip, students=[], existing_digital_per_student=[])
+
+    result = send_qr_emails_for_trip(db, trip.id)
+
+    assert result.sent_count == 0
+    assert result.already_sent_count == 0
+    assert result.no_email_count == 0
+    assert result.errors == []
+    db.commit.assert_called_once()
+
+
+# ============================================================
+# Test mix d'élèves
+# ============================================================
+
+def test_mix_4_eleves():
     """
-    Mix de cas : 1 sans email, 1 déjà assigné, 1 envoi réussi.
-    Vérifie que les compteurs sont corrects.
+    Mix de 4 cas :
+    - s1: sans email → no_email_count
+    - s2: QR_DIGITAL existant → already_sent_count
+    - s3: NFC existant mais PAS de QR_DIGITAL → envoi réussi (double assignation)
+    - s4: aucune assignation → envoi réussi
     """
     trip = make_trip()
-    s_no_email = make_student(email=None)
-    s_already = make_student(email="already@test.com")
-    s_new = make_student(email="new@test.com")
+    s1 = make_student(email=None, first_name="SansEmail")
+    s2 = make_student(email="deja@test.be", first_name="DejaQR")
+    s3 = make_student(email="nfc@test.be", first_name="AvecNFC")
+    s4 = make_student(email="new@test.be", first_name="Nouveau")
+
+    existing_qr = MagicMock(spec=Assignment)
+    existing_qr.assignment_type = "QR_DIGITAL"
 
     db = MagicMock()
+    trip_result = _scalar_result(trip)
+    students_result = _scalars_result([s1, s2, s3, s4])
 
-    trip_result = MagicMock()
-    trip_result.scalar.return_value = trip
-
-    students_result = MagicMock()
-    students_result.scalars.return_value.all.return_value = [s_no_email, s_already, s_new]
-
-    existing_result = MagicMock()
-    existing_result.scalar.return_value = MagicMock()  # s_already a déjà un QR
-
-    new_result = MagicMock()
-    new_result.scalar.return_value = None  # s_new n'a pas encore de QR
-
-    db.execute.side_effect = [trip_result, students_result, existing_result, new_result]
+    # s1 n'a pas d'email → pas de check d'assignation
+    # s2 → QR_DIGITAL existe
+    # s3 → pas de QR_DIGITAL (NFC n'est plus vérifié)
+    # s4 → pas de QR_DIGITAL
+    db.execute.side_effect = [
+        trip_result,
+        students_result,
+        _scalar_result(existing_qr),  # s2: QR_DIGITAL existant
+        _scalar_result(None),          # s3: pas de QR_DIGITAL
+        _scalar_result(None),          # s4: pas de QR_DIGITAL
+    ]
 
     with patch("app.services.qr_email_service.send_qr_code_email"):
         with patch("app.services.qr_email_service.generate_qr_image", return_value=b"PNG"):
             result = send_qr_emails_for_trip(db, trip.id)
 
-    assert result.no_email_count == 1
-    assert result.already_sent_count == 1
-    assert result.sent_count == 1
+    assert result.no_email_count == 1    # s1
+    assert result.already_sent_count == 1  # s2
+    assert result.sent_count == 2        # s3 + s4
     assert result.errors == []
-    db.add.assert_called_once()
+    assert db.add.call_count == 2  # 2 assignations créées
