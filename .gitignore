@@ -35,6 +35,9 @@ pgadmin_data/
 *.swp
 *.swo
 
+# Node / React
+node_modules/
+
 # OS
 .DS_Store
 Thumbs.db
