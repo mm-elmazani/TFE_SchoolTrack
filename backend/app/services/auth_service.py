@@ -21,6 +21,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 EMAIL_OTP_EXPIRY_MINUTES = 10
+PASSWORD_RESET_EXPIRY_MINUTES = settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
@@ -331,6 +332,102 @@ def change_password(db: Session, user: User, current_password: str, new_password
     user.failed_attempts = 0
     user.locked_until = None
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Mot de passe oublie (US 6.1 — complement)
+# ---------------------------------------------------------------------------
+
+def _generate_reset_token() -> str:
+    """Genere un token de reset aleatoire URL-safe."""
+    return secrets.token_urlsafe(32)
+
+
+def _send_password_reset_email(to_email: str, reset_url: str) -> None:
+    """Envoie un email avec le lien de reinitialisation du mot de passe."""
+    msg = MIMEMultipart("alternative")
+    msg["From"] = settings.SMTP_FROM
+    msg["To"] = to_email
+    msg["Subject"] = "SchoolTrack — Reinitialisation de votre mot de passe"
+
+    html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">
+        <h2 style="color: #005293;">SchoolTrack — Reinitialisation du mot de passe</h2>
+        <p>Vous avez demande la reinitialisation de votre mot de passe.</p>
+        <p>Cliquez sur le bouton ci-dessous pour definir un nouveau mot de passe :</p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="{reset_url}"
+             style="background: #005293; color: #fff; padding: 14px 32px; border-radius: 8px;
+                    text-decoration: none; font-weight: bold; font-size: 16px;
+                    display: inline-block;">
+            Reinitialiser mon mot de passe
+          </a>
+        </div>
+        <p>Ce lien expire dans <strong>{PASSWORD_RESET_EXPIRY_MINUTES} minutes</strong>.</p>
+        <p>Si vous n'avez pas demande cette reinitialisation, ignorez cet email.
+           Votre mot de passe restera inchange.</p>
+        <hr style="border: none; border-top: 1px solid #eee;" />
+        <p style="font-size: 12px; color: #888;">
+          Ce message est genere automatiquement par SchoolTrack.
+        </p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(html, "html", "utf-8"))
+
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+        if settings.SMTP_USE_TLS:
+            server.starttls()
+        if settings.SMTP_USERNAME:
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+        server.send_message(msg)
+
+    logger.info("Email de reinitialisation envoye a %s", to_email)
+
+
+def request_password_reset(db: Session, email: str, base_url: str) -> User:
+    """
+    Genere un token de reset et envoie l'email.
+    Leve AuthError si l'email n'existe pas.
+    Retourne l'utilisateur pour le logging.
+    """
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise AuthError("Aucun compte associe a cet email")
+
+    token = _generate_reset_token()
+    user.password_reset_token = token
+    user.password_reset_expires = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRY_MINUTES)
+    db.commit()
+
+    reset_url = f"{base_url}/reset-password?token={token}&email={email}"
+    _send_password_reset_email(user.email, reset_url)
+    return user
+
+
+def reset_password_with_token(db: Session, token: str, email: str, new_password_hash: str) -> User:
+    """Reinitialise le mot de passe avec un token valide. Retourne l'utilisateur pour le logging."""
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise AuthError("Lien de reinitialisation invalide")
+
+    if not user.password_reset_token or user.password_reset_token != token:
+        raise AuthError("Lien de reinitialisation invalide")
+
+    if not user.password_reset_expires or datetime.utcnow() > user.password_reset_expires:
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        db.commit()
+        raise AuthError("Le lien de reinitialisation a expire")
+
+    user.password_hash = new_password_hash
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    user.failed_attempts = 0
+    user.locked_until = None
+    db.commit()
+    return user
 
 
 # ---------------------------------------------------------------------------

@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '@/api/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck, GraduationCap } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -72,16 +72,17 @@ export default function LoginScreen() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-schooltrack-neutral p-4">
-      <Card className="w-full max-w-md shadow-2xl border-slate-200 overflow-hidden rounded-2xl">
-        <div className="h-2 bg-schooltrack-primary w-full" />
-        <CardHeader className="space-y-2 pb-6 pt-8">
-          <CardTitle className="text-3xl font-bold tracking-tight text-schooltrack-primary">SchoolTrack</CardTitle>
-          <CardDescription className="text-slate-500 text-base">
+      <Card className="w-full max-w-[420px] shadow-md border-slate-200 overflow-hidden rounded-2xl">
+        <div className="h-1.5 bg-schooltrack-primary w-full" />
+        <CardHeader className="space-y-1 pb-6 pt-8 items-center text-center">
+          <GraduationCap className="h-12 w-12 text-schooltrack-primary mb-2" />
+          <CardTitle className="text-2xl font-bold tracking-tight text-schooltrack-primary">SchoolTrack</CardTitle>
+          <CardDescription className="text-slate-500 text-sm">
             {needs2FA
               ? (twoFAMethod === 'EMAIL'
-                ? 'Un code de verification a ete envoye a votre adresse email.'
+                ? 'Un code de vérification a été envoyé à votre adresse email.'
                 : 'Entrez le code de votre application d\'authentification.')
-              : 'Gérez vos élèves et voyages scolaires en toute sécurité.'}
+              : 'Dashboard Direction'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,6 +152,15 @@ export default function LoginScreen() {
                   </>
                 ) : 'Se connecter'}
               </Button>
+
+              <div className="text-center">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-slate-500 hover:text-schooltrack-primary transition-colors"
+                >
+                  Mot de passe oublie ?
+                </Link>
+              </div>
             </form>
           ) : (
             <div className="space-y-6">

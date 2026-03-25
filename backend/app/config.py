@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440  # 24h
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 10
 
     # SMTP — envoi des QR codes par email (US 1.6)
     SMTP_HOST: str = "localhost"

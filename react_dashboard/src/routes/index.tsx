@@ -18,11 +18,21 @@ import AlertScreen from '@/features/alerts/screens/AlertScreen';
 import CheckpointTimelineScreen from '@/features/trips/screens/CheckpointTimelineScreen';
 import RoleRedirect from '@/shared/components/RoleRedirect';
 import ProfileScreen from '@/features/auth/screens/ProfileScreen';
+import ForgotPasswordScreen from '@/features/auth/screens/ForgotPasswordScreen';
+import ResetPasswordScreen from '@/features/auth/screens/ResetPasswordScreen';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginScreen />,
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPasswordScreen />,
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordScreen />,
   },
   {
     path: '/',

@@ -26,6 +26,8 @@ class User(Base):
     two_fa_method = Column(String(10), nullable=True)  # 'APP' ou 'EMAIL'
     email_otp_code = Column(String(10), nullable=True)
     email_otp_expires = Column(DateTime, nullable=True)
+    password_reset_token = Column(String(255), unique=True, nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
     failed_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime, nullable=True)
     last_login = Column(DateTime, nullable=True)

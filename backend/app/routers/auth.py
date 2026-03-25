@@ -13,10 +13,12 @@ from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
     Enable2FAResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserInfo,
     Verify2FARequest,
@@ -35,6 +37,8 @@ from app.services.auth_service import (
     hash_password,
     refresh_access_token,
     register_user,
+    request_password_reset,
+    reset_password_with_token,
     send_email_otp,
     verify_and_activate_2fa,
     verify_and_activate_2fa_email,
@@ -340,3 +344,63 @@ def change_user_password(
     )
 
     return MessageResponse(message="Mot de passe modifie avec succes")
+
+
+# ---------------------------------------------------------------------------
+# POST /forgot-password
+# ---------------------------------------------------------------------------
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    """Envoie un email de reinitialisation si le compte existe (public)."""
+    _ip = request.client.host if request.client else None
+    _ua = request.headers.get("user-agent")
+
+    base_url = str(request.headers.get("origin", "http://localhost:5173"))
+
+    try:
+        user = request_password_reset(db, body.email, base_url)
+    except AuthError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur lors de l'envoi de l'email. Veuillez reessayer.",
+        )
+
+    log_audit(
+        db, user_id=user.id, action="PASSWORD_RESET_REQUESTED",
+        resource_type="AUTH", ip_address=_ip, user_agent=_ua,
+        details={"email": body.email},
+    )
+
+    return MessageResponse(
+        message="Un lien de reinitialisation a ete envoye a votre adresse email."
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /reset-password
+# ---------------------------------------------------------------------------
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
+    """Reinitialise le mot de passe avec un token valide (public)."""
+    _ip = request.client.host if request.client else None
+    _ua = request.headers.get("user-agent")
+
+    try:
+        user = reset_password_with_token(db, body.token, body.email, hash_password(body.new_password))
+    except AuthError as e:
+        log_audit(
+            db, user_id=None, action="PASSWORD_RESET_FAILED",
+            resource_type="AUTH", ip_address=_ip, user_agent=_ua,
+            details={"email": body.email},
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    log_audit(
+        db, user_id=user.id, action="PASSWORD_RESET_SUCCESS",
+        resource_type="AUTH", ip_address=_ip, user_agent=_ua,
+        details={"email": body.email},
+    )
+
+    return MessageResponse(message="Mot de passe reinitialise avec succes")
