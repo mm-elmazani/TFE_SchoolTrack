@@ -1,0 +1,34 @@
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["com.docker.compose.project=*"]
+    relabel_configs:
+      # Nom du container comme label
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: "container"
+      # Nom du service compose
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_service"]
+        target_label: "service"
+      # Projet compose
+      - source_labels: ["__meta_docker_container_label_com_docker_compose_project"]
+        target_label: "project"
+    pipeline_stages:
+      # Detecter le niveau de log (INFO, WARNING, ERROR, etc.)
+      - regex:
+          expression: "(?i)(?P<level>DEBUG|INFO|WARNING|ERROR|CRITICAL)"
+      - labels:
+          level:

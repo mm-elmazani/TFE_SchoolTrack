@@ -1,0 +1,116 @@
+# ============================================================================
+# Docker Compose PRODUCTION — SchoolTrack (stack applicative)
+# Usage : docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# ============================================================================
+
+services:
+  # ---------- Reverse proxy TLS (Let's Encrypt) ----------
+  traefik:
+    image: traefik:v3.3
+    container_name: schooltrack_traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=schooltrack_net"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Redirection HTTP -> HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      # TLS — Let's Encrypt (production)
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      # TLS 1.3 minimum (US 6.3)
+      - "--entrypoints.websecure.http.tls.options=tlsv13only"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt_data:/letsencrypt
+      - ./traefik-tls.yml:/etc/traefik/dynamic/tls.yml:ro
+    networks:
+      - schooltrack_net
+    restart: always
+
+  # ---------- API FastAPI ----------
+  api:
+    build: ./backend
+    container_name: schooltrack_api
+    environment:
+      TZ: Europe/Brussels
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@schooltrack.yourschool.be}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${API_DOMAIN}`)"
+      - "traefik.http.routers.api.entrypoints=websecure"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - schooltrack_net
+    restart: always
+
+  # ---------- React Dashboard (Nginx) ----------
+  dashboard:
+    build: ./react_dashboard
+    container_name: schooltrack_dashboard
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`${DASHBOARD_DOMAIN}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=80"
+    networks:
+      - schooltrack_net
+    restart: always
+
+  # ---------- Base de donnees ----------
+  postgres:
+    image: postgres:16-alpine
+    container_name: schooltrack_db
+    command: -c timezone=Europe/Brussels
+    environment:
+      TZ: Europe/Brussels
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - schooltrack_net
+    restart: always
+
+volumes:
+  postgres_data:
+  letsencrypt_data:
+
+networks:
+  schooltrack_net:
+    name: schooltrack_net
