@@ -12,9 +12,13 @@ from app.schemas.school_class import ClassResponse
 
 # --- Helper ---
 
+_SCHOOL_ID = uuid.uuid4()
+
+
 def make_class_response(**kwargs) -> ClassResponse:
     return ClassResponse(
         id=kwargs.get("id", uuid.uuid4()),
+        school_id=kwargs.get("school_id", _SCHOOL_ID),
         name=kwargs.get("name", "TI-BAC3"),
         year=kwargs.get("year", "2025-2026"),
         nb_students=kwargs.get("nb_students", 0),

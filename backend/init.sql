@@ -1,9 +1,9 @@
 -- ============================================================================
--- SCHÉMA BASE DE DONNÉES - SchoolTrack v4.2
+-- SCHÉMA BASE DE DONNÉES - SchoolTrack v5.0
 -- ============================================================================
 -- Projet: SchoolTrack - Système de gestion de présence scolaire
 -- Auteur: Mohamed Mokhtar El Mazani
--- Version: 4.2 (15 février 2026)
+-- Version: 5.0 (27 mars 2026) — Multi-tenancy par école (US 6.6)
 -- Note: Tables réordonnées pour respecter les dépendances FK
 -- ============================================================================
 
@@ -11,10 +11,27 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ----------------------------------------------------------------------------
+-- TABLE: schools - Écoles (multi-tenancy US 6.6)
+-- ----------------------------------------------------------------------------
+CREATE TABLE schools (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,     -- Identifiant court unique (ex: "dev", "college-saint-michel")
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Seed schools
+INSERT INTO schools (name, slug) VALUES
+    ('École de développement', 'dev'),
+    ('École client', 'client');
+
+-- ----------------------------------------------------------------------------
 -- TABLE: students - Élèves de l'établissement
 -- ----------------------------------------------------------------------------
 CREATE TABLE students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id UUID NOT NULL REFERENCES schools(id),
     first_name TEXT NOT NULL,              -- Chiffre AES-256-GCM (US 6.3)
     last_name TEXT NOT NULL,               -- Chiffre AES-256-GCM (US 6.3)
     email TEXT,                            -- Chiffre AES-256-GCM (US 6.3)
@@ -28,6 +45,7 @@ CREATE TABLE students (
 );
 
 CREATE INDEX idx_students_active ON students(is_deleted) WHERE is_deleted = FALSE;
+CREATE INDEX idx_students_school ON students(school_id);
 
 -- Note v4.1: Champ 'uid' SUPPRIMÉ (remplacé par table assignments)
 -- Note v4.2: Champ 'class' SUPPRIMÉ (normalisation complète via tables classes/class_students)
@@ -39,6 +57,7 @@ CREATE INDEX idx_students_active ON students(is_deleted) WHERE is_deleted = FALS
 -- ----------------------------------------------------------------------------
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id UUID NOT NULL REFERENCES schools(id),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,    -- Bcrypt hash (coût 12)
     first_name TEXT,                        -- Chiffre AES-256-GCM (US 6.3)
@@ -46,6 +65,11 @@ CREATE TABLE users (
     role VARCHAR(50) NOT NULL,              -- DIRECTION, TEACHER, OBSERVER, ADMIN_TECH
     totp_secret TEXT,                       -- Chiffre AES-256-GCM (US 6.3)
     is_2fa_enabled BOOLEAN DEFAULT FALSE,
+    two_fa_method VARCHAR(10),             -- 'APP' ou 'EMAIL'
+    email_otp_code VARCHAR(10),
+    email_otp_expires TIMESTAMP,
+    password_reset_token VARCHAR(255) UNIQUE,
+    password_reset_expires TIMESTAMP,
     failed_attempts INT DEFAULT 0,
     locked_until TIMESTAMP,                 -- Verrouillage après 5 tentatives (US 6.1)
     last_login TIMESTAMP,
@@ -55,6 +79,7 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_school ON users(school_id);
 
 -- FK differee : students.deleted_by → users.id (tables creees dans cet ordre)
 ALTER TABLE students ADD CONSTRAINT fk_students_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id);
@@ -65,6 +90,7 @@ ALTER TABLE students ADD CONSTRAINT fk_students_deleted_by FOREIGN KEY (deleted_
 -- ----------------------------------------------------------------------------
 CREATE TABLE trips (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id UUID NOT NULL REFERENCES schools(id),
     destination VARCHAR(255) NOT NULL,      -- Ex: "Paris - Musée du Louvre"
     date DATE NOT NULL,
     description TEXT,
@@ -78,6 +104,7 @@ CREATE TABLE trips (
 
 CREATE INDEX idx_trips_date ON trips(date);
 CREATE INDEX idx_trips_status ON trips(status);
+CREATE INDEX idx_trips_school ON trips(school_id);
 
 
 -- ----------------------------------------------------------------------------
@@ -253,11 +280,15 @@ CREATE INDEX idx_attendances_checkpoint_student ON attendances(checkpoint_id, st
 -- ----------------------------------------------------------------------------
 CREATE TABLE classes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) UNIQUE NOT NULL,      -- Ex: "6ème A", "TI-2024-BAC3"
+    school_id UUID NOT NULL REFERENCES schools(id),
+    name VARCHAR(100) NOT NULL,            -- Ex: "6ème A", "TI-2024-BAC3"
     year VARCHAR(20),                       -- Ex: "2025-2026"
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT uq_classes_name_school UNIQUE (name, school_id)
 );
+
+CREATE INDEX idx_classes_school ON classes(school_id);
 
 
 -- ----------------------------------------------------------------------------
@@ -461,13 +492,15 @@ GROUP BY c.id;
 -- ============================================================================
 
 -- Utilisateur direction de test (mot de passe : Admin123!)
-INSERT INTO users (email, password_hash, first_name, last_name, role, is_2fa_enabled)
-VALUES ('admin@schooltrack.be', '$2b$12$kGMMYlNs9/Z5wnajznpNgeq/3wNVRl7fjAsGKps/s9rPQbWtnj9s.', 'Admin', 'Test', 'DIRECTION', FALSE);
+INSERT INTO users (email, password_hash, first_name, last_name, role, is_2fa_enabled, school_id)
+VALUES ('admin@schooltrack.be', '$2b$12$kGMMYlNs9/Z5wnajznpNgeq/3wNVRl7fjAsGKps/s9rPQbWtnj9s.', 'Admin', 'Test', 'DIRECTION', FALSE,
+        (SELECT id FROM schools WHERE slug = 'dev'));
 
 -- Enseignant de test (mot de passe : Teacher123!)
-INSERT INTO users (email, password_hash, first_name, last_name, role, is_2fa_enabled)
-VALUES ('teacher@schooltrack.be', '$2b$12$R3S3eEArQzvvfTyvw5ETK.nAfedJE3S93aEBccr4G3DHNUA4A6/6u', 'Jean', 'Dupont', 'TEACHER', FALSE);
+INSERT INTO users (email, password_hash, first_name, last_name, role, is_2fa_enabled, school_id)
+VALUES ('teacher@schooltrack.be', '$2b$12$R3S3eEArQzvvfTyvw5ETK.nAfedJE3S93aEBccr4G3DHNUA4A6/6u', 'Jean', 'Dupont', 'TEACHER', FALSE,
+        (SELECT id FROM schools WHERE slug = 'dev'));
 
 -- ============================================================================
--- FIN DU SCHÉMA v4.2
+-- FIN DU SCHÉMA v5.0
 -- ============================================================================

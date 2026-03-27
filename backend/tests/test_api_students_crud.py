@@ -14,9 +14,13 @@ from app.models.student import Student
 
 # --- Helpers ---
 
+_SCHOOL_ID = uuid.uuid4()
+
+
 def make_student(**kwargs) -> Student:
     s = MagicMock(spec=Student)
     s.id = kwargs.get("id", uuid.uuid4())
+    s.school_id = kwargs.get("school_id", _SCHOOL_ID)
     s.first_name = kwargs.get("first_name", "Jean")
     s.last_name = kwargs.get("last_name", "Dupont")
     s.email = kwargs.get("email", "jean.dupont@school.be")

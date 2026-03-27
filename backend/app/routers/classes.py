@@ -37,7 +37,7 @@ def create_class(
 ):
     """Crée une nouvelle classe scolaire avec un nom unique."""
     try:
-        result = class_service.create_class(db, data)
+        result = class_service.create_class(db, data, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -58,7 +58,7 @@ def list_classes(
     db: Session = Depends(get_db),
 ):
     """Retourne toutes les classes avec leur nombre d'élèves et d'enseignants."""
-    return class_service.get_classes(db)
+    return class_service.get_classes(db, school_id=current_user.school_id)
 
 
 @router.get("/{class_id}", response_model=ClassResponse, summary="Détail d'une classe")

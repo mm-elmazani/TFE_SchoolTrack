@@ -24,7 +24,12 @@ from app.services import assignment_service
 logger = logging.getLogger(__name__)
 
 
-def create_trip(db: Session, data: TripCreate, created_by: Optional[uuid.UUID] = None) -> TripResponse:
+def create_trip(
+    db: Session,
+    data: TripCreate,
+    created_by: Optional[uuid.UUID] = None,
+    school_id: Optional[uuid.UUID] = None,
+) -> TripResponse:
     """
     Crée un voyage et associe automatiquement les élèves des classes sélectionnées.
 
@@ -39,6 +44,7 @@ def create_trip(db: Session, data: TripCreate, created_by: Optional[uuid.UUID] =
         date=data.date,
         description=data.description,
         created_by=created_by,
+        school_id=school_id,
         status="PLANNED",
     )
     db.add(trip)
@@ -73,14 +79,12 @@ def create_trip(db: Session, data: TripCreate, created_by: Optional[uuid.UUID] =
     return _to_response(db, trip)
 
 
-def get_trips(db: Session) -> list[TripResponse]:
-    """Retourne tous les voyages non supprimés, du plus proche au plus loin."""
-    trips = db.execute(
-        select(Trip)
-        .where(Trip.status != "ARCHIVED")
-        .order_by(Trip.date.asc())
-    ).scalars().all()
-
+def get_trips(db: Session, school_id: Optional[uuid.UUID] = None) -> list[TripResponse]:
+    """Retourne tous les voyages non archivés de l'école, du plus proche au plus loin."""
+    query = select(Trip).where(Trip.status != "ARCHIVED")
+    if school_id is not None:
+        query = query.where(Trip.school_id == school_id)
+    trips = db.execute(query.order_by(Trip.date.asc())).scalars().all()
     return [_to_response(db, t) for t in trips]
 
 
@@ -194,6 +198,7 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
 
     return TripResponse(
         id=trip.id,
+        school_id=trip.school_id,
         destination=trip.destination,
         date=trip.date,
         description=trip.description,

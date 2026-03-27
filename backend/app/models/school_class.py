@@ -4,7 +4,7 @@ Nommé school_class pour éviter le conflit avec le mot-clé Python 'class'.
 """
 
 import uuid
-from sqlalchemy import Column, DateTime, ForeignKey, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
@@ -12,10 +12,12 @@ from app.database import Base
 
 class SchoolClass(Base):
     __tablename__ = "classes"
+    __table_args__ = (UniqueConstraint("name", "school_id", name="uq_classes_name_school"),)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(100), unique=True, nullable=False)
-    year = Column(String(20), nullable=True)
+    id        = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
+    name      = Column(String(100), nullable=False)
+    year      = Column(String(20), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

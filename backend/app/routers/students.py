@@ -37,7 +37,7 @@ def list_students(
 ):
     """Retourne tous les eleves tries alphabetiquement par nom puis prenom.
     Par defaut, les eleves supprimes logiquement sont exclus."""
-    query = select(Student)
+    query = select(Student).where(Student.school_id == current_user.school_id)
     if not include_deleted:
         query = query.where(Student.is_deleted == False)  # noqa: E712
     students = db.execute(query).scalars().all()
@@ -57,6 +57,7 @@ def create_student(
         first_name=data.first_name,
         last_name=data.last_name,
         email=data.email,
+        school_id=current_user.school_id,
     )
     db.add(student)
     db.commit()
@@ -317,7 +318,7 @@ async def upload_students(
     if not content:
         raise HTTPException(status_code=400, detail="Le fichier CSV est vide.")
 
-    report = parse_and_import_csv(content, db)
+    report = parse_and_import_csv(content, db, school_id=current_user.school_id)
 
     log_audit(
         db, user_id=current_user.id, action="STUDENTS_IMPORTED",

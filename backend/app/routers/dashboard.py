@@ -30,4 +30,4 @@ def get_overview(
     voyages, presences, checkpoints, modes de scan.
     Auto-refresh cote client (pas de log audit pour eviter le spam).
     """
-    return dashboard_service.get_dashboard_overview(db, status_filter=status)
+    return dashboard_service.get_dashboard_overview(db, status_filter=status, school_id=current_user.school_id)

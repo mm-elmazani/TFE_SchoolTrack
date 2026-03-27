@@ -25,9 +25,13 @@ from app.services.auth_service import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+_SCHOOL_ID = uuid.uuid4()
+
+
 def make_user(**kwargs) -> User:
     user = User()
     user.id = kwargs.get("id", uuid.uuid4())
+    user.school_id = kwargs.get("school_id", _SCHOOL_ID)
     user.email = kwargs.get("email", "test@school.be")
     user.password_hash = kwargs.get("password_hash", hash_password("Test1234!"))
     user.first_name = kwargs.get("first_name", "Test")

@@ -23,8 +23,8 @@ def list_users(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Liste tous les utilisateurs. Reserve a la Direction / Admin Tech."""
-    users = db.query(User).all()
+    """Liste les utilisateurs de l'école. Reserve a la Direction / Admin Tech."""
+    users = db.query(User).filter(User.school_id == current_user.school_id).all()
     users = sorted(users, key=lambda u: ((u.last_name or "").lower(), (u.first_name or "").lower()))
     return [UserInfo.model_validate(u) for u in users]
 
@@ -48,6 +48,7 @@ def create_user(
         first_name=body.first_name,
         last_name=body.last_name,
         role=body.role,
+        school_id=current_user.school_id,
     )
 
     log_audit(

@@ -72,6 +72,7 @@ class TripUpdate(BaseModel):
 
 class TripResponse(BaseModel):
     id: uuid.UUID
+    school_id: uuid.UUID
     destination: str
     date: dt.date
     description: Optional[str]

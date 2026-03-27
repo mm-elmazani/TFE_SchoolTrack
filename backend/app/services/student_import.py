@@ -9,6 +9,7 @@ Colonne optionnelle `classe` : si présente, l'élève est automatiquement assig
 import csv
 import io
 import re
+import uuid
 from typing import Optional, Tuple
 
 from sqlalchemy import func, select
@@ -36,26 +37,33 @@ def _detect_separator(sample: str) -> str:
     return ","
 
 
-def _get_or_create_class(db: Session, class_name: str) -> SchoolClass:
+def _get_or_create_class(
+    db: Session,
+    class_name: str,
+    school_id: Optional[uuid.UUID] = None,
+) -> SchoolClass:
     """
-    Retourne la classe portant ce nom (insensible à la casse),
+    Retourne la classe portant ce nom dans l'école (insensible à la casse),
     ou la crée si elle n'existe pas encore.
     """
-    existing = db.execute(
-        select(SchoolClass).where(func.lower(SchoolClass.name) == class_name.lower())
-    ).scalar_one_or_none()
+    query = select(SchoolClass).where(func.lower(SchoolClass.name) == class_name.lower())
+    if school_id is not None:
+        query = query.where(SchoolClass.school_id == school_id)
+    existing = db.execute(query).scalar_one_or_none()
 
     if existing:
         return existing
 
-    new_class = SchoolClass(name=class_name.strip())
+    new_class = SchoolClass(name=class_name.strip(), school_id=school_id)
     db.add(new_class)
     db.flush()  # obtenir l'ID sans committer
     return new_class
 
 
 def parse_and_import_csv(
-    content: bytes, db: Session
+    content: bytes,
+    db: Session,
+    school_id: Optional[uuid.UUID] = None,
 ) -> StudentImportReport:
     """
     Parse le CSV, valide chaque ligne, détecte les doublons et insère en bulk.
@@ -162,10 +170,11 @@ def parse_and_import_csv(
             errors=errors
         )
 
-    # Detection doublons contre la BDD (colonnes chiffrees → comparaison Python)
-    all_students = db.execute(
-        select(Student.last_name, Student.first_name)
-    ).fetchall()
+    # Detection doublons contre la BDD (colonnes chiffrees → comparaison Python, scopé par école)
+    dup_query = select(Student.last_name, Student.first_name)
+    if school_id is not None:
+        dup_query = dup_query.where(Student.school_id == school_id)
+    all_students = db.execute(dup_query).fetchall()
     existing_set = {
         (row[0].lower(), row[1].lower())
         for row in all_students
@@ -194,6 +203,7 @@ def parse_and_import_csv(
                 first_name=s.first_name,
                 last_name=s.last_name,
                 email=s.email,
+                school_id=school_id,
             )
             for s in to_insert
         ])
@@ -201,7 +211,7 @@ def parse_and_import_csv(
 
         # Assignation aux classes si la colonne `classe` est présente
         if has_classe_column:
-            _assign_classes(db, to_insert)
+            _assign_classes(db, to_insert, school_id)
 
         db.commit()
 
@@ -215,7 +225,11 @@ def parse_and_import_csv(
     )
 
 
-def _assign_classes(db: Session, students: list[StudentImportRow]) -> None:
+def _assign_classes(
+    db: Session,
+    students: list[StudentImportRow],
+    school_id: Optional[uuid.UUID] = None,
+) -> None:
     """
     Assigne chaque élève à sa classe après insertion.
     Crée la classe si elle n'existe pas encore.
@@ -230,7 +244,7 @@ def _assign_classes(db: Session, students: list[StudentImportRow]) -> None:
 
         class_name = student.classe.strip()
         if class_name not in classes_map:
-            classes_map[class_name] = _get_or_create_class(db, class_name)
+            classes_map[class_name] = _get_or_create_class(db, class_name, school_id)
 
     if not classes_map:
         return

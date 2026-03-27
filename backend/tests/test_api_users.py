@@ -15,6 +15,9 @@ from app.services.auth_service import hash_password
 # Helpers
 # ---------------------------------------------------------------------------
 
+_DEFAULT_SCHOOL_ID = uuid.uuid4()
+
+
 def make_user(**kwargs) -> User:
     user = User()
     user.id = kwargs.get("id", uuid.uuid4())
@@ -23,6 +26,7 @@ def make_user(**kwargs) -> User:
     user.first_name = kwargs.get("first_name", "Admin")
     user.last_name = kwargs.get("last_name", "Test")
     user.role = kwargs.get("role", "DIRECTION")
+    user.school_id = kwargs.get("school_id", _DEFAULT_SCHOOL_ID)
     user.totp_secret = None
     user.is_2fa_enabled = kwargs.get("is_2fa_enabled", False)
     user.failed_attempts = 0
@@ -50,7 +54,7 @@ class TestListUsers:
         override_auth(admin)
 
         mock_db = MagicMock()
-        mock_db.query.return_value.all.return_value = [admin, teacher]
+        mock_db.query.return_value.filter.return_value.all.return_value = [admin, teacher]
         from app.database import get_db
         app.dependency_overrides[get_db] = lambda: mock_db
 

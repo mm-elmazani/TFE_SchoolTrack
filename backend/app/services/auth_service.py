@@ -53,6 +53,7 @@ def create_access_token(user: User) -> str:
         "sub": str(user.id),
         "email": user.email,
         "role": user.role,
+        "school_id": str(user.school_id),
         "type": "access",
         "exp": expire,
     }
@@ -142,6 +143,7 @@ def register_user(
     first_name: str | None,
     last_name: str | None,
     role: str,
+    school_id=None,
 ) -> User:
     """Cree un nouvel utilisateur en base."""
     user = User(
@@ -150,6 +152,7 @@ def register_user(
         first_name=first_name,
         last_name=last_name,
         role=role,
+        school_id=school_id,
     )
     db.add(user)
     db.commit()

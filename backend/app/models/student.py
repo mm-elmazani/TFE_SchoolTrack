@@ -16,7 +16,8 @@ from app.services.crypto_service import EncryptedString
 class Student(Base):
     __tablename__ = "students"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id        = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
     first_name = Column(EncryptedString(), nullable=False)
     last_name = Column(EncryptedString(), nullable=False)
     email = Column(EncryptedString(), nullable=True)

@@ -16,10 +16,14 @@ from app.main import app
 from app.models.user import User
 
 
+_DEFAULT_SCHOOL_ID = uuid.uuid4()
+
+
 def _make_default_user() -> User:
     """Cree un utilisateur DIRECTION fictif pour les tests."""
     user = User()
     user.id = uuid.uuid4()
+    user.school_id = _DEFAULT_SCHOOL_ID
     user.email = "test-admin@schooltrack.be"
     user.password_hash = "$2b$12$fake"
     user.first_name = "Test"

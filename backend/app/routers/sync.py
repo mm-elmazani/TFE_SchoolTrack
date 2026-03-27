@@ -48,6 +48,7 @@ def sync_attendances(
     """
     result = sync_service.sync_attendances(
         db, data.scans, data.device_id, scanned_by=current_user.id,
+        school_id=current_user.school_id,
     )
 
     log_audit(
@@ -79,8 +80,8 @@ def get_sync_logs(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne les sync_logs paginés, du plus récent au plus ancien."""
-    query = select(SyncLog)
+    """Retourne les sync_logs paginés, du plus récent au plus ancien, scopés par école."""
+    query = select(SyncLog).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
 
     if status:
         query = query.where(SyncLog.status == status)
@@ -151,23 +152,26 @@ def get_sync_stats(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne les compteurs globaux des synchronisations."""
-    total = db.execute(select(func.count(SyncLog.id))).scalar() or 0
-    total_synced = db.execute(select(func.coalesce(func.sum(SyncLog.records_synced), 0))).scalar()
-    total_conflicts = db.execute(select(func.coalesce(func.sum(SyncLog.conflicts_detected), 0))).scalar()
+    """Retourne les compteurs globaux des synchronisations, scopés par école."""
+    school_filter = select(SyncLog.id).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
+    base = select(SyncLog).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
+
+    total = db.execute(select(func.count()).select_from(base.subquery())).scalar() or 0
+    total_synced = db.execute(select(func.coalesce(func.sum(SyncLog.records_synced), 0)).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)).scalar()
+    total_conflicts = db.execute(select(func.coalesce(func.sum(SyncLog.conflicts_detected), 0)).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)).scalar()
 
     success = db.execute(
-        select(func.count(SyncLog.id)).where(SyncLog.status == "SUCCESS")
+        select(func.count(SyncLog.id)).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id, SyncLog.status == "SUCCESS")
     ).scalar() or 0
     partial = db.execute(
-        select(func.count(SyncLog.id)).where(SyncLog.status == "PARTIAL")
+        select(func.count(SyncLog.id)).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id, SyncLog.status == "PARTIAL")
     ).scalar() or 0
     failed = db.execute(
-        select(func.count(SyncLog.id)).where(SyncLog.status == "FAILED")
+        select(func.count(SyncLog.id)).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id, SyncLog.status == "FAILED")
     ).scalar() or 0
 
     last_sync = db.execute(
-        select(func.max(SyncLog.synced_at))
+        select(func.max(SyncLog.synced_at)).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
     ).scalar()
 
     return SyncStats(

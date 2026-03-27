@@ -42,7 +42,7 @@ def create_trip(
     Associe automatiquement les élèves des classes sélectionnées.
     La date doit être dans le futur et au moins une classe doit être fournie.
     """
-    trip = trip_service.create_trip(db, data)
+    trip = trip_service.create_trip(db, data, created_by=current_user.id, school_id=current_user.school_id)
 
     log_audit(
         db, user_id=current_user.id, action="TRIP_CREATED",
@@ -61,7 +61,7 @@ def list_trips(
     db: Session = Depends(get_db),
 ):
     """Retourne tous les voyages actifs (hors archivés), du plus récent au plus ancien."""
-    return trip_service.get_trips(db)
+    return trip_service.get_trips(db, school_id=current_user.school_id)
 
 
 @router.get("/export-all", summary="Export ZIP multi-voyages (US 4.1)")

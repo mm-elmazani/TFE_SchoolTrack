@@ -12,7 +12,8 @@ from app.database import Base
 class Trip(Base):
     __tablename__ = "trips"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id        = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
     destination = Column(String(255), nullable=False)
     date = Column(Date, nullable=False)
     description = Column(Text, nullable=True)

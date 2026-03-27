@@ -35,6 +35,7 @@ class ClassUpdate(BaseModel):
 
 class ClassResponse(BaseModel):
     id: uuid.UUID
+    school_id: uuid.UUID
     name: str
     year: Optional[str]
     nb_students: int

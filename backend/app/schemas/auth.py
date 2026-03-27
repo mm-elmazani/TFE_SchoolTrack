@@ -104,6 +104,7 @@ class ResetPasswordRequest(BaseModel):
 
 class UserInfo(BaseModel):
     id: UUID
+    school_id: UUID
     email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None

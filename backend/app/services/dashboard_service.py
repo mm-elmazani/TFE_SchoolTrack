@@ -5,7 +5,7 @@ Agrege les statistiques de voyages, presences, checkpoints et modes de scan.
 
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy import and_, distinct, func, select
 from sqlalchemy.orm import Session
@@ -22,15 +22,19 @@ from app.schemas.dashboard import (
 
 
 def get_dashboard_overview(
-    db: Session, status_filter: Optional[str] = None
+    db: Session,
+    status_filter: Optional[str] = None,
+    school_id: Optional[uuid.UUID] = None,
 ) -> DashboardOverview:
     """
     Construit la vue d'ensemble du dashboard pour la direction.
     Requetes par lots (pas de N+1).
     """
 
-    # 1. Trips (hors archives sauf si filtre explicite)
+    # 1. Trips (hors archives sauf si filtre explicite), scopés par école
     trip_query = select(Trip)
+    if school_id is not None:
+        trip_query = trip_query.where(Trip.school_id == school_id)
     if status_filter and status_filter != "ALL":
         trip_query = trip_query.where(Trip.status == status_filter)
     else:

@@ -39,6 +39,7 @@ class StudentUpdate(BaseModel):
 class StudentResponse(BaseModel):
     """Schéma de réponse pour un élève (GET /students)."""
     id: uuid.UUID
+    school_id: uuid.UUID
     first_name: str
     last_name: str
     email: Optional[str]

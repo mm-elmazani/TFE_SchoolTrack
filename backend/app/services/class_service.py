@@ -4,7 +4,7 @@ Service métier pour la gestion des classes scolaires (US 1.3).
 
 import uuid
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -23,27 +23,32 @@ from app.schemas.school_class import (
 logger = logging.getLogger(__name__)
 
 
-def create_class(db: Session, data: ClassCreate) -> ClassResponse:
+def create_class(
+    db: Session,
+    data: ClassCreate,
+    school_id: Optional[uuid.UUID] = None,
+) -> ClassResponse:
     """
     Crée une nouvelle classe.
-    Lève une ValueError si le nom existe déjà.
+    Lève une ValueError si le nom existe déjà dans cette école.
     """
-    school_class = SchoolClass(name=data.name, year=data.year)
+    school_class = SchoolClass(name=data.name, year=data.year, school_id=school_id)
     db.add(school_class)
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ValueError(f"Une classe avec le nom '{data.name}' existe déjà.")
+        raise ValueError(f"Une classe avec le nom '{data.name}' existe déjà dans cette école.")
     db.refresh(school_class)
     return _to_response(db, school_class)
 
 
-def get_classes(db: Session) -> list[ClassResponse]:
-    """Retourne toutes les classes, triées par nom."""
-    classes = db.execute(
-        select(SchoolClass).order_by(SchoolClass.name)
-    ).scalars().all()
+def get_classes(db: Session, school_id: Optional[uuid.UUID] = None) -> list[ClassResponse]:
+    """Retourne toutes les classes de l'école, triées par nom."""
+    query = select(SchoolClass)
+    if school_id is not None:
+        query = query.where(SchoolClass.school_id == school_id)
+    classes = db.execute(query.order_by(SchoolClass.name)).scalars().all()
     return [_to_response(db, c) for c in classes]
 
 
@@ -207,6 +212,7 @@ def _to_response(db: Session, school_class: SchoolClass) -> ClassResponse:
 
     return ClassResponse(
         id=school_class.id,
+        school_id=school_class.school_id,
         name=school_class.name,
         year=school_class.year,
         nb_students=nb_students,

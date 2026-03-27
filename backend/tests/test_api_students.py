@@ -12,13 +12,18 @@ from app.models.student import Student
 
 # --- Helpers ---
 
+_SCHOOL_ID = uuid.uuid4()
+
+
 def make_student(**kwargs) -> Student:
     """Crée un mock d'élève SQLAlchemy."""
     s = MagicMock(spec=Student)
     s.id = kwargs.get("id", uuid.uuid4())
+    s.school_id = kwargs.get("school_id", _SCHOOL_ID)
     s.first_name = kwargs.get("first_name", "Jean")
     s.last_name = kwargs.get("last_name", "Dupont")
     s.email = kwargs.get("email", None)
+    s.is_deleted = kwargs.get("is_deleted", False)
     s.created_at = kwargs.get("created_at", datetime.now())
     return s
 

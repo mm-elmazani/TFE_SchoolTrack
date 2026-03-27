@@ -16,9 +16,13 @@ def future_date(days: int = 30) -> str:
     return (date.today() + timedelta(days=days)).isoformat()
 
 
+_SCHOOL_ID = uuid.uuid4()
+
+
 def make_trip_response(**kwargs) -> TripResponse:
     return TripResponse(
         id=kwargs.get("id", uuid.uuid4()),
+        school_id=kwargs.get("school_id", _SCHOOL_ID),
         destination=kwargs.get("destination", "Paris - Louvre"),
         date=kwargs.get("date", date.today() + timedelta(days=30)),
         description=kwargs.get("description", None),

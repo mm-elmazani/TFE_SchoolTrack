@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.models.attendance import Attendance, AttendanceHistory
 from app.models.checkpoint import Checkpoint
 from app.models.sync_log import SyncLog
+from app.models.trip import Trip
 from app.schemas.sync import ScanItem, SyncResponse, TemporalAnomaly
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ def sync_attendances(
     scans: List[ScanItem],
     device_id: str = "",
     scanned_by: uuid_module.UUID | None = None,
+    school_id: uuid_module.UUID | None = None,
 ) -> SyncResponse:
     """
     Reçoit un batch de scans et les fusionne intelligemment (US 3.2).
@@ -81,11 +83,12 @@ def sync_attendances(
             seen_in_batch.add(scan.client_uuid)
             continue
 
-        # 2b. Vérifier que le checkpoint existe toujours en DB
+        # 2b. Vérifier que le checkpoint existe et appartient à l'école (US 6.6)
         if scan.checkpoint_id not in valid_checkpoints:
-            cp_exists = db.execute(
-                select(Checkpoint.id).where(Checkpoint.id == scan.checkpoint_id)
-            ).scalar() is not None
+            cp_query = select(Checkpoint.id).join(Trip, Trip.id == Checkpoint.trip_id).where(Checkpoint.id == scan.checkpoint_id)
+            if school_id is not None:
+                cp_query = cp_query.where(Trip.school_id == school_id)
+            cp_exists = db.execute(cp_query).scalar() is not None
             valid_checkpoints[scan.checkpoint_id] = cp_exists
 
         if not valid_checkpoints[scan.checkpoint_id]:

@@ -18,9 +18,13 @@ from app.models.user import User
 # Helpers
 # ---------------------------------------------------------------------------
 
+_SCHOOL_ID = uuid.uuid4()
+
+
 def make_user(role: str = "DIRECTION", **kwargs) -> User:
     user = User()
     user.id = kwargs.get("id", uuid.uuid4())
+    user.school_id = kwargs.get("school_id", _SCHOOL_ID)
     user.email = kwargs.get("email", f"{role.lower()}@test.be")
     user.password_hash = "$2b$12$fake"
     user.first_name = kwargs.get("first_name", role.title())
@@ -115,11 +119,13 @@ class TestStudentPermissions:
 
         mock_student = MagicMock()
         mock_student.id = uuid.uuid4()
+        mock_student.school_id = _SCHOOL_ID
         mock_student.first_name = "A"
         mock_student.last_name = "B"
         mock_student.email = None
         mock_student.photo_url = None
         mock_student.parent_consent = False
+        mock_student.is_deleted = False
         mock_student.created_at = "2026-01-01T00:00:00"
         mock_student.updated_at = "2026-01-01T00:00:00"
         mock_db.refresh = lambda s: setattr(s, '__dict__', {**s.__dict__, **mock_student.__dict__})
