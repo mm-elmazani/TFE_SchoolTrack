@@ -6,7 +6,7 @@
 services:
   # ---------- Reverse proxy TLS (Let's Encrypt) ----------
   traefik:
-    image: traefik:v3.3
+    image: traefik:latest
     container_name: schooltrack_traefik
     environment:
       DOCKER_API_VERSION: "1.45"
