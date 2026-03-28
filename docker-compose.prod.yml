@@ -11,6 +11,7 @@ services:
     environment:
       DOCKER_API_VERSION: "1.45"
     command:
+      - "--log.level=DEBUG"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=schooltrack_net"
