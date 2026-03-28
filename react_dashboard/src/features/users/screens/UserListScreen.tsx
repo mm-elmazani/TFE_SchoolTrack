@@ -33,8 +33,8 @@ export default function UserListScreen() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); },
   });
 
-  const handleDelete = (user: { id: string; first_name: string; last_name: string }) => {
-    if (!confirm(`Supprimer l'utilisateur ${user.first_name} ${user.last_name} ? Cette action est irréversible.`)) return;
+  const handleDelete = (user: { id: string; first_name: string | null; last_name: string | null }) => {
+    if (!confirm(`Supprimer l'utilisateur ${user.first_name ?? ""} ${user.last_name ?? ""} ? Cette action est irréversible.`)) return;
     deleteMutation.mutate(user.id);
   };
 
