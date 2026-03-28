@@ -6,11 +6,14 @@ Démarrage : uvicorn app.main:app --reload
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 import app.models  # noqa: F401 — enregistre tous les modèles SQLAlchemy dans les métadonnées
+from app.database import get_db
 from app.routers import alerts, audit, auth, checkpoints, classes, dashboard, schools, students, sync, tokens, trips, users
 from app.routers.checkpoints import checkpoints_router
 from app.scheduler import start_scheduler, stop_scheduler
@@ -79,6 +82,14 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 
 @app.get("/api/health", tags=["Santé"])
-def health_check():
-    """Vérifie que l'API est opérationnelle."""
-    return {"status": "ok", "service": "SchoolTrack API", "version": "0.1.0"}
+def health_check(db: Session = Depends(get_db)):
+    """Vérifie que l'API et la connexion PostgreSQL sont opérationnelles."""
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "db": "disconnected", "version": "1.0.0"},
+        )
+    return {"status": "ok", "db": db_status, "version": "1.0.0"}
