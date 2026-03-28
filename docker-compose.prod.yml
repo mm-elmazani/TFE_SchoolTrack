@@ -8,6 +8,8 @@ services:
   traefik:
     image: traefik:v3.3
     container_name: schooltrack_traefik
+    environment:
+      DOCKER_API_VERSION: "1.45"
     command:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
