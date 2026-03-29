@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import AppScaffold from '@/shared/components/AppScaffold';
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
 import LoginScreen from '@/features/auth/screens/LoginScreen';
