@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, log_audit, require_role
+from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
 from app.models.user import User
 from app.schemas.alert import AlertCreate, AlertResponse, AlertStats, AlertUpdate
 from app.services import alert_service
@@ -42,7 +42,7 @@ def create_alert(
     log_audit(
         db, user_id=current_user.id, action="ALERT_CREATED",
         resource_type="ALERT", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={
             "alert_id": str(alert.id),
@@ -132,7 +132,7 @@ def update_alert(
     log_audit(
         db, user_id=current_user.id, action=action,
         resource_type="ALERT", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"alert_id": str(alert_id), "new_status": data.status},
     )

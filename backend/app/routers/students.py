@@ -15,7 +15,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, log_audit, require_role
+from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
 from app.models.student import Student
 from app.models.user import User
 from app.schemas.student import (
@@ -66,7 +66,7 @@ def create_student(
     log_audit(
         db, user_id=current_user.id, action="STUDENT_CREATED",
         resource_type="STUDENT", resource_id=student.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"first_name": data.first_name, "last_name": data.last_name},
     )
@@ -99,7 +99,7 @@ def update_student(
     log_audit(
         db, user_id=current_user.id, action="STUDENT_UPDATED",
         resource_type="STUDENT", resource_id=student.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"fields": list(update_data.keys())},
     )
@@ -130,7 +130,7 @@ def delete_student(
     log_audit(
         db, user_id=current_user.id, action="STUDENT_SOFT_DELETED",
         resource_type="STUDENT", resource_id=student.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"first_name": student.first_name, "last_name": student.last_name},
     )
@@ -261,7 +261,7 @@ def export_student_data(
     log_audit(
         db, user_id=current_user.id, action="STUDENT_DATA_EXPORTED",
         resource_type="STUDENT", resource_id=student.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"first_name": student.first_name, "last_name": student.last_name},
     )
@@ -323,7 +323,7 @@ async def upload_students(
     log_audit(
         db, user_id=current_user.id, action="STUDENTS_IMPORTED",
         resource_type="STUDENT",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"filename": file.filename, "created": report.inserted, "errors": report.rejected},
     )

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import log_audit, require_role
+from app.dependencies import get_client_ip, log_audit, require_role
 from app.models.user import User
 from app.schemas.checkpoint import CheckpointCreate, CheckpointResponse, CheckpointsSummary
 from app.services import checkpoint_service
@@ -78,7 +78,7 @@ def create_checkpoint(
     log_audit(
         db, user_id=current_user.id, action="CHECKPOINT_CREATED",
         resource_type="CHECKPOINT", resource_id=result.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"trip_id": str(trip_id), "name": data.name},
     )
@@ -113,7 +113,7 @@ def close_checkpoint(
     log_audit(
         db, user_id=current_user.id, action="CHECKPOINT_CLOSED",
         resource_type="CHECKPOINT", resource_id=checkpoint_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 

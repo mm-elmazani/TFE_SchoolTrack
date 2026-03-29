@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, log_audit, require_role
+from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
 from app.models.user import User
 from app.schemas.school_class import (
     ClassCreate,
@@ -44,7 +44,7 @@ def create_class(
     log_audit(
         db, user_id=current_user.id, action="CLASS_CREATED",
         resource_type="CLASS", resource_id=result.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"name": data.name},
     )
@@ -91,7 +91,7 @@ def update_class(
     log_audit(
         db, user_id=current_user.id, action="CLASS_UPDATED",
         resource_type="CLASS", resource_id=class_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"fields": list(data.model_dump(exclude_unset=True).keys())},
     )
@@ -120,7 +120,7 @@ def delete_class(
     log_audit(
         db, user_id=current_user.id, action="CLASS_DELETED",
         resource_type="CLASS", resource_id=class_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -159,7 +159,7 @@ def assign_students(
     log_audit(
         db, user_id=current_user.id, action="CLASS_STUDENTS_ASSIGNED",
         resource_type="CLASS", resource_id=class_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"student_count": len(data.student_ids)},
     )
@@ -183,7 +183,7 @@ def remove_student(
     log_audit(
         db, user_id=current_user.id, action="CLASS_STUDENT_REMOVED",
         resource_type="CLASS", resource_id=class_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"student_id": str(student_id)},
     )
@@ -208,7 +208,7 @@ def assign_teachers(
     log_audit(
         db, user_id=current_user.id, action="CLASS_TEACHERS_ASSIGNED",
         resource_type="CLASS", resource_id=class_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"teacher_count": len(data.teacher_ids)},
     )
@@ -232,7 +232,7 @@ def remove_teacher(
     log_audit(
         db, user_id=current_user.id, action="CLASS_TEACHER_REMOVED",
         resource_type="CLASS", resource_id=class_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"teacher_id": str(teacher_id)},
     )

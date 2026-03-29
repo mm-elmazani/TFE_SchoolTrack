@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, log_audit, require_role
+from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
 from app.models.user import User
 from app.schemas.offline import OfflineDataBundle
 from app.schemas.qr_email import QrEmailSendResult
@@ -47,7 +47,7 @@ def create_trip(
     log_audit(
         db, user_id=current_user.id, action="TRIP_CREATED",
         resource_type="TRIP", resource_id=trip.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"destination": data.destination},
     )
@@ -127,7 +127,7 @@ def export_all_trips(
     log_audit(
         db, user_id=current_user.id, action="ATTENDANCES_BULK_EXPORTED",
         resource_type="TRIP", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"trip_count": len(parsed_ids), "format": "zip_aes256" if password else "zip"},
     )
@@ -171,7 +171,7 @@ def update_trip(
     log_audit(
         db, user_id=current_user.id, action="TRIP_UPDATED",
         resource_type="TRIP", resource_id=trip.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"fields": list(data.model_dump(exclude_unset=True).keys())},
     )
@@ -197,7 +197,7 @@ def archive_trip(
     log_audit(
         db, user_id=current_user.id, action="TRIP_ARCHIVED",
         resource_type="TRIP", resource_id=trip_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -224,7 +224,7 @@ def export_trip_attendances(
     log_audit(
         db, user_id=current_user.id, action="ATTENDANCES_EXPORTED",
         resource_type="TRIP", resource_id=trip_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"format": "zip_aes256" if password else "csv"},
     )
@@ -300,7 +300,7 @@ def send_qr_emails(
     log_audit(
         db, user_id=current_user.id, action="QR_EMAILS_SENT",
         resource_type="TRIP", resource_id=trip_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"sent": result.sent_count, "errors": len(result.errors)},
     )

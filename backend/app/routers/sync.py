@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import log_audit, require_role
+from app.dependencies import get_client_ip, log_audit, require_role
 from app.models.sync_log import SyncLog
 from app.models.trip import Trip
 from app.models.user import User
@@ -54,7 +54,7 @@ def sync_attendances(
     log_audit(
         db, user_id=current_user.id, action="SYNC_ATTENDANCES",
         resource_type="ATTENDANCE",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"device_id": data.device_id, "scans_count": len(data.scans),
                  "inserted": result.total_inserted, "duplicates": len(result.duplicate)},

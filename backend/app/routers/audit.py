@@ -16,7 +16,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import log_audit, require_role
+from app.dependencies import get_client_ip, log_audit, require_role
 from app.models.user import User
 from app.schemas.audit import AuditLogPage, AuditLogResponse
 
@@ -33,10 +33,17 @@ def _build_where(
     resource_type: Optional[str],
     date_from: Optional[date],
     date_to: Optional[date],
+    current_user: Optional[User] = None,
 ) -> tuple[str, dict]:
-    """Retourne (where_sql, params) a partir des filtres optionnels."""
+    """Retourne (where_sql, params) a partir des filtres optionnels.
+    Filtre par school_id sauf pour ADMIN_TECH (vision globale)."""
     clauses: list[str] = []
     params: dict = {}
+
+    # Isolation par ecole : DIRECTION ne voit que les logs de son ecole
+    if current_user and current_user.role != "ADMIN_TECH":
+        clauses.append("u.school_id = :school_id")
+        params["school_id"] = str(current_user.school_id)
 
     if user_id:
         clauses.append("a.user_id = :user_id")
@@ -92,11 +99,15 @@ def list_audit_logs(
     Les logs sont tries du plus recent au plus ancien.
     Jointure avec la table users pour afficher l'email de l'auteur.
     """
-    where_sql, params = _build_where(user_id, action, resource_type, date_from, date_to)
+    where_sql, params = _build_where(user_id, action, resource_type, date_from, date_to, current_user)
 
     # Comptage total
     total = db.execute(
-        text(f"SELECT COUNT(*) FROM audit_logs a WHERE {where_sql}"),  # noqa: S608
+        text(
+            f"SELECT COUNT(*) FROM audit_logs a "  # noqa: S608
+            f"LEFT JOIN users u ON a.user_id = u.id "
+            f"WHERE {where_sql}"
+        ),
         params,
     ).scalar()
 
@@ -149,7 +160,7 @@ def export_audit_logs(
     Pas de pagination — retourne l'integralite des resultats filtres.
     Destine aux audits externes (conformite RGPD).
     """
-    where_sql, params = _build_where(user_id, action, resource_type, date_from, date_to)
+    where_sql, params = _build_where(user_id, action, resource_type, date_from, date_to, current_user)
 
     rows = db.execute(
         text(
@@ -170,7 +181,7 @@ def export_audit_logs(
     log_audit(
         db, user_id=current_user.id, action="AUDIT_LOGS_EXPORTED",
         resource_type="AUDIT",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"filters": {k: str(v) for k, v in params.items()}, "count": len(items)},
     )

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import log_audit, require_role
+from app.dependencies import get_client_ip, log_audit, require_role
 from app.models.user import User
 from app.schemas.auth import RegisterRequest, UserInfo
 from app.services.auth_service import hash_password, register_user
@@ -57,7 +57,7 @@ def create_user(
         action="USER_CREATED",
         resource_type="USER",
         resource_id=user.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"email": body.email, "role": body.role},
     )
@@ -86,7 +86,7 @@ def delete_user(
         action="USER_DELETED",
         resource_type="USER",
         resource_id=user.id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"email": user.email, "role": user.role},
     )

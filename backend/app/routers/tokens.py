@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, log_audit, require_role
+from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
 from app.models.user import User
 from app.schemas.assignment import (
     AssignmentCreate,
@@ -61,7 +61,7 @@ def init_token(
     log_audit(
         db, user_id=current_user.id, action="TOKEN_INITIALIZED",
         resource_type="TOKEN", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"token_id": result.id, "token_uid": data.token_uid, "token_type": data.token_type},
     )
@@ -89,7 +89,7 @@ def init_tokens_batch(
     log_audit(
         db, user_id=current_user.id, action="TOKENS_BATCH_INITIALIZED",
         resource_type="TOKEN", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"count": len(results), "uids": [r.token_uid for r in results]},
     )
@@ -172,7 +172,7 @@ def delete_token(
     log_audit(
         db, user_id=current_user.id, action="TOKEN_DELETED",
         resource_type="TOKEN", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"token_id": token_id},
     )
@@ -198,7 +198,7 @@ def update_token_status(
     log_audit(
         db, user_id=current_user.id, action="TOKEN_STATUS_UPDATED",
         resource_type="TOKEN", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"token_id": token_id, "token_uid": result.token_uid, "new_status": data.status},
     )
@@ -230,7 +230,7 @@ def assign_token(
     log_audit(
         db, user_id=current_user.id, action="TOKEN_ASSIGNED",
         resource_type="ASSIGNMENT", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"assignment_id": result.id, "student_id": str(data.student_id), "trip_id": str(data.trip_id)},
     )
@@ -258,7 +258,7 @@ def reassign_token(
     log_audit(
         db, user_id=current_user.id, action="TOKEN_REASSIGNED",
         resource_type="ASSIGNMENT", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"assignment_id": result.id, "student_id": str(data.student_id), "trip_id": str(data.trip_id)},
     )
@@ -314,7 +314,7 @@ def release_trip_tokens(
     log_audit(
         db, user_id=current_user.id, action="TOKENS_RELEASED",
         resource_type="TRIP", resource_id=trip_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"released_count": count},
     )
@@ -345,7 +345,7 @@ def release_assignment(
     log_audit(
         db, user_id=current_user.id, action="TOKEN_RELEASED",
         resource_type="ASSIGNMENT", resource_id=None,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details=result,
     )
@@ -371,7 +371,7 @@ def export_assignments(
     log_audit(
         db, user_id=current_user.id, action="ASSIGNMENTS_EXPORTED",
         resource_type="TRIP", resource_id=trip_id,
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"format": "zip_aes256" if password else "csv"},
     )

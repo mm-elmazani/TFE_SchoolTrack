@@ -76,6 +76,18 @@ def require_role(*allowed_roles: str) -> Callable:
 
 
 # ---------------------------------------------------------------------------
+# US 6.2 — IP source reelle (derriere Traefik)
+# ---------------------------------------------------------------------------
+
+def get_client_ip(request: Request) -> str | None:
+    """Extrait l'IP reelle du client depuis X-Forwarded-For (proxy Traefik) ou request.client."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+# ---------------------------------------------------------------------------
 # US 6.2 — Audit log
 # ---------------------------------------------------------------------------
 
