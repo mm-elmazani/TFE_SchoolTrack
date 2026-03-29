@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppScaffold from '@/shared/components/AppScaffold';
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
 import LoginScreen from '@/features/auth/screens/LoginScreen';
@@ -26,6 +26,14 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingScreen />,
+  },
+  {
+    path: '/login',
+    element: <Navigate to="/" replace />,
+  },
+  {
+    path: '/forgot-password',
+    element: <Navigate to="/" replace />,
   },
   {
     path: '/:schoolSlug/login',
