@@ -75,7 +75,8 @@ apiClient.interceptors.response.use(
     if (!refreshToken) {
       isRefreshing = false;
       logout();
-      window.location.href = '/login';
+      const slug = useAuthStore.getState().user?.school_slug || '';
+      window.location.href = `/${slug}/login`;
       return Promise.reject(error);
     }
 
@@ -95,7 +96,8 @@ apiClient.interceptors.response.use(
     } catch (refreshError) {
       onRefreshFailure(refreshError);
       logout();
-      window.location.href = '/login';
+      const slug = useAuthStore.getState().user?.school_slug || '';
+      window.location.href = `/${slug}/login`;
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

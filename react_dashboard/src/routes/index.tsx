@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppScaffold from '@/shared/components/AppScaffold';
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
 import LoginScreen from '@/features/auth/screens/LoginScreen';
@@ -20,22 +20,27 @@ import RoleRedirect from '@/shared/components/RoleRedirect';
 import ProfileScreen from '@/features/auth/screens/ProfileScreen';
 import ForgotPasswordScreen from '@/features/auth/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from '@/features/auth/screens/ResetPasswordScreen';
+import LandingScreen from '@/features/auth/screens/LandingScreen';
 
 export const router = createBrowserRouter([
   {
-    path: '/login',
+    path: '/',
+    element: <LandingScreen />,
+  },
+  {
+    path: '/:schoolSlug/login',
     element: <LoginScreen />,
   },
   {
-    path: '/forgot-password',
+    path: '/:schoolSlug/forgot-password',
     element: <ForgotPasswordScreen />,
   },
   {
-    path: '/reset-password',
+    path: '/:schoolSlug/reset-password',
     element: <ResetPasswordScreen />,
   },
   {
-    path: '/',
+    path: '/:schoolSlug',
     element: (
       <ProtectedRoute>
         <AppScaffold />
@@ -137,4 +142,3 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
-

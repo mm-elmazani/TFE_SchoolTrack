@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { apiClient } from '@/api/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ const forgotSchema = z.object({
 type ForgotForm = z.infer<typeof forgotSchema>;
 
 export default function ForgotPasswordScreen() {
+  const { schoolSlug } = useParams();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -65,7 +66,7 @@ export default function ForgotPasswordScreen() {
                 <span>Si un compte existe avec cet email, un lien de reinitialisation a ete envoye. Verifiez votre boite de reception.</span>
               </div>
               <Link
-                to="/login"
+                to={`/${schoolSlug}/login`}
                 className="flex items-center justify-center gap-2 w-full text-sm text-slate-500 hover:text-schooltrack-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -107,7 +108,7 @@ export default function ForgotPasswordScreen() {
               </Button>
 
               <Link
-                to="/login"
+                to={`/${schoolSlug}/login`}
                 className="flex items-center justify-center gap-2 w-full text-sm text-slate-500 hover:text-schooltrack-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />

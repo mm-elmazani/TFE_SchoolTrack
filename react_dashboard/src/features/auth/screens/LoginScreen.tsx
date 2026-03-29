@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { apiClient } from '@/api/axios';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ export default function LoginScreen() {
   const [twoFAMethod, setTwoFAMethod] = useState<'APP' | 'EMAIL'>('APP');
   const [totpCode, setTotpCode] = useState('');
   const navigate = useNavigate();
+  const { schoolSlug } = useParams();
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const { register, handleSubmit, formState: { errors }, getValues } = useForm<LoginForm>({
@@ -38,11 +39,12 @@ export default function LoginScreen() {
     try {
       const payload: Record<string, string> = { email, password };
       if (totp_code) payload.totp_code = totp_code;
+      if (schoolSlug) payload.school_slug = schoolSlug;
 
       const response = await apiClient.post('/api/v1/auth/login', payload);
       const { access_token, refresh_token, user } = response.data;
       setAuth(access_token, refresh_token, user);
-      navigate('/students', { replace: true });
+      navigate(`/${schoolSlug}/students`, { replace: true });
     } catch (err: any) {
       const detail = err.response?.data?.detail || '';
       if (detail === '2FA_REQUIRED' || detail === '2FA_REQUIRED_EMAIL') {
@@ -155,7 +157,7 @@ export default function LoginScreen() {
 
               <div className="text-center">
                 <Link
-                  to="/forgot-password"
+                  to={`/${schoolSlug}/forgot-password`}
                   className="text-sm text-slate-500 hover:text-schooltrack-primary transition-colors"
                 >
                   Mot de passe oublie ?

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { useState } from 'react';
 import { UpdateTripDialog } from '../components/UpdateTripDialog';
 import {
@@ -32,6 +33,7 @@ export default function TripDetailScreen() {
   const { id } = useParams<{ id: string }>();
   const { getIsAdmin } = useAuthStore();
   const isAdmin = getIsAdmin();
+  const sp = useSchoolPath();
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
 
   const { data: trip, isLoading, error } = useQuery({
@@ -60,7 +62,7 @@ export default function TripDetailScreen() {
       </div>
       <h2 className="text-xl font-bold">Voyage introuvable</h2>
       <p className="text-slate-500">Une erreur est survenue lors de la récupération des détails du voyage.</p>
-      <Link to="/trips">
+      <Link to={sp('/trips')}>
         <Button variant="outline">Retour à la liste</Button>
       </Link>
     </div>
@@ -86,7 +88,7 @@ export default function TripDetailScreen() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/trips">
+          <Link to={sp('/trips')}>
             <Button variant="ghost" size="sm" className="rounded-full w-10 h-10 p-0 hover:bg-blue-50">
               <ArrowLeft className="w-5 h-5 text-schooltrack-primary" />
             </Button>
@@ -120,7 +122,7 @@ export default function TripDetailScreen() {
             </Button>
           )}
           {isAdmin && (
-            <Link to={`/trips/${trip.id}/checkpoints`}>
+            <Link to={sp(`/trips/${trip.id}/checkpoints`)}>
               <Button className="bg-schooltrack-action hover:bg-blue-700 text-white rounded-xl h-11 px-6 shadow-md shadow-blue-900/10 transition-all active:scale-95 border-0">
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 Timeline Checkpoints
@@ -192,7 +194,7 @@ export default function TripDetailScreen() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Link to={`/classes/${cls.id}`}>
+                            <Link to={sp(`/classes/${cls.id}`)}>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-schooltrack-primary">
                                 <ChevronRight className="w-4 h-4" />
                               </Button>
@@ -223,7 +225,7 @@ export default function TripDetailScreen() {
                     </CardDescription>
                   </div>
                   {isAdmin && (
-                    <Link to={`/trips/${trip.id}/checkpoints`}>
+                    <Link to={sp(`/trips/${trip.id}/checkpoints`)}>
                       <Button size="sm" variant="outline" className="rounded-lg h-9 border-slate-200 font-sans">
                         <MapIcon className="w-4 h-4 mr-1.5" /> Voir la timeline
                       </Button>

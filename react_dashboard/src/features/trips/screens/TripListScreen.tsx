@@ -14,6 +14,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { CreateTripDialog } from '../components/CreateTripDialog';
 import { UpdateTripDialog } from '../components/UpdateTripDialog';
 import { ArchiveTripDialog } from '../components/ArchiveTripDialog';
@@ -47,6 +48,7 @@ import {
 export default function TripListScreen() {
   const { getIsAdmin } = useAuthStore();
   const isAdmin = getIsAdmin();
+  const sp = useSchoolPath();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [tripToUpdate, setTripToUpdate] = useState<Trip | null>(null);
   const [tripToArchive, setTripToArchive] = useState<Trip | null>(null);
@@ -275,7 +277,7 @@ export default function TripListScreen() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {filteredTrips.map((trip) => (
             <div key={trip.id} className="relative group">
-              <Link to={`/trips/${trip.id}`}>
+              <Link to={sp(`/trips/${trip.id}`)}>
                 <Card className="h-full border border-slate-200 hover:border-schooltrack-primary/50 hover:shadow-lg hover:shadow-blue-900/5 transition-all duration-300 rounded-2xl bg-white p-5 flex flex-col">
                   <div className="flex justify-between items-start mb-6 gap-2">
                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-schooltrack-action transition-colors shrink-0">
@@ -383,7 +385,7 @@ export default function TripListScreen() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Link to={`/trips/${trip.id}`}>
+                          <Link to={sp(`/trips/${trip.id}`)}>
                             <Button 
                               variant="ghost" 
                               size="sm" 

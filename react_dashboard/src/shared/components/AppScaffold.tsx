@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import {
   Users,
@@ -23,23 +23,26 @@ import { cn } from '@/lib/utils';
 export default function AppScaffold() {
   const { logout, user, getIsAdmin } = useAuthStore();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { schoolSlug } = useParams();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isAdmin = getIsAdmin();
+  const base = `/${schoolSlug}`;
 
   const navItems = [
-    ...(isAdmin ? [{ label: 'Vue d\'ensemble', path: '/dashboard', icon: LayoutDashboard }] : []),
-    ...(isAdmin ? [{ label: 'Alertes', path: '/alerts', icon: Bell }] : []),
-    { label: 'Élèves', path: '/students', icon: Users },
-    { label: 'Classes', path: '/classes', icon: School },
-    { label: 'Voyages', path: '/trips', icon: MapIcon },
-    { label: 'Bracelets', path: '/tokens', icon: Rss },
+    ...(isAdmin ? [{ label: 'Vue d\'ensemble', path: `${base}/dashboard`, icon: LayoutDashboard }] : []),
+    ...(isAdmin ? [{ label: 'Alertes', path: `${base}/alerts`, icon: Bell }] : []),
+    { label: 'Élèves', path: `${base}/students`, icon: Users },
+    { label: 'Classes', path: `${base}/classes`, icon: School },
+    { label: 'Voyages', path: `${base}/trips`, icon: MapIcon },
+    { label: 'Bracelets', path: `${base}/tokens`, icon: Rss },
   ];
 
   const adminItems = [
-    { label: 'Import Élèves', path: '/students/import', icon: Upload },
-    { label: 'Stock Bracelets', path: '/tokens/stock', icon: Package },
-    { label: 'Utilisateurs', path: '/users', icon: UserCog },
-    { label: 'Logs d\'Audit', path: '/audit', icon: ShieldCheck },
+    { label: 'Import Élèves', path: `${base}/students/import`, icon: Upload },
+    { label: 'Stock Bracelets', path: `${base}/tokens/stock`, icon: Package },
+    { label: 'Utilisateurs', path: `${base}/users`, icon: UserCog },
+    { label: 'Logs d\'Audit', path: `${base}/audit`, icon: ShieldCheck },
   ];
 
   const isActive = (path: string) =>
@@ -98,7 +101,7 @@ export default function AppScaffold() {
 
       <div className="p-4 border-t border-slate-100 bg-slate-50/50">
         <Link
-          to="/profile"
+          to={`${base}/profile`}
           onClick={() => setIsMobileMenuOpen(false)}
           className="flex items-center gap-3 mb-4 px-2 py-2 -mx-1 rounded-xl hover:bg-blue-50 transition-colors group cursor-pointer"
         >
@@ -110,8 +113,8 @@ export default function AppScaffold() {
           </div>
         </Link>
         <Button 
-          variant="destructive" 
-          onClick={logout} 
+          variant="destructive"
+          onClick={() => { logout(); navigate(`${base}/login`); }}
           className="w-full flex items-center justify-center gap-2 rounded-xl h-11 shadow-sm hover:shadow-md transition-all active:scale-95"
         >
           <LogOut className="w-4 h-4" />
@@ -167,7 +170,7 @@ export default function AppScaffold() {
               <span className="text-sm font-medium text-slate-700">{user?.first_name} {user?.last_name}</span>
               <span className="text-[10px] text-slate-500 uppercase tracking-tighter">{user?.role}</span>
             </div>
-            <Link to="/profile" className="w-9 h-9 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shadow-inner hover:bg-blue-50 hover:border-schooltrack-primary transition-colors">
+            <Link to={`${base}/profile`} className="w-9 h-9 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shadow-inner hover:bg-blue-50 hover:border-schooltrack-primary transition-colors">
               {user?.email?.[0].toUpperCase()}
             </Link>
           </div>

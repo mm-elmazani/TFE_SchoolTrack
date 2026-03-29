@@ -4,10 +4,12 @@ import { studentApi } from '../api/studentApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { Upload, FileText, X, CheckCircle2, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function StudentImportScreen() {
+  const sp = useSchoolPath();
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export default function StudentImportScreen() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Link to="/students">
+        <Link to={sp('/students')}>
           <Button variant="ghost" size="sm" className="rounded-full w-10 h-10 p-0 hover:bg-blue-50">
             <ArrowLeft className="w-5 h-5 text-schooltrack-primary" />
           </Button>

@@ -13,6 +13,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Link, useNavigate } from 'react-router-dom';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { CreateStudentDialog } from '../components/CreateStudentDialog';
 import { UpdateStudentDialog } from '../components/UpdateStudentDialog';
@@ -37,6 +38,7 @@ export default function StudentListScreen() {
   const { getIsAdmin } = useAuthStore();
   const isAdmin = getIsAdmin();
   const navigate = useNavigate();
+  const sp = useSchoolPath();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [studentToUpdate, setStudentToUpdate] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
@@ -97,7 +99,7 @@ export default function StudentListScreen() {
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
-            <Link to="/students/import">
+            <Link to={sp('/students/import')}>
               <Button variant="outline" className="rounded-xl h-11 border-slate-200 flex items-center gap-2 hover:bg-slate-50">
                 <Upload className="w-4 h-4" />
                 <span className="hidden sm:inline">Importer CSV</span>
@@ -192,7 +194,7 @@ export default function StudentListScreen() {
                             size="sm" 
                             className="h-9 w-9 p-0 text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm rounded-lg"
                             title="Voir les détails"
-                            onClick={() => navigate(`/students/${student.id}`)}
+                            onClick={() => navigate(sp(`/students/${student.id}`))}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>

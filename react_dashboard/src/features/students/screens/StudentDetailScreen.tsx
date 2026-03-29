@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { useQuery } from '@tanstack/react-query';
 import { studentApi } from '../api/studentApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function StudentDetailScreen() {
   const { id } = useParams<{ id: string }>();
+  const sp = useSchoolPath();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['student', id],
@@ -39,7 +41,7 @@ export default function StudentDetailScreen() {
       </div>
       <h2 className="text-xl font-bold">Élève introuvable</h2>
       <p className="text-slate-500">Une erreur est survenue lors de la récupération du profil.</p>
-      <Link to="/students">
+      <Link to={sp('/students')}>
         <Button variant="outline">Retour à la liste</Button>
       </Link>
     </div>
@@ -63,7 +65,7 @@ export default function StudentDetailScreen() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/students">
+          <Link to={sp('/students')}>
             <Button variant="ghost" size="sm" className="rounded-full w-10 h-10 p-0 hover:bg-blue-50">
               <ArrowLeft className="w-5 h-5 text-schooltrack-primary" />
             </Button>

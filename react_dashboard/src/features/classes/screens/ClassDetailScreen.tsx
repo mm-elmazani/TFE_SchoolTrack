@@ -1,4 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { classApi } from '../api/classApi';
 import { studentApi } from '@/features/students/api/studentApi';
@@ -29,6 +30,7 @@ export default function ClassDetailScreen() {
   const { id } = useParams<{ id: string }>();
   const { getIsAdmin } = useAuthStore();
   const isAdmin = getIsAdmin();
+  const sp = useSchoolPath();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [lastAssignedName, setLastAssignedName] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export default function ClassDetailScreen() {
           <School className="w-8 h-8" />
         </div>
         <h2 className="text-xl font-bold">Classe introuvable</h2>
-        <Link to="/classes">
+        <Link to={sp('/classes')}>
           <Button variant="outline">Retour à la liste</Button>
         </Link>
       </div>
@@ -147,7 +149,7 @@ export default function ClassDetailScreen() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/classes">
+          <Link to={sp('/classes')}>
             <Button variant="ghost" size="sm" className="rounded-full w-10 h-10 p-0 hover:bg-blue-50">
               <ArrowLeft className="w-5 h-5 text-schooltrack-primary" />
             </Button>
@@ -284,7 +286,7 @@ export default function ClassDetailScreen() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Link to={`/students/${student.id}`}>
+                        <Link to={sp(`/students/${student.id}`)}>
                           <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-slate-400 hover:text-schooltrack-primary rounded-lg">
                             <ChevronRight className="w-4 h-4" />
                           </Button>

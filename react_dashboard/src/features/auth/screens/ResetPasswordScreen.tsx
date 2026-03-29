@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/api/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ const resetSchema = z.object({
 type ResetForm = z.infer<typeof resetSchema>;
 
 export default function ResetPasswordScreen() {
+  const { schoolSlug } = useParams();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const email = searchParams.get('email') || '';
@@ -76,7 +77,7 @@ export default function ResetPasswordScreen() {
               <span>Le lien de reinitialisation est invalide ou incomplet.</span>
             </div>
             <Link
-              to="/forgot-password"
+              to={`/${schoolSlug}/forgot-password`}
               className="flex items-center justify-center gap-2 w-full text-sm text-schooltrack-primary hover:text-blue-900 transition-colors font-medium"
             >
               Demander un nouveau lien
@@ -113,7 +114,7 @@ export default function ResetPasswordScreen() {
                 <span>Votre mot de passe a ete reinitialise avec succes. Vous pouvez maintenant vous connecter.</span>
               </div>
               <Link
-                to="/login"
+                to={`/${schoolSlug}/login`}
                 className="flex items-center justify-center gap-2 w-full h-12 bg-schooltrack-primary hover:bg-blue-900 text-white font-semibold rounded-xl shadow-lg shadow-blue-900/20 transition-all active:scale-[0.98]"
               >
                 Se connecter
@@ -177,7 +178,7 @@ export default function ResetPasswordScreen() {
               </Button>
 
               <Link
-                to="/login"
+                to={`/${schoolSlug}/login`}
                 className="flex items-center justify-center gap-2 w-full text-sm text-slate-500 hover:text-schooltrack-primary transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />

@@ -1,7 +1,8 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 export default function RoleRedirect() {
   const isAdmin = useAuthStore(s => s.getIsAdmin());
-  return <Navigate to={isAdmin ? '/dashboard' : '/students'} replace />;
+  const { schoolSlug } = useParams();
+  return <Navigate to={isAdmin ? `/${schoolSlug}/dashboard` : `/${schoolSlug}/students`} replace />;
 }

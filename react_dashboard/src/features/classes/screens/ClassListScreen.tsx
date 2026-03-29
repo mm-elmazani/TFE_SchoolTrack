@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { Link } from 'react-router-dom';
+import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { CreateClassDialog } from '../components/CreateClassDialog';
 import { UpdateClassDialog } from '../components/UpdateClassDialog';
 import { DeleteClassDialog } from '../components/DeleteClassDialog';
@@ -34,6 +35,7 @@ import { Badge } from '@/components/ui/badge';
 export default function ClassListScreen() {
   const { getIsAdmin } = useAuthStore();
   const isAdmin = getIsAdmin();
+  const sp = useSchoolPath();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [classToUpdate, setClassToUpdate] = useState<Class | null>(null);
   const [classToDelete, setClassToDelete] = useState<Class | null>(null);
@@ -141,7 +143,7 @@ export default function ClassListScreen() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {filteredClasses.map((cls) => (
             <div key={cls.id} className="relative group">
-              <Link to={`/classes/${cls.id}`}>
+              <Link to={sp(`/classes/${cls.id}`)}>
                 <Card className="h-full border border-slate-200 hover:border-schooltrack-primary/50 hover:shadow-lg hover:shadow-blue-900/5 transition-all duration-300 rounded-2xl bg-white p-5 flex flex-col">
                   <div className="flex justify-between items-start mb-6">
                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-schooltrack-action transition-colors">
@@ -236,7 +238,7 @@ export default function ClassListScreen() {
                       <TableCell className="text-center font-medium text-slate-600">{cls.nb_teachers}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Link to={`/classes/${cls.id}`}>
+                          <Link to={sp(`/classes/${cls.id}`)}>
                             <Button 
                               variant="ghost" 
                               size="sm" 

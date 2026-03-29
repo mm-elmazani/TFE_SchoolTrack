@@ -9,6 +9,7 @@ export interface User {
   last_name?: string;
   is_2fa_enabled?: boolean;
   two_fa_method?: string | null;
+  school_slug?: string;
 }
 
 interface AuthState {
