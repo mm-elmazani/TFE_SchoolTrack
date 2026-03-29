@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, log_audit, require_role
+from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
+from app.models.school import School
 from app.models.user import User
 from app.schemas.auth import (
     ChangePasswordRequest,
@@ -55,7 +56,7 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentification"])
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Authentifie un utilisateur et retourne un couple access/refresh token."""
-    _ip = request.client.host if request.client else None
+    _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
     try:
@@ -77,16 +78,39 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
+    # Verification du slug ecole (si fourni par le frontend)
+    school_slug = None
+    if body.school_slug:
+        school = db.query(School).filter(School.id == user.school_id).first()
+        if not school or school.slug != body.school_slug:
+            log_audit(
+                db, user_id=user.id, action="LOGIN_FAILED",
+                resource_type="AUTH", ip_address=_ip, user_agent=_ua,
+                details={"email": body.email, "reason": "school_slug_mismatch",
+                         "expected_slug": body.school_slug},
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous n'appartenez pas a cette ecole.",
+            )
+        school_slug = school.slug
+    else:
+        school = db.query(School).filter(School.id == user.school_id).first()
+        school_slug = school.slug if school else None
+
     log_audit(
         db, user_id=user.id, action="LOGIN_SUCCESS",
         resource_type="AUTH", ip_address=_ip, user_agent=_ua,
         details={"email": user.email, "role": user.role},
     )
 
+    user_info = UserInfo.model_validate(user)
+    user_info.school_slug = school_slug
+
     return TokenResponse(
         access_token=create_access_token(user),
         refresh_token=create_refresh_token(user),
-        user=UserInfo.model_validate(user),
+        user=user_info,
     )
 
 
@@ -165,7 +189,7 @@ def enable_two_factor(
     log_audit(
         db, user_id=current_user.id, action="2FA_INITIATED",
         resource_type="AUTH",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -193,7 +217,7 @@ def verify_two_factor(
     log_audit(
         db, user_id=current_user.id, action="2FA_ENABLED",
         resource_type="AUTH",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -220,7 +244,7 @@ def disable_two_factor(
     log_audit(
         db, user_id=current_user.id, action="2FA_DISABLED",
         resource_type="AUTH",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -253,7 +277,7 @@ def enable_two_factor_email(
     log_audit(
         db, user_id=current_user.id, action="2FA_EMAIL_INITIATED",
         resource_type="AUTH",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -287,7 +311,7 @@ def verify_two_factor_email(
     log_audit(
         db, user_id=current_user.id, action="2FA_ENABLED",
         resource_type="AUTH",
-        ip_address=request.client.host if request.client else None,
+        ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
         details={"method": "EMAIL"},
     )
@@ -326,7 +350,7 @@ def change_user_password(
     db: Session = Depends(get_db),
 ):
     """Change le mot de passe de l'utilisateur connecte."""
-    _ip = request.client.host if request.client else None
+    _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
     try:
@@ -352,7 +376,7 @@ def change_user_password(
 @router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Envoie un email de reinitialisation si le compte existe (public)."""
-    _ip = request.client.host if request.client else None
+    _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
     base_url = str(request.headers.get("origin", "http://localhost:5173"))
@@ -384,7 +408,7 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Reinitialise le mot de passe avec un token valide (public)."""
-    _ip = request.client.host if request.client else None
+    _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
     try:

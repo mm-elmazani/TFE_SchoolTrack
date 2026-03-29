@@ -20,6 +20,20 @@ _direction = require_role("DIRECTION", "ADMIN_TECH")
 _admin     = require_role("ADMIN_TECH")
 
 
+@router.get("/{slug}/exists", summary="Verifier si une ecole existe (public)")
+def school_exists(
+    slug: str,
+    db: Session = Depends(get_db),
+):
+    """Verifie si un slug d'ecole existe et est actif. Endpoint public (pas d'auth)."""
+    school = db.execute(
+        select(School).where(School.slug == slug, School.is_active == True)
+    ).scalar_one_or_none()
+    if not school:
+        raise HTTPException(status_code=404, detail="Ecole introuvable")
+    return {"slug": school.slug, "name": school.name}
+
+
 @router.get("", response_model=list[SchoolRead], summary="Lister les écoles")
 def list_schools(
     _=Depends(_direction),
