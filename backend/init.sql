@@ -115,6 +115,7 @@ CREATE TABLE tokens (
     token_uid VARCHAR(50) UNIQUE NOT NULL,  -- Ex: "ST-001", "ST-042"
     token_type VARCHAR(20) NOT NULL,        -- NFC_PHYSICAL, QR_PHYSICAL
     status VARCHAR(20) DEFAULT 'AVAILABLE', -- AVAILABLE, ASSIGNED, DAMAGED, LOST
+    hardware_uid VARCHAR(100),              -- UID hardware NFC (hex), US 1.4
     created_at TIMESTAMP DEFAULT NOW(),
     last_assigned_at TIMESTAMP              -- Dernière assignation
 );
@@ -174,6 +175,17 @@ CREATE TABLE trip_students (
 
 CREATE INDEX idx_trip_students_trip ON trip_students(trip_id);
 CREATE INDEX idx_trip_students_student ON trip_students(student_id);
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: trip_classes - Association voyage ↔ classes sélectionnées
+-- ----------------------------------------------------------------------------
+CREATE TABLE trip_classes (
+    trip_id UUID REFERENCES trips(id) ON DELETE CASCADE,
+    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
+    added_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (trip_id, class_id)
+);
 
 
 -- ----------------------------------------------------------------------------
@@ -271,8 +283,37 @@ CREATE INDEX idx_attendances_checkpoint ON attendances(checkpoint_id);
 CREATE INDEX idx_attendances_student ON attendances(student_id);
 CREATE INDEX idx_attendances_time ON attendances(scanned_at);
 
--- ⭐ v4.2: Index composite pour vérification présence rapide
+--  v4.2: Index composite pour vérification présence rapide
 CREATE INDEX idx_attendances_checkpoint_student ON attendances(checkpoint_id, student_id);
+
+--  v4.3: 1 seul scan canonique par (student, checkpoint, trip)
+ALTER TABLE attendances ADD CONSTRAINT uq_attendance_canonical UNIQUE (student_id, checkpoint_id, trip_id);
+
+
+-- ----------------------------------------------------------------------------
+-- TABLE: attendance_history - Archive brute de tous les scans (US 3.2)
+-- ----------------------------------------------------------------------------
+CREATE TABLE attendance_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_uuid UUID NOT NULL UNIQUE,
+    trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+    checkpoint_id UUID NOT NULL REFERENCES checkpoints(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    scanned_at TIMESTAMP NOT NULL,
+    scanned_by UUID REFERENCES users(id),
+    scan_method VARCHAR(20) NOT NULL,
+    scan_sequence INTEGER NOT NULL DEFAULT 1,
+    is_manual BOOLEAN NOT NULL DEFAULT FALSE,
+    justification VARCHAR(50),
+    comment TEXT,
+    device_id VARCHAR(255),
+    sync_session_id UUID NOT NULL,
+    synced_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    merge_status VARCHAR(20) NOT NULL DEFAULT 'ACCEPTED'  -- ACCEPTED, MERGED_OLDEST, SUPERSEDED
+);
+
+CREATE INDEX idx_att_history_student_trip ON attendance_history(student_id, trip_id);
+CREATE INDEX idx_att_history_sync_session ON attendance_history(sync_session_id);
 
 
 -- ----------------------------------------------------------------------------
