@@ -260,12 +260,17 @@ def _send_otp_email(to_email: str, code: str) -> None:
     """
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+    server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
+    try:
+        server.ehlo()
         if settings.SMTP_USE_TLS:
             server.starttls()
+            server.ehlo()
         if settings.SMTP_USERNAME:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.send_message(msg)
+    finally:
+        server.quit()
 
     logger.info("Code OTP 2FA envoye a %s", to_email)
 
@@ -379,12 +384,17 @@ def _send_password_reset_email(to_email: str, reset_url: str) -> None:
     """
     msg.attach(MIMEText(html, "html", "utf-8"))
 
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+    server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
+    try:
+        server.ehlo()
         if settings.SMTP_USE_TLS:
             server.starttls()
+            server.ehlo()
         if settings.SMTP_USERNAME:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.send_message(msg)
+    finally:
+        server.quit()
 
     logger.info("Email de reinitialisation envoye a %s", to_email)
 
