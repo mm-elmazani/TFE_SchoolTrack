@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     SMTP_FROM: str = "schooltrack@school.be"
     SMTP_USE_TLS: bool = True
 
+    # Fichiers media (photos élèves)
+    MEDIA_DIR: str = "/app/media"
+
     # Environnement
     ENV: str = "development"
 

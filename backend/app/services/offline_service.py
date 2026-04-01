@@ -3,20 +3,21 @@ Service de génération du bundle offline (US 2.1).
 Endpoint : GET /api/v1/trips/{trip_id}/offline-data
 
 Agrège en une seule réponse tout ce dont Flutter a besoin pour fonctionner
-sans réseau : voyage + élèves (avec assignation active) + checkpoints.
+sans réseau : voyage + élèves (avec assignation active, classe, contact) + checkpoints.
 """
 
 import uuid
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.assignment import Assignment
 from app.models.checkpoint import Checkpoint
+from app.models.school_class import ClassStudent, SchoolClass
 from app.models.student import Student
-from app.models.trip import Trip, TripStudent
+from app.models.trip import Trip, TripClass, TripStudent
 from app.schemas.offline import (
     OfflineAssignment,
     OfflineCheckpoint,
@@ -33,8 +34,8 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
     Génère le bundle complet de données offline pour un voyage.
 
     Contenu :
-    - Infos du voyage
-    - Liste des élèves avec leur assignation active (LEFT JOIN)
+    - Infos du voyage (destination, date, classes participantes, nb élèves)
+    - Liste des élèves avec assignation active, email, téléphone, photo, classe
     - Checkpoints existants triés par sequence_order
 
     Lève ValueError si le voyage est introuvable ou archivé.
@@ -46,7 +47,7 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
     if trip.status == "ARCHIVED":
         raise ValueError("Les données offline ne sont pas disponibles pour un voyage archivé.")
 
-    # Eleves inscrits au voyage (sans JOIN assignation pour eviter les doublons)
+    # Élèves inscrits au voyage
     students_rows = db.execute(
         select(Student)
         .join(TripStudent, TripStudent.student_id == Student.id)
@@ -62,12 +63,32 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
         )
     ).scalars().all()
 
-    # Map student_id → liste de toutes les assignations actives
+    # Map student_id → liste d'assignations actives
     assignment_map: dict[uuid.UUID, list[Assignment]] = {}
     for a in assignments:
         assignment_map.setdefault(a.student_id, []).append(a)
 
-    # Tri alphabetique en Python (colonnes chiffrees, US 6.3)
+    # Map student_id → nom de classe (un élève = une classe)
+    student_ids = [s.id for s in students_rows]
+    class_name_map: dict[uuid.UUID, str] = {}
+    if student_ids:
+        class_rows = db.execute(
+            select(ClassStudent.student_id, SchoolClass.name)
+            .join(SchoolClass, SchoolClass.id == ClassStudent.class_id)
+            .where(ClassStudent.student_id.in_(student_ids))
+        ).all()
+        class_name_map = {row[0]: row[1] for row in class_rows}
+
+    # Classes du voyage (pour le résumé)
+    trip_class_rows = db.execute(
+        select(SchoolClass.name)
+        .join(TripClass, TripClass.class_id == SchoolClass.id)
+        .where(TripClass.trip_id == trip_id)
+        .order_by(SchoolClass.name)
+    ).scalars().all()
+    trip_classes = list(trip_class_rows)
+
+    # Tri alphabétique en Python (colonnes chiffrées, US 6.3)
     students_rows = sorted(
         students_rows,
         key=lambda s: ((s.last_name or "").lower(), (s.first_name or "").lower()),
@@ -83,7 +104,7 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
             )
             for a in student_assignments
         ]
-        # Rétro-compat : assignment = physique en priorité, sinon premier disponible
+        # Rétro-compat : physique en priorité, sinon premier disponible
         primary = next(
             (oa for oa in offline_assignments if oa.assignment_type in ("NFC_PHYSICAL", "QR_PHYSICAL")),
             offline_assignments[0] if offline_assignments else None,
@@ -93,6 +114,10 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
                 id=student.id,
                 first_name=student.first_name,
                 last_name=student.last_name,
+                email=student.email,
+                phone=student.phone,
+                photo_url=student.photo_url,
+                class_name=class_name_map.get(student.id),
                 assignment=primary,
                 assignments=offline_assignments,
             )
@@ -119,8 +144,8 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
     ]
 
     logger.info(
-        "Bundle offline généré — voyage %s : %d élèves, %d checkpoints",
-        trip_id, len(students), len(checkpoints),
+        "Bundle offline généré — voyage %s : %d élèves, %d checkpoints, %d classes",
+        trip_id, len(students), len(checkpoints), len(trip_classes),
     )
 
     return OfflineDataBundle(
@@ -130,6 +155,8 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
             date=trip.date,
             description=trip.description,
             status=trip.status,
+            classes=trip_classes,
+            student_count=len(students),
         ),
         students=students,
         checkpoints=checkpoints,

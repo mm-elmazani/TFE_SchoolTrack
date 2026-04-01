@@ -5,6 +5,7 @@ Démarrage : uvicorn app.main:app --reload
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,12 +14,17 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 import app.models  # noqa: F401 — enregistre tous les modèles SQLAlchemy dans les métadonnées
+from app.config import settings
 from app.database import get_db
 from app.routers import alerts, audit, auth, checkpoints, classes, dashboard, schools, students, sync, tokens, trips, users
 from app.routers.checkpoints import checkpoints_router
 from app.scheduler import start_scheduler, stop_scheduler
 
 logger = logging.getLogger(__name__)
+
+# Création des dossiers media au démarrage (idempotent)
+Path(settings.MEDIA_DIR).mkdir(parents=True, exist_ok=True)
+Path(settings.MEDIA_DIR, "students").mkdir(exist_ok=True)
 
 
 @asynccontextmanager

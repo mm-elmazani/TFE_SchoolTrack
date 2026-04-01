@@ -20,6 +20,18 @@ _direction = require_role("DIRECTION", "ADMIN_TECH")
 _admin     = require_role("ADMIN_TECH")
 
 
+@router.get("/public", summary="Lister les écoles actives (public)")
+def list_schools_public(db: Session = Depends(get_db)):
+    """Retourne la liste des écoles actives (name + slug) sans authentification.
+    Utilisé par l'app mobile pour le sélecteur d'école au login."""
+    schools = db.execute(
+        select(School.name, School.slug)
+        .where(School.is_active == True)
+        .order_by(School.name)
+    ).all()
+    return [{"name": row.name, "slug": row.slug} for row in schools]
+
+
 @router.get("/{slug}/exists", summary="Verifier si une ecole existe (public)")
 def school_exists(
     slug: str,

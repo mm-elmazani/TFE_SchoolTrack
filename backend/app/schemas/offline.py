@@ -22,6 +22,8 @@ class OfflineTripInfo(BaseModel):
     date: date
     description: Optional[str]
     status: str
+    classes: List[str] = []       # Noms des classes participant au voyage
+    student_count: int = 0        # Nombre total d'élèves inscrits
 
 
 class OfflineAssignment(BaseModel):
@@ -31,10 +33,14 @@ class OfflineAssignment(BaseModel):
 
 
 class OfflineStudent(BaseModel):
-    """Élève avec ses assignations de bracelet/QR."""
+    """Élève avec ses assignations de bracelet/QR et ses données personnelles."""
     id: uuid.UUID
     first_name: str
     last_name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    photo_url: Optional[str] = None   # Chemin relatif — à préfixer avec l'URL API
+    class_name: Optional[str] = None  # Nom de la classe de l'élève
     assignment: Optional[OfflineAssignment] = None  # Rétro-compat : assignation primaire
     assignments: List[OfflineAssignment] = []        # Toutes les assignations actives
 
