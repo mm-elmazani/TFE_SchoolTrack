@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/api/api_client.dart';
 import '../providers/auth_provider.dart';
 
 /// Ecran de connexion de l'app enseignants (US 6.1).
@@ -20,6 +21,45 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _show2FA = false;
 
+  // Ecoles
+  List<Map<String, dynamic>> _schools = [];
+  String? _selectedSlug;
+  bool _loadingSchools = true;
+  String? _schoolsError;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSchools();
+  }
+
+  Future<void> _loadSchools() async {
+    try {
+      final schools = await ApiClient().getSchoolsPublic();
+      if (!mounted) return;
+      setState(() {
+        _schools = schools;
+        _loadingSchools = false;
+        // Pre-selectionner si une seule ecole
+        if (schools.length == 1) {
+          _selectedSlug = schools[0]['slug'] as String?;
+        }
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSchools = false;
+        _schoolsError = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadingSchools = false;
+        _schoolsError = 'Impossible de charger les ecoles';
+      });
+    }
+  }
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -37,6 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _emailCtrl.text.trim(),
       _passwordCtrl.text,
       totpCode: _show2FA ? _totpCtrl.text.trim() : null,
+      schoolSlug: _selectedSlug,
     );
 
     if (!mounted) return;
@@ -89,6 +130,65 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                   ),
                   const SizedBox(height: 40),
+
+                  // Ecole
+                  if (_loadingSchools)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  else if (_schoolsError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber, color: Colors.orange.shade700, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _schoolsError!,
+                              style: TextStyle(color: Colors.orange.shade700, fontSize: 13),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _loadingSchools = true;
+                                _schoolsError = null;
+                              });
+                              _loadSchools();
+                            },
+                            child: const Text('Reessayer'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else ...[
+                    DropdownButtonFormField<String>(
+                      value: _selectedSlug,
+                      decoration: InputDecoration(
+                        labelText: 'Ecole',
+                        prefixIcon: const Icon(Icons.school_outlined),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: _schools.map((school) {
+                        return DropdownMenuItem<String>(
+                          value: school['slug'] as String?,
+                          child: Text(school['name'] as String? ?? ''),
+                        );
+                      }).toList(),
+                      onChanged: (value) => setState(() => _selectedSlug = value),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Ecole requise';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Email
                   TextFormField(
