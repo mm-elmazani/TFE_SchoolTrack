@@ -79,14 +79,24 @@ class SyncService {
         totalAccepted += result.totalInserted;
         totalDuplicate += result.duplicate.length;
 
-        // Marquer accepted + duplicate comme synced (les doublons sont deja en base)
-        final syncedIds = <String>[...result.accepted, ...result.duplicate];
+        // Marquer accepted + duplicate + rejected comme synced
+        // Les rejected (checkpoint supprime, etc.) ne seront jamais acceptes
+        // et ne doivent pas etre renvoyes en boucle.
+        final syncedIds = <String>[
+          ...result.accepted,
+          ...result.duplicate,
+          ...result.rejected,
+        ];
         if (syncedIds.isNotEmpty) {
           await _db.markAttendancesSynced(syncedIds);
         }
 
-        // Si des scans du batch n'apparaissent ni dans accepted ni dans duplicate
-        final processedSet = {...result.accepted, ...result.duplicate};
+        // Si des scans du batch n'apparaissent dans aucune liste
+        final processedSet = {
+          ...result.accepted,
+          ...result.duplicate,
+          ...result.rejected,
+        };
         final unprocessed = batch.where((r) => !processedSet.contains(r.id)).length;
         totalFailed += unprocessed;
       } on ApiException {

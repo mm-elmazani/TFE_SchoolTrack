@@ -338,16 +338,18 @@ class _OfflineReadyBadge extends StatelessWidget {
         border: Border.all(color: Colors.green.shade200),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.check_circle, size: 16, color: Colors.green.shade700),
           const SizedBox(width: 6),
-          Text(
-            '✓ Prêt hors-ligne — téléchargé le $formatted',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.green.shade800,
-              fontWeight: FontWeight.w500,
+          Flexible(
+            child: Text(
+              'Pret hors-ligne — telecharge le $formatted',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.green.shade800,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

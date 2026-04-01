@@ -439,7 +439,7 @@ class ApiClient {
     required String deviceId,
   }) async {
     if (scans.isEmpty) {
-      return SyncResult(accepted: [], duplicate: [], totalReceived: 0, totalInserted: 0);
+      return SyncResult(accepted: [], duplicate: [], rejected: [], totalReceived: 0, totalInserted: 0);
     }
     try {
       final body = jsonEncode({'scans': scans, 'device_id': deviceId});
@@ -502,12 +502,14 @@ class ApiClient {
 class SyncResult {
   final List<String> accepted;
   final List<String> duplicate;
+  final List<String> rejected;
   final int totalReceived;
   final int totalInserted;
 
   const SyncResult({
     required this.accepted,
     required this.duplicate,
+    required this.rejected,
     required this.totalReceived,
     required this.totalInserted,
   });
@@ -516,6 +518,7 @@ class SyncResult {
     return SyncResult(
       accepted: (json['accepted'] as List<dynamic>).cast<String>(),
       duplicate: (json['duplicate'] as List<dynamic>).cast<String>(),
+      rejected: (json['rejected'] as List<dynamic>?)?.cast<String>() ?? [],
       totalReceived: json['total_received'] as int,
       totalInserted: json['total_inserted'] as int,
     );
