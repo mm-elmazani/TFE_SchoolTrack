@@ -190,16 +190,73 @@ class ApiClient {
   // Authentification (US 6.1)
   // ----------------------------------------------------------------
 
+  // ----------------------------------------------------------------
+  // Photos élèves
+  // ----------------------------------------------------------------
+
+  /// Télécharge la photo d'un élève (endpoint protégé).
+  /// Retourne les bytes de l'image, ou null si aucune photo ou erreur réseau.
+  Future<List<int>?> getStudentPhoto(String studentId) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/students/$studentId/photo');
+      var response = await _http
+          .get(uri, headers: _authHeaders)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 401 && await _tryRefresh()) {
+        response = await _http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 10));
+      }
+
+      if (response.statusCode == 200) return response.bodyBytes;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Ecoles (public)
+  // ----------------------------------------------------------------
+
+  /// GET /api/v1/schools/public — Liste des ecoles actives (sans auth).
+  Future<List<Map<String, dynamic>>> getSchoolsPublic() async {
+    try {
+      final response = await _http
+          .get(
+            Uri.parse('$baseUrl/api/v1/schools/public'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      }
+      throw ApiException(
+        'Erreur serveur (${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Impossible de contacter le serveur : $e');
+    }
+  }
+
   /// POST /api/v1/auth/login
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
     String? totpCode,
+    String? schoolSlug,
   }) async {
     final body = <String, dynamic>{
       'email': email,
       'password': password,
       if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
+      if (schoolSlug != null && schoolSlug.isNotEmpty) 'school_slug': schoolSlug,
     };
     try {
       final response = await _http

@@ -67,8 +67,8 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Connexion avec email + mot de passe (+ code TOTP optionnel).
-  Future<bool> login(String email, String password, {String? totpCode}) async {
+  /// Connexion avec email + mot de passe (+ code TOTP optionnel + ecole).
+  Future<bool> login(String email, String password, {String? totpCode, String? schoolSlug}) async {
     _loading = true;
     _error = null;
     notifyListeners();
@@ -78,6 +78,7 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
         totpCode: totpCode,
+        schoolSlug: schoolSlug,
       );
 
       _accessToken = data['access_token'] as String;
