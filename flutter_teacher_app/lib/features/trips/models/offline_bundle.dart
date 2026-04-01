@@ -53,11 +53,15 @@ class OfflineAssignment {
       );
 }
 
-/// Élève avec ses assignations de bracelet/QR.
+/// Élève avec ses assignations de bracelet/QR et ses données de contact.
 class OfflineStudent {
   final String id;
   final String firstName;
   final String lastName;
+  final String? email;
+  final String? phone;
+  final String? photoUrl;    // Chemin relatif — à charger via GET /api/v1/students/{id}/photo
+  final String? className;   // Nom de la classe de l'élève
   final OfflineAssignment? assignment;        // Rétro-compat : assignation primaire
   final List<OfflineAssignment> assignments;  // Toutes les assignations actives
 
@@ -65,6 +69,10 @@ class OfflineStudent {
     required this.id,
     required this.firstName,
     required this.lastName,
+    this.email,
+    this.phone,
+    this.photoUrl,
+    this.className,
     this.assignment,
     this.assignments = const [],
   });
@@ -79,6 +87,10 @@ class OfflineStudent {
       id: j['id'] as String,
       firstName: j['first_name'] as String,
       lastName: j['last_name'] as String,
+      email: j['email'] as String?,
+      phone: j['phone'] as String?,
+      photoUrl: j['photo_url'] as String?,
+      className: j['class_name'] as String?,
       assignment: j['assignment'] != null
           ? OfflineAssignment.fromJson(
               j['assignment'] as Map<String, dynamic>)
@@ -118,6 +130,8 @@ class OfflineTripInfo {
   final String date;
   final String? description;
   final String status;
+  final List<String> classes;    // Noms des classes participant au voyage
+  final int studentCount;        // Nombre total d'élèves inscrits
 
   const OfflineTripInfo({
     required this.id,
@@ -125,6 +139,8 @@ class OfflineTripInfo {
     required this.date,
     this.description,
     required this.status,
+    this.classes = const [],
+    this.studentCount = 0,
   });
 
   factory OfflineTripInfo.fromJson(Map<String, dynamic> j) => OfflineTripInfo(
@@ -133,6 +149,11 @@ class OfflineTripInfo {
         date: j['date'] as String,
         description: j['description'] as String?,
         status: j['status'] as String,
+        classes: (j['classes'] as List<dynamic>?)
+                ?.map((c) => c as String)
+                .toList() ??
+            [],
+        studentCount: j['student_count'] as int? ?? 0,
       );
 }
 

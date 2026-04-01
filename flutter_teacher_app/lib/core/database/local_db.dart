@@ -11,6 +11,7 @@
 /// via flutter_secure_storage (US 6.3).
 library;
 
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -67,7 +68,7 @@ class LocalDb {
     if (testDatabasePath != null) {
       return sqflite_std.openDatabase(
         path,
-        version: 5,
+        version: 6,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       );
@@ -78,7 +79,7 @@ class LocalDb {
     try {
       return await sqlcipher.openDatabase(
         path,
-        version: 5,
+        version: 6,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -119,17 +120,23 @@ class LocalDb {
         date            TEXT NOT NULL,
         description     TEXT,
         status          TEXT NOT NULL,
+        classes         TEXT,
+        student_count   INTEGER NOT NULL DEFAULT 0,
         downloaded_at   INTEGER NOT NULL
       )
     ''');
 
-    /// Table des élèves avec leur assignation.
+    /// Table des élèves avec leur assignation et données de contact.
     await db.execute('''
       CREATE TABLE students (
         id              TEXT NOT NULL,
         trip_id         TEXT NOT NULL,
         first_name      TEXT NOT NULL,
         last_name       TEXT NOT NULL,
+        email           TEXT,
+        phone           TEXT,
+        photo_url       TEXT,
+        class_name      TEXT,
         token_uid       TEXT,
         assignment_type TEXT,
         PRIMARY KEY (id, trip_id)
@@ -244,6 +251,7 @@ class LocalDb {
     }
     // v4 → v5 : table student_assignments (support double assignation physique + QR digital)
     if (oldVersion < 5) {
+
       await db.execute('''
         CREATE TABLE IF NOT EXISTS student_assignments (
           student_id      TEXT NOT NULL,
@@ -256,6 +264,15 @@ class LocalDb {
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_sa_token ON student_assignments(token_uid, trip_id)',
       );
+    }
+    // v5 → v6 : ajout email, phone, photo_url, class_name sur students + classes/student_count sur trips
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE students ADD COLUMN email TEXT');
+      await db.execute('ALTER TABLE students ADD COLUMN phone TEXT');
+      await db.execute('ALTER TABLE students ADD COLUMN photo_url TEXT');
+      await db.execute('ALTER TABLE students ADD COLUMN class_name TEXT');
+      await db.execute('ALTER TABLE trips ADD COLUMN classes TEXT');
+      await db.execute('ALTER TABLE trips ADD COLUMN student_count INTEGER NOT NULL DEFAULT 0');
     }
   }
 
@@ -285,6 +302,8 @@ class LocalDb {
         'date': bundle.trip.date,
         'description': bundle.trip.description,
         'status': bundle.trip.status,
+        'classes': jsonEncode(bundle.trip.classes),
+        'student_count': bundle.trip.studentCount,
         'downloaded_at': now,
       });
 
@@ -298,6 +317,10 @@ class LocalDb {
             'trip_id': tripId,
             'first_name': s.firstName,
             'last_name': s.lastName,
+            'email': s.email,
+            'phone': s.phone,
+            'photo_url': s.photoUrl,
+            'class_name': s.className,
             'token_uid': s.assignment?.tokenUid,
             'assignment_type': s.assignment?.assignmentType,
           },
@@ -462,6 +485,27 @@ class LocalDb {
         .toList();
   }
 
+  /// Retourne les infos offline d'un voyage stocké localement.
+  Future<OfflineTripInfo?> getTripInfo(String tripId) async {
+    final db = await database;
+    final rows = await db.query('trips', where: 'id = ?', whereArgs: [tripId]);
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final classesJson = r['classes'] as String?;
+    final classes = classesJson != null
+        ? List<String>.from(jsonDecode(classesJson) as List)
+        : <String>[];
+    return OfflineTripInfo(
+      id: r['id'] as String,
+      destination: r['destination'] as String,
+      date: r['date'] as String,
+      description: r['description'] as String?,
+      status: r['status'] as String,
+      classes: classes,
+      studentCount: r['student_count'] as int? ?? 0,
+    );
+  }
+
   /// Retourne true si le voyage est téléchargé et non expiré (< 7 jours).
   Future<bool> isTripReady(String tripId) async {
     final db = await database;
@@ -505,19 +549,7 @@ class LocalDb {
       whereArgs: [tripId],
       orderBy: 'last_name ASC, first_name ASC',
     );
-    return rows
-        .map((r) => OfflineStudent(
-              id: r['id'] as String,
-              firstName: r['first_name'] as String,
-              lastName: r['last_name'] as String,
-              assignment: r['token_uid'] != null
-                  ? OfflineAssignment(
-                      tokenUid: r['token_uid'] as String,
-                      assignmentType: r['assignment_type'] as String,
-                    )
-                  : null,
-            ))
-        .toList();
+    return rows.map(_rowToStudent).toList();
   }
 
   /// Résout un UUID d'élève en OfflineStudent pour un voyage donné.
@@ -531,18 +563,7 @@ class LocalDb {
       whereArgs: [studentId, tripId],
     );
     if (rows.isEmpty) return null;
-    final r = rows.first;
-    return OfflineStudent(
-      id: r['id'] as String,
-      firstName: r['first_name'] as String,
-      lastName: r['last_name'] as String,
-      assignment: r['token_uid'] != null
-          ? OfflineAssignment(
-              tokenUid: r['token_uid'] as String,
-              assignmentType: r['assignment_type'] as String,
-            )
-          : null,
-    );
+    return _rowToStudent(rows.first);
   }
 
   /// Résout un UID de token en OfflineStudent pour un voyage donné.
@@ -566,15 +587,21 @@ class LocalDb {
         whereArgs: [studentId, tripId],
       );
       if (studentRows.isNotEmpty) {
-        final r = studentRows.first;
+        final s = _rowToStudent(studentRows.first);
+        // Remplacer l'assignment par celui résolu depuis student_assignments
         return OfflineStudent(
-          id: r['id'] as String,
-          firstName: r['first_name'] as String,
-          lastName: r['last_name'] as String,
+          id: s.id,
+          firstName: s.firstName,
+          lastName: s.lastName,
+          email: s.email,
+          phone: s.phone,
+          photoUrl: s.photoUrl,
+          className: s.className,
           assignment: OfflineAssignment(
             tokenUid: uid,
             assignmentType: assignRows.first['assignment_type'] as String,
           ),
+          assignments: s.assignments,
         );
       }
     }
@@ -586,15 +613,24 @@ class LocalDb {
       whereArgs: [uid, tripId],
     );
     if (rows.isEmpty) return null;
-    final r = rows.first;
+    return _rowToStudent(rows.first);
+  }
+
+  OfflineStudent _rowToStudent(Map<String, dynamic> r) {
     return OfflineStudent(
       id: r['id'] as String,
       firstName: r['first_name'] as String,
       lastName: r['last_name'] as String,
-      assignment: OfflineAssignment(
-        tokenUid: r['token_uid'] as String,
-        assignmentType: r['assignment_type'] as String,
-      ),
+      email: r['email'] as String?,
+      phone: r['phone'] as String?,
+      photoUrl: r['photo_url'] as String?,
+      className: r['class_name'] as String?,
+      assignment: r['token_uid'] != null
+          ? OfflineAssignment(
+              tokenUid: r['token_uid'] as String,
+              assignmentType: r['assignment_type'] as String,
+            )
+          : null,
     );
   }
 
