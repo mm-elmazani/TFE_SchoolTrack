@@ -9,97 +9,181 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #1a1a1a;
-      background: #f8f9fa;
+      background: #fff;
+      line-height: 1.6;
     }
+
+    /* Navigation */
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 24px;
+    }
+    .nav-logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1A73E8;
+      text-decoration: none;
+      letter-spacing: -0.5px;
+    }
+    .nav-links a {
+      color: #555;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      margin-left: 32px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #1A73E8; }
 
     /* Hero */
     .hero {
-      background: linear-gradient(135deg, #1A73E8 0%, #0d47a1 100%);
-      color: #fff;
-      text-align: center;
-      padding: 80px 24px 64px;
-    }
-    .hero-icon {
-      width: 80px;
-      height: 80px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 50%;
-      display: flex;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 24px 96px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
       align-items: center;
-      justify-content: center;
-      margin: 0 auto 24px;
-      font-size: 40px;
     }
-    .hero h1 {
-      font-size: 36px;
-      font-weight: 700;
-      margin-bottom: 12px;
+    .hero-content h1 {
+      font-size: 44px;
+      font-weight: 800;
+      line-height: 1.15;
+      color: #0d1117;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
     }
-    .hero p {
-      font-size: 18px;
-      opacity: 0.9;
-      max-width: 600px;
-      margin: 0 auto 32px;
-      line-height: 1.6;
+    .hero-content h1 span { color: #1A73E8; }
+    .hero-content p {
+      font-size: 17px;
+      color: #555;
+      line-height: 1.7;
+      margin-bottom: 32px;
+      max-width: 480px;
     }
-    .hero-buttons {
+    .hero-actions {
       display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
+      gap: 12px;
     }
     .btn {
       display: inline-block;
-      padding: 14px 32px;
-      border-radius: 8px;
-      font-size: 16px;
+      padding: 13px 28px;
+      border-radius: 6px;
+      font-size: 15px;
       font-weight: 600;
       text-decoration: none;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: all 0.2s;
     }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-    .btn-primary { background: #fff; color: #1A73E8; }
-    .btn-secondary { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+    .btn-primary {
+      background: #1A73E8;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-outline {
+      background: #fff;
+      color: #1A73E8;
+      border: 1.5px solid #1A73E8;
+    }
+    .btn-outline:hover { background: #e8f0fe; }
+
+    /* Hero visual */
+    .hero-visual {
+      background: #f6f8fa;
+      border-radius: 12px;
+      border: 1px solid #e1e4e8;
+      padding: 40px 32px;
+    }
+    .visual-row {
+      display: flex;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .visual-row:last-child { border-bottom: none; }
+    .visual-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+    .dot-green { background: #0F9D58; }
+    .dot-blue { background: #1A73E8; }
+    .dot-orange { background: #F4B400; }
+    .visual-label {
+      font-size: 14px;
+      color: #555;
+      flex: 1;
+    }
+    .visual-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+    .visual-header {
+      font-size: 13px;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 4px;
+    }
+
+    /* Section titles */
+    .section-title {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .section-title h2 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #0d1117;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+    .section-title p {
+      font-size: 16px;
+      color: #666;
+      max-width: 560px;
+      margin: 0 auto;
+    }
 
     /* Features */
     .features {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 64px 24px;
-    }
-    .features h2 {
-      text-align: center;
-      font-size: 28px;
-      color: #1A73E8;
-      margin-bottom: 48px;
+      background: #f6f8fa;
+      padding: 80px 24px;
     }
     .features-grid {
+      max-width: 1100px;
+      margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 24px;
     }
     .feature-card {
       background: #fff;
-      border-radius: 12px;
-      padding: 32px 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      text-align: center;
+      border-radius: 8px;
+      border: 1px solid #e1e4e8;
+      padding: 32px 28px;
     }
-    .feature-icon {
-      width: 56px;
-      height: 56px;
-      background: #e8f0fe;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 16px;
-      font-size: 28px;
+    .feature-number {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1A73E8;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
     }
     .feature-card h3 {
-      font-size: 18px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #0d1117;
       margin-bottom: 8px;
-      color: #1a1a1a;
     }
     .feature-card p {
       font-size: 14px;
@@ -107,188 +191,311 @@
       line-height: 1.6;
     }
 
-    /* Stats */
-    .stats {
-      background: #1A73E8;
-      padding: 48px 24px;
-    }
-    .stats-grid {
-      max-width: 800px;
+    /* How it works */
+    .how {
+      max-width: 1100px;
       margin: 0 auto;
+      padding: 80px 24px;
+    }
+    .steps {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      margin-top: 8px;
+    }
+    .step {
       text-align: center;
     }
-    .stat-item .number {
-      font-size: 36px;
-      font-weight: 700;
+    .step-number {
+      width: 40px;
+      height: 40px;
+      background: #1A73E8;
       color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 auto 16px;
     }
-    .stat-item .label {
-      font-size: 14px;
-      color: rgba(255,255,255,0.8);
-      margin-top: 4px;
+    .step h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0d1117;
+      margin-bottom: 6px;
+    }
+    .step p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
     }
 
     /* Security */
     .security {
+      background: #0d1117;
+      color: #fff;
+      padding: 80px 24px;
+    }
+    .security .section-title h2 { color: #fff; }
+    .security .section-title p { color: #8b949e; }
+    .security-grid {
       max-width: 800px;
       margin: 0 auto;
-      padding: 64px 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .security-item {
+      text-align: center;
+      padding: 24px 16px;
+      border: 1px solid #21262d;
+      border-radius: 8px;
+    }
+    .security-item .value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #58a6ff;
+      margin-bottom: 4px;
+    }
+    .security-item .label {
+      font-size: 13px;
+      color: #8b949e;
+    }
+
+    /* CTA */
+    .cta {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 24px;
       text-align: center;
     }
-    .security h2 {
+    .cta h2 {
       font-size: 28px;
-      color: #1A73E8;
-      margin-bottom: 16px;
-    }
-    .security p {
-      font-size: 15px;
-      color: #666;
-      line-height: 1.7;
+      font-weight: 700;
+      color: #0d1117;
       margin-bottom: 12px;
     }
-    .security-badges {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-top: 24px;
-    }
-    .badge {
-      background: #e8f0fe;
-      color: #1A73E8;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
+    .cta p {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 28px;
     }
 
     /* Footer */
     .footer {
-      background: #1a1a1a;
-      color: #999;
+      border-top: 1px solid #e1e4e8;
+      padding: 28px 24px;
       text-align: center;
-      padding: 32px 24px;
-      font-size: 14px;
     }
-    .footer a { color: #8ab4f8; text-decoration: none; }
-    .footer a:hover { text-decoration: underline; }
-    .footer-links {
-      margin-bottom: 12px;
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    .footer-links a { margin: 0 12px; }
+    .footer-left {
+      font-size: 13px;
+      color: #999;
+    }
+    .footer-right a {
+      font-size: 13px;
+      color: #666;
+      text-decoration: none;
+      margin-left: 24px;
+    }
+    .footer-right a:hover { color: #1A73E8; }
 
-    @media (max-width: 600px) {
-      .hero { padding: 48px 20px 40px; }
-      .hero h1 { font-size: 28px; }
-      .hero p { font-size: 16px; }
-      .features h2, .security h2 { font-size: 22px; }
-      .stat-item .number { font-size: 28px; }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 48px 20px 56px;
+        gap: 40px;
+      }
+      .hero-content h1 { font-size: 32px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      .security-grid { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; gap: 8px; }
+      .footer-right a { margin: 0 12px; }
+      .nav-links a { margin-left: 20px; font-size: 13px; }
     }
   </style>
 </head>
 <body>
 
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="/" class="nav-logo">SchoolTrack</a>
+    <div class="nav-links">
+      <a href="#features">Fonctionnalites</a>
+      <a href="#how">Comment ca marche</a>
+      <a href="#security">Securite</a>
+      <a href="https://dashboard.schooltrack.yourschool.be">Dashboard</a>
+    </div>
+  </nav>
+
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-icon">&#127891;</div>
-    <h1>SchoolTrack</h1>
-    <p>
-      Gestion automatisee des presences pour les sorties scolaires.
-      Scan NFC et QR code, synchronisation offline-first, dashboard temps reel.
-    </p>
-    <div class="hero-buttons">
-      <a href="https://dashboard.schooltrack.yourschool.be" class="btn btn-primary">Acceder au dashboard</a>
-      <a href="/privacy" class="btn btn-secondary">Politique de confidentialite</a>
+    <div class="hero-content">
+      <h1>Gerez les presences de vos <span>sorties scolaires</span> en toute simplicite</h1>
+      <p>
+        SchoolTrack automatise le suivi des presences par scan NFC et QR code,
+        meme sans connexion internet. Un outil concu pour les enseignants sur le terrain
+        et la direction en temps reel.
+      </p>
+      <div class="hero-actions">
+        <a href="https://dashboard.schooltrack.yourschool.be" class="btn btn-primary">Acceder au dashboard</a>
+        <a href="#features" class="btn btn-outline">En savoir plus</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="visual-header">Voyage — Bruxelles, Parlement EU</div>
+      <div class="visual-row">
+        <div class="visual-dot dot-green"></div>
+        <span class="visual-label">Eleves presents</span>
+        <span class="visual-value">24 / 28</span>
+      </div>
+      <div class="visual-row">
+        <div class="visual-dot dot-blue"></div>
+        <span class="visual-label">Checkpoints actifs</span>
+        <span class="visual-value">3</span>
+      </div>
+      <div class="visual-row">
+        <div class="visual-dot dot-orange"></div>
+        <span class="visual-label">En attente de sync</span>
+        <span class="visual-value">0</span>
+      </div>
+      <div class="visual-row">
+        <div class="visual-dot dot-green"></div>
+        <span class="visual-label">Dernier scan</span>
+        <span class="visual-value">il y a 2 min</span>
+      </div>
     </div>
   </section>
 
   <!-- Features -->
-  <section class="features">
-    <h2>Une solution complete pour les sorties scolaires</h2>
+  <section class="features" id="features">
+    <div class="section-title">
+      <h2>Concu pour le terrain</h2>
+      <p>Chaque fonctionnalite repond a un besoin reel des enseignants et de la direction lors des sorties scolaires.</p>
+    </div>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon">&#128225;</div>
+        <div class="feature-number">01</div>
         <h3>Scan NFC et QR Code</h3>
-        <p>Prise de presence rapide par bracelet NFC ou QR code digital. Double methode pour une flexibilite maximale.</p>
+        <p>Prise de presence rapide par bracelet NFC ou QR code digital. Double methode pour une flexibilite maximale sur le terrain.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon">&#128246;</div>
+        <div class="feature-number">02</div>
         <h3>Mode hors-ligne</h3>
-        <p>L'application fonctionne sans connexion internet. Les donnees se synchronisent automatiquement des que le reseau est disponible.</p>
+        <p>L'application fonctionne sans connexion internet. Les donnees se synchronisent automatiquement au retour du reseau.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon">&#128202;</div>
+        <div class="feature-number">03</div>
         <h3>Dashboard temps reel</h3>
-        <p>Suivi en direct des presences par la direction. Vue d'ensemble par voyage, checkpoint et classe.</p>
+        <p>La direction suit les presences en direct depuis le navigateur. Vue par voyage, checkpoint et classe.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon">&#128274;</div>
-        <h3>Securite et RGPD</h3>
-        <p>Chiffrement AES-256 des donnees sensibles, authentification 2FA, journalisation complete des actions.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">&#127979;</div>
+        <div class="feature-number">04</div>
         <h3>Multi-ecoles</h3>
-        <p>Architecture multi-tenant avec isolation stricte des donnees par etablissement scolaire.</p>
+        <p>Architecture multi-tenant avec isolation stricte des donnees. Chaque etablissement accede uniquement a ses propres donnees.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon">&#128241;</div>
-        <h3>App mobile enseignants</h3>
-        <p>Application Android dediee pour les enseignants sur le terrain. Interface intuitive et rapide.</p>
+        <div class="feature-number">05</div>
+        <h3>QR codes par email</h3>
+        <p>Envoi automatique des QR codes de presence aux parents avant chaque sortie. Pas besoin de bracelet physique.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-number">06</div>
+        <h3>Journal d'audit</h3>
+        <p>Traçabilite complete de toutes les actions. Qui a fait quoi, quand, et depuis quelle adresse IP.</p>
       </div>
     </div>
   </section>
 
-  <!-- Stats -->
-  <section class="stats">
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div class="number">2</div>
-        <div class="label">Methodes de scan</div>
+  <!-- How it works -->
+  <section class="how" id="how">
+    <div class="section-title">
+      <h2>Comment ca marche</h2>
+      <p>De la preparation du voyage au suivi des presences, en quatre etapes.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <h3>Creer le voyage</h3>
+        <p>La direction cree le voyage et assigne les classes participantes depuis le dashboard.</p>
       </div>
-      <div class="stat-item">
-        <div class="number">100%</div>
-        <div class="label">Offline-first</div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <h3>Preparer les bracelets</h3>
+        <p>L'enseignant encode les bracelets NFC ou envoie les QR codes digitaux par email.</p>
       </div>
-      <div class="stat-item">
-        <div class="number">AES-256</div>
-        <div class="label">Chiffrement</div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <h3>Scanner sur le terrain</h3>
+        <p>A chaque checkpoint, l'enseignant scanne les bracelets ou QR codes depuis l'app mobile.</p>
       </div>
-      <div class="stat-item">
-        <div class="number">RGPD</div>
-        <div class="label">Conforme</div>
+      <div class="step">
+        <div class="step-number">4</div>
+        <h3>Suivre en temps reel</h3>
+        <p>La direction suit les presences en direct. Les donnees se synchronisent automatiquement.</p>
       </div>
     </div>
   </section>
 
   <!-- Security -->
-  <section class="security">
-    <h2>Conforme aux exigences de securite</h2>
-    <p>
-      SchoolTrack a ete concu avec la securite et la protection des donnees comme priorites.
-      Toutes les donnees personnelles sont chiffrees au repos et en transit.
-      L'application respecte le RGPD et offre un controle total aux etablissements.
-    </p>
-    <div class="security-badges">
-      <span class="badge">TLS 1.3</span>
-      <span class="badge">AES-256-GCM</span>
-      <span class="badge">SQLCipher</span>
-      <span class="badge">2FA TOTP</span>
-      <span class="badge">Audit logs</span>
-      <span class="badge">RGPD</span>
+  <section class="security" id="security">
+    <div class="section-title">
+      <h2>Securite et conformite</h2>
+      <p>Les donnees des eleves sont protegees a chaque niveau du systeme, conformement au RGPD.</p>
     </div>
+    <div class="security-grid">
+      <div class="security-item">
+        <div class="value">TLS 1.3</div>
+        <div class="label">Chiffrement en transit</div>
+      </div>
+      <div class="security-item">
+        <div class="value">AES-256</div>
+        <div class="label">Chiffrement au repos</div>
+      </div>
+      <div class="security-item">
+        <div class="value">2FA TOTP</div>
+        <div class="label">Authentification renforcee</div>
+      </div>
+      <div class="security-item">
+        <div class="value">4 roles</div>
+        <div class="label">Controle d'acces</div>
+      </div>
+      <div class="security-item">
+        <div class="value">RGPD</div>
+        <div class="label">Conforme UE 2016/679</div>
+      </div>
+      <div class="security-item">
+        <div class="value">Audit</div>
+        <div class="label">Journal complet</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <h2>Pret a simplifier vos sorties scolaires ?</h2>
+    <p>Contactez-nous pour mettre en place SchoolTrack dans votre etablissement.</p>
+    <a href="https://dashboard.schooltrack.yourschool.be" class="btn btn-primary">Acceder au dashboard</a>
   </section>
 
   <!-- Footer -->
   <footer class="footer">
-    <div class="footer-links">
-      <a href="https://dashboard.schooltrack.yourschool.be">Dashboard</a>
-      <a href="/privacy">Confidentialite</a>
+    <div class="footer-inner">
+      <div class="footer-left">SchoolTrack — TFE Bachelier IT EPHEC &copy; 2026 Mohamed El Mazani</div>
+      <div class="footer-right">
+        <a href="/privacy">Politique de confidentialite</a>
+        <a href="https://dashboard.schooltrack.yourschool.be">Dashboard</a>
+      </div>
     </div>
-    <p>SchoolTrack — TFE Bachelier IT EPHEC &copy; 2026 Mohamed El Mazani</p>
   </footer>
 
 </body>
