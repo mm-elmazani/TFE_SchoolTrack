@@ -53,6 +53,8 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@schooltrack.yourschool.be}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+    volumes:
+      - media_data:/app/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,6 +115,7 @@ services:
 volumes:
   postgres_data:
   letsencrypt_data:
+  media_data:
 
 networks:
   schooltrack_net:

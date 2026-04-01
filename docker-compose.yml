@@ -38,6 +38,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-schooltrack}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-schooltrack}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-in-production!}
+    volumes:
+      - media_data:/app/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,3 +100,4 @@ volumes:
   postgres_data:
   pgadmin_data:
   letsencrypt_data:
+  media_data:
