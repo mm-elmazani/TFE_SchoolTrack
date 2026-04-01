@@ -21,7 +21,7 @@ from app.schemas.student import ImportError, StudentImportReport, StudentImportR
 
 # Colonnes acceptées dans le CSV (noms en français, insensibles à la casse)
 REQUIRED_COLUMNS = {"nom", "prenom"}
-OPTIONAL_COLUMNS = {"email", "classe"}
+OPTIONAL_COLUMNS = {"email", "classe", "telephone"}
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
 
@@ -101,6 +101,7 @@ def parse_and_import_csv(
         )
 
     has_classe_column = "classe" in normalized_fields
+    has_telephone_column = "telephone" in normalized_fields
 
     # Construire un mapping nom_normalise → nom_original
     field_map = {_normalize_header(f): f for f in reader.fieldnames}
@@ -115,6 +116,7 @@ def parse_and_import_csv(
         raw_last = row.get(field_map["nom"], "").strip()
         raw_first = row.get(field_map["prenom"], "").strip()
         raw_email = row.get(field_map.get("email", ""), "").strip() if "email" in field_map else ""
+        raw_phone = row.get(field_map.get("telephone", ""), "").strip() if has_telephone_column else ""
         raw_classe = row.get(field_map.get("classe", ""), "").strip() if has_classe_column else ""
 
         # Ligne vide
@@ -155,6 +157,7 @@ def parse_and_import_csv(
             last_name=raw_last,
             first_name=raw_first,
             email=raw_email or None,
+            phone=raw_phone or None,
             classe=raw_classe or None,
         ))
 
@@ -203,6 +206,7 @@ def parse_and_import_csv(
                 first_name=s.first_name,
                 last_name=s.last_name,
                 email=s.email,
+                phone=s.phone,
                 school_id=school_id,
             )
             for s in to_insert

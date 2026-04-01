@@ -13,6 +13,7 @@ class StudentCreate(BaseModel):
     first_name: str
     last_name: str
     email: Optional[EmailStr] = None
+    phone: Optional[str] = None
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -27,6 +28,7 @@ class StudentUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
+    phone: Optional[str] = None
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -43,6 +45,8 @@ class StudentResponse(BaseModel):
     first_name: str
     last_name: str
     email: Optional[str]
+    phone: Optional[str] = None
+    photo_url: Optional[str] = None
     is_deleted: bool = False
     created_at: datetime
 
@@ -64,6 +68,7 @@ class StudentImportRow(BaseModel):
     first_name: str
     last_name: str
     email: Optional[str] = None
+    phone: Optional[str] = None
     classe: Optional[str] = None  # nom de la classe (optionnel, colonne CSV)
 
 

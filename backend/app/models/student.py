@@ -21,6 +21,7 @@ class Student(Base):
     first_name = Column(EncryptedString(), nullable=False)
     last_name = Column(EncryptedString(), nullable=False)
     email = Column(EncryptedString(), nullable=True)
+    phone = Column(EncryptedString(), nullable=True)
     photo_url = Column(String(500), nullable=True)
     parent_consent = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())

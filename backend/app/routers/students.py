@@ -8,12 +8,15 @@ Suppression logique (soft delete) pour conformite RGPD (US 6.5).
 
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
 from app.models.student import Student
@@ -23,6 +26,9 @@ from app.schemas.student import (
     StudentResponse, StudentUpdate,
 )
 from app.services.student_import import parse_and_import_csv
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 Mo
 
 router = APIRouter(prefix="/api/v1/students", tags=["Élèves"])
 
@@ -57,6 +63,7 @@ def create_student(
         first_name=data.first_name,
         last_name=data.last_name,
         email=data.email,
+        phone=data.phone,
         school_id=current_user.school_id,
     )
     db.add(student)
@@ -105,6 +112,67 @@ def update_student(
     )
 
     return student
+
+
+@router.post("/{student_id}/photo", response_model=StudentResponse, summary="Uploader la photo d'un élève")
+async def upload_student_photo(
+    student_id: uuid.UUID,
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """Upload ou remplace la photo d'un élève. Formats acceptés : JPEG, PNG, WebP. Max 5 Mo."""
+    student = db.get(Student, student_id)
+    if student is None:
+        raise HTTPException(status_code=404, detail="Élève introuvable.")
+    if getattr(student, "is_deleted", False):
+        raise HTTPException(status_code=410, detail="Élève supprimé.")
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="Format non supporté. Utilisez JPEG, PNG ou WebP.")
+
+    content = await file.read()
+    if len(content) > MAX_PHOTO_SIZE:
+        raise HTTPException(status_code=413, detail="Fichier trop volumineux (max 5 Mo).")
+
+    ext = file.content_type.split("/")[-1].replace("jpeg", "jpg")
+    filename = f"{student_id}.{ext}"
+    dest = Path(settings.MEDIA_DIR, "students", filename)
+    dest.write_bytes(content)
+
+    # Stockage du chemin relatif (pas une URL publique — servi via endpoint protégé)
+    student.photo_url = f"students/{filename}"
+    db.commit()
+    db.refresh(student)
+
+    log_audit(
+        db, user_id=current_user.id, action="STUDENT_UPDATED",
+        resource_type="STUDENT", resource_id=student.id,
+        ip_address=get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        details={"fields": ["photo_url"]},
+    )
+
+    return student
+
+
+@router.get("/{student_id}/photo", summary="Télécharger la photo d'un élève (authentifié)")
+def get_student_photo(
+    student_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sert la photo d'un élève. Requiert un JWT valide (tous les rôles authentifiés)."""
+    student = db.get(Student, student_id)
+    if student is None or not student.photo_url:
+        raise HTTPException(status_code=404, detail="Photo introuvable.")
+
+    photo_path = Path(settings.MEDIA_DIR, student.photo_url)
+    if not photo_path.exists():
+        raise HTTPException(status_code=404, detail="Fichier photo introuvable.")
+
+    return FileResponse(photo_path)
 
 
 @router.delete("/{student_id}", status_code=204, summary="Supprimer un élève (soft delete RGPD)")
