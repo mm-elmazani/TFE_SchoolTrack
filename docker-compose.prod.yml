@@ -90,6 +90,21 @@ services:
       - schooltrack_net
     restart: always
 
+  # ---------- Landing page (privacy policy) ----------
+  landing:
+    build: ./landing
+    container_name: schooltrack_landing
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.landing.rule=Host(`schooltrack.yourschool.be`)"
+      - "traefik.http.routers.landing.entrypoints=websecure"
+      - "traefik.http.routers.landing.tls=true"
+      - "traefik.http.routers.landing.tls.certresolver=letsencrypt"
+      - "traefik.http.services.landing.loadbalancer.server.port=80"
+    networks:
+      - schooltrack_net
+    restart: always
+
   # ---------- Base de donnees ----------
   postgres:
     image: postgres:16-alpine

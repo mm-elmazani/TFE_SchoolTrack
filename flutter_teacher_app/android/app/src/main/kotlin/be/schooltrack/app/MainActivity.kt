@@ -1,4 +1,4 @@
-package be.ephec.schooltrack.flutter_teacher_app
+package be.schooltrack.app
 
 import io.flutter.embedding.android.FlutterActivity
 
