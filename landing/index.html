@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SchoolTrack — Gestion des presences pour sorties scolaires</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1a1a1a;
+      background: #f8f9fa;
+    }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #1A73E8 0%, #0d47a1 100%);
+      color: #fff;
+      text-align: center;
+      padding: 80px 24px 64px;
+    }
+    .hero-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 40px;
+    }
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      font-size: 18px;
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto 32px;
+      line-height: 1.6;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn-primary { background: #fff; color: #1A73E8; }
+    .btn-secondary { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+
+    /* Features */
+    .features {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+    .features h2 {
+      text-align: center;
+      font-size: 28px;
+      color: #1A73E8;
+      margin-bottom: 48px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      background: #e8f0fe;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+    .feature-card h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #1a1a1a;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    /* Stats */
+    .stats {
+      background: #1A73E8;
+      padding: 48px 24px;
+    }
+    .stats-grid {
+      max-width: 800px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 24px;
+      text-align: center;
+    }
+    .stat-item .number {
+      font-size: 36px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .stat-item .label {
+      font-size: 14px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 4px;
+    }
+
+    /* Security */
+    .security {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .security h2 {
+      font-size: 28px;
+      color: #1A73E8;
+      margin-bottom: 16px;
+    }
+    .security p {
+      font-size: 15px;
+      color: #666;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+    .security-badges {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+    .badge {
+      background: #e8f0fe;
+      color: #1A73E8;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* Footer */
+    .footer {
+      background: #1a1a1a;
+      color: #999;
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 14px;
+    }
+    .footer a { color: #8ab4f8; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .footer-links {
+      margin-bottom: 12px;
+    }
+    .footer-links a { margin: 0 12px; }
+
+    @media (max-width: 600px) {
+      .hero { padding: 48px 20px 40px; }
+      .hero h1 { font-size: 28px; }
+      .hero p { font-size: 16px; }
+      .features h2, .security h2 { font-size: 22px; }
+      .stat-item .number { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-icon">&#127891;</div>
+    <h1>SchoolTrack</h1>
+    <p>
+      Gestion automatisee des presences pour les sorties scolaires.
+      Scan NFC et QR code, synchronisation offline-first, dashboard temps reel.
+    </p>
+    <div class="hero-buttons">
+      <a href="https://dashboard.schooltrack.yourschool.be" class="btn btn-primary">Acceder au dashboard</a>
+      <a href="/privacy" class="btn btn-secondary">Politique de confidentialite</a>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features">
+    <h2>Une solution complete pour les sorties scolaires</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#128225;</div>
+        <h3>Scan NFC et QR Code</h3>
+        <p>Prise de presence rapide par bracelet NFC ou QR code digital. Double methode pour une flexibilite maximale.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128246;</div>
+        <h3>Mode hors-ligne</h3>
+        <p>L'application fonctionne sans connexion internet. Les donnees se synchronisent automatiquement des que le reseau est disponible.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128202;</div>
+        <h3>Dashboard temps reel</h3>
+        <p>Suivi en direct des presences par la direction. Vue d'ensemble par voyage, checkpoint et classe.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128274;</div>
+        <h3>Securite et RGPD</h3>
+        <p>Chiffrement AES-256 des donnees sensibles, authentification 2FA, journalisation complete des actions.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127979;</div>
+        <h3>Multi-ecoles</h3>
+        <p>Architecture multi-tenant avec isolation stricte des donnees par etablissement scolaire.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128241;</div>
+        <h3>App mobile enseignants</h3>
+        <p>Application Android dediee pour les enseignants sur le terrain. Interface intuitive et rapide.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="stats">
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="number">2</div>
+        <div class="label">Methodes de scan</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">100%</div>
+        <div class="label">Offline-first</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">AES-256</div>
+        <div class="label">Chiffrement</div>
+      </div>
+      <div class="stat-item">
+        <div class="number">RGPD</div>
+        <div class="label">Conforme</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security -->
+  <section class="security">
+    <h2>Conforme aux exigences de securite</h2>
+    <p>
+      SchoolTrack a ete concu avec la securite et la protection des donnees comme priorites.
+      Toutes les donnees personnelles sont chiffrees au repos et en transit.
+      L'application respecte le RGPD et offre un controle total aux etablissements.
+    </p>
+    <div class="security-badges">
+      <span class="badge">TLS 1.3</span>
+      <span class="badge">AES-256-GCM</span>
+      <span class="badge">SQLCipher</span>
+      <span class="badge">2FA TOTP</span>
+      <span class="badge">Audit logs</span>
+      <span class="badge">RGPD</span>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="https://dashboard.schooltrack.yourschool.be">Dashboard</a>
+      <a href="/privacy">Confidentialite</a>
+    </div>
+    <p>SchoolTrack — TFE Bachelier IT EPHEC &copy; 2026 Mohamed El Mazani</p>
+  </footer>
+
+</body>
+</html>
