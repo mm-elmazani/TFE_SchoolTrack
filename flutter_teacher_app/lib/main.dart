@@ -9,11 +9,14 @@ import 'package:provider/provider.dart';
 import 'core/services/sync_provider.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/navigation/screens/admin_screen.dart';
+import 'features/navigation/screens/main_shell.dart';
 import 'features/nfc_encoding/screens/nfc_encoding_screen.dart';
 import 'features/nfc_encoding/screens/token_stock_mobile_screen.dart';
 import 'features/nfc_test/screens/nfc_test_screen.dart';
 import 'features/sync/screens/sync_history_screen.dart';
 import 'features/trips/screens/trip_list_screen.dart';
+import 'features/trips/screens/trip_summary_screen.dart';
 import 'features/scan/screens/checkpoint_selection_screen.dart';
 import 'features/scan/screens/scan_screen.dart';
 import 'features/scan/screens/attendance_list_screen.dart';
@@ -63,10 +66,42 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => const LoginScreen(),
       ),
 
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const TripListScreen(),
+      // Shell principal avec bottom navigation bar
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          // Branch 0 : Voyages
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => const TripListScreen(),
+              ),
+            ],
+          ),
+          // Branch 1 : Sync
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/sync',
+                builder: (context, state) => const SyncHistoryScreen(),
+              ),
+            ],
+          ),
+          // Branch 2 : Admin
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin',
+                builder: (context, state) => const AdminScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
+
+      // Routes hors du shell (plein ecran)
 
       // US 1.4 : encodage NFC (Mode Admin)
       GoRoute(
@@ -86,10 +121,22 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => const NfcTestScreen(),
       ),
 
-      // US 3.1 : historique des synchronisations
+      // US 3.1 : historique des synchronisations (standalone avec AppBar)
       GoRoute(
         path: '/sync-history',
         builder: (context, state) => const SyncHistoryScreen(),
+      ),
+
+      // Resume voyage + liste eleves (avant checkpoints)
+      GoRoute(
+        path: '/trip-summary',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, String>;
+          return TripSummaryScreen(
+            tripId: extra['tripId']!,
+            tripDestination: extra['tripDestination']!,
+          );
+        },
       ),
 
       // US 2.2 : selection checkpoint puis scan

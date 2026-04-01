@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/sync_provider.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../models/offline_bundle.dart';
 
@@ -44,55 +43,15 @@ class _TripListBody extends StatelessWidget {
         backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
-          // Boutons admin — visible uniquement pour DIRECTION / ADMIN_TECH
-          if (context.watch<AuthProvider>().isAdmin) ...[
-            IconButton(
-              icon: const Icon(Icons.inventory_2),
-              tooltip: 'Stock bracelets',
-              onPressed: () => context.push('/token-stock'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.nfc),
-              tooltip: 'Encodage NFC',
-              onPressed: () => context.push('/nfc-encoding'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.contactless),
-              tooltip: 'Test NFC',
-              onPressed: () => context.push('/nfc-test'),
-            ),
-          ],
           // Bouton sync (US 3.1)
           _SyncButton(),
           // Bouton rafraichir
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Rafraîchir',
+            tooltip: 'Rafraichir',
             onPressed: provider.listState == TripListState.loading
                 ? null
                 : () => context.read<TripProvider>().loadTrips(),
-          ),
-          // Bouton deconnexion
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Déconnexion',
-            onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Déconnexion'),
-                  content: const Text('Voulez-vous vous déconnecter ?'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Déconnexion')),
-                  ],
-                ),
-              );
-              if (confirmed == true && context.mounted) {
-                await context.read<AuthProvider>().logout();
-                if (context.mounted) context.go('/login');
-              }
-            },
           ),
         ],
       ),
@@ -247,7 +206,7 @@ class _TripCard extends StatelessWidget {
                     backgroundColor: const Color(0xFF0F9D58),
                   ),
                   onPressed: () => context.push(
-                    '/checkpoints',
+                    '/trip-summary',
                     extra: {
                       'tripId': trip.id,
                       'tripDestination': trip.destination,
@@ -438,61 +397,49 @@ class _SyncButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final sync = context.watch<SyncProvider>();
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
       children: [
-        // Bouton sync / spinner
-        Stack(
-          children: [
-            IconButton(
-              icon: sync.status == SyncStatus.syncing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Icon(
-                      sync.hasPending ? Icons.sync : Icons.sync,
-                      color: sync.hasPending ? Colors.amber.shade200 : Colors.white,
-                    ),
-              tooltip: sync.hasPending ? 'Synchroniser' : 'Rien a synchroniser',
-              onPressed: sync.status == SyncStatus.syncing || !sync.hasPending
-                  ? null
-                  : () => sync.syncNow(),
-            ),
-            if (sync.hasPending)
-              Positioned(
-                right: 4,
-                top: 4,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                  child: Text(
-                    '${sync.pendingCount}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        // Bouton historique — toujours visible
         IconButton(
-          icon: const Icon(Icons.history),
-          tooltip: 'Historique des synchronisations',
-          onPressed: () => context.push('/sync-history'),
+          icon: sync.status == SyncStatus.syncing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : Icon(
+                  Icons.sync,
+                  color: sync.hasPending ? Colors.amber.shade200 : Colors.white,
+                ),
+          tooltip: sync.hasPending ? 'Synchroniser' : 'Rien a synchroniser',
+          onPressed: sync.status == SyncStatus.syncing || !sync.hasPending
+              ? null
+              : () => sync.syncNow(),
         ),
+        if (sync.hasPending)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                '${sync.pendingCount}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
       ],
     );
   }
