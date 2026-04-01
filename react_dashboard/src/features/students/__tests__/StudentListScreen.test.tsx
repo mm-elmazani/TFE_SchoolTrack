@@ -26,7 +26,7 @@ describe('StudentListScreen', () => {
 
   it('renders a list of students', async () => {
     const mockStudents = [
-      { id: '1', first_name: 'John', last_name: 'Doe', email: 'john@test.com', qr_code_hash: null, is_deleted: false, created_at: '' },
+      { id: '1', first_name: 'John', last_name: 'Doe', email: 'john@test.com', qr_code_hash: null, is_deleted: false, created_at: '', phone: null, photo_url: null },
     ];
     vi.mocked(studentApi.getAll).mockResolvedValue(mockStudents);
     
