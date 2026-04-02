@@ -480,7 +480,7 @@ class LocalDb {
               destination: r['destination'] as String,
               date: r['date'] as String,
               status: r['status'] as String,
-              studentCount: 0, // non stocké localement
+              studentCount: r['student_count'] as int? ?? 0,
             ))
         .toList();
   }
