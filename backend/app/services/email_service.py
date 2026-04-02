@@ -70,9 +70,8 @@ def send_qr_code_email(
     qr_attachment.add_header("Content-Disposition", "inline", filename="qrcode.png")
     msg.attach(qr_attachment)
 
-    # Connexion SMTP et envoi
-    server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
-    try:
+    # Connexion SMTP et envoi (with gere la deconnexion proprement)
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as server:
         server.ehlo()
         if settings.SMTP_USE_TLS:
             server.starttls()
@@ -80,7 +79,5 @@ def send_qr_code_email(
         if settings.SMTP_USERNAME:
             server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
         server.send_message(msg)
-    finally:
-        server.quit()
 
     logger.info("Email QR code envoyé à %s pour le voyage à %s", to_email, trip_destination)
