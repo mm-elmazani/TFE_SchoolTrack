@@ -62,8 +62,12 @@ class _CheckpointSelectionScreenState
       name: name,
     );
 
-    // 2. Tenter la création sur le backend (best-effort)
-    _apiClient.createCheckpoint(widget.tripId, name);
+    // 2. Tenter la création sur le backend (best-effort) avec UUID client (US 3.3)
+    _apiClient.createCheckpoint(widget.tripId, name, clientId: created.id).then(
+      (result) {
+        if (result != null) LocalDb.instance.markCheckpointSynced(created.id);
+      },
+    );
 
     // 3. Rafraîchir la liste et sélectionner directement le nouveau checkpoint
     await _load();

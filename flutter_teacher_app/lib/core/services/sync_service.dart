@@ -40,11 +40,14 @@ class SyncService {
       : _api = api ?? ApiClient(),
         _db = db ?? LocalDb.instance;
 
-  /// Synchronise toutes les presences en attente.
+  /// Synchronise les checkpoints crees offline puis les presences en attente.
   ///
-  /// Les presences sont envoyees par batch de [_maxBatchSize].
-  /// Chaque batch reussi est marque synced immediatement (resilient aux echecs partiels).
+  /// Ordre : checkpoints d'abord (pour que le backend connaisse les UUIDs),
+  /// puis presences par batch de [_maxBatchSize].
   Future<SyncReport> syncPendingAttendances({required String deviceId}) async {
+    // US 3.3 — Sync des checkpoints crees offline AVANT les attendances
+    await _syncPendingCheckpoints();
+
     final pending = await _db.getPendingAttendances();
     if (pending.isEmpty) {
       return const SyncReport();
@@ -130,6 +133,33 @@ class SyncService {
     }
 
     return report;
+  }
+
+  /// Synchronise les checkpoints crees offline avec le backend (US 3.3).
+  ///
+  /// Pour chaque checkpoint pending, envoie une requete POST avec l'UUID client.
+  /// Le backend accepte l'UUID et cree le checkpoint (ou le retourne s'il existe deja).
+  Future<void> _syncPendingCheckpoints() async {
+    final pending = await _db.getPendingCheckpoints();
+    for (final row in pending) {
+      final tripId = row['trip_id'] as String;
+      final name = row['name'] as String;
+      final id = row['id'] as String;
+      try {
+        final result = await _api.createCheckpoint(
+          tripId,
+          name,
+          clientId: id,
+        );
+        if (result != null) {
+          await _db.markCheckpointSynced(id);
+        }
+      } catch (_) {
+        // Echec reseau — on arrete la sync des checkpoints,
+        // les attendances seront aussi bloquees
+        break;
+      }
+    }
   }
 
   /// Retourne le nombre de presences en attente de synchronisation.

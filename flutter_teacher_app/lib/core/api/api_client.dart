@@ -101,14 +101,17 @@ class ApiClient {
   /// retourné silencieusement (l'appli continue en mode offline).
   Future<CheckpointCreateResult?> createCheckpoint(
     String tripId,
-    String name,
-  ) async {
+    String name, {
+    String? clientId,
+  }) async {
     try {
+      final body = <String, dynamic>{'name': name};
+      if (clientId != null) body['id'] = clientId;
       final response = await _http
           .post(
             Uri.parse('$baseUrl/api/v1/trips/$tripId/checkpoints'),
             headers: _authHeaders,
-            body: jsonEncode({'name': name}),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
 

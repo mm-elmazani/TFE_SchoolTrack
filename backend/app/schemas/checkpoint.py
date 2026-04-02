@@ -14,6 +14,7 @@ class CheckpointCreate(BaseModel):
     """Données nécessaires pour créer un checkpoint sur le terrain."""
     name: str
     description: Optional[str] = None
+    id: Optional[uuid.UUID] = None  # UUID client pour sync offline (US 3.3)
 
     @field_validator("name")
     @classmethod

@@ -68,7 +68,7 @@ class LocalDb {
     if (testDatabasePath != null) {
       return sqflite_std.openDatabase(
         path,
-        version: 6,
+        version: 7,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       );
@@ -151,6 +151,7 @@ class LocalDb {
         name           TEXT NOT NULL,
         sequence_order INTEGER NOT NULL,
         status         TEXT NOT NULL,
+        synced_at      INTEGER,
         PRIMARY KEY (id, trip_id)
       )
     ''');
@@ -274,6 +275,12 @@ class LocalDb {
       await db.execute('ALTER TABLE trips ADD COLUMN classes TEXT');
       await db.execute('ALTER TABLE trips ADD COLUMN student_count INTEGER NOT NULL DEFAULT 0');
     }
+    // v6 → v7 : ajout synced_at sur checkpoints (US 3.3 — sync offline checkpoints)
+    if (oldVersion < 7) {
+      await db.execute('ALTER TABLE checkpoints ADD COLUMN synced_at INTEGER');
+      // Les checkpoints existants (venus du bundle) sont deja sur le serveur
+      await db.execute('UPDATE checkpoints SET synced_at = ${DateTime.now().millisecondsSinceEpoch}');
+    }
   }
 
   // ----------------------------------------------------------------
@@ -347,7 +354,7 @@ class LocalDb {
       }
       await assignBatch.commit(noResult: true);
 
-      // Insérer les checkpoints en batch
+      // Insérer les checkpoints en batch (viennent du serveur → synced)
       final cpBatch = txn.batch();
       for (final cp in bundle.checkpoints) {
         cpBatch.insert('checkpoints', {
@@ -356,6 +363,7 @@ class LocalDb {
           'name': cp.name,
           'sequence_order': cp.sequenceOrder,
           'status': cp.status,
+          'synced_at': now,
         });
       }
       await cpBatch.commit(noResult: true);
@@ -732,6 +740,27 @@ class LocalDb {
       {'status': 'CLOSED'},
       where: 'id = ?',
       whereArgs: [checkpointId],
+    );
+  }
+
+  /// Marque un checkpoint comme synchronisé avec le backend (US 3.3).
+  Future<void> markCheckpointSynced(String checkpointId) async {
+    final db = await database;
+    await db.update(
+      'checkpoints',
+      {'synced_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'id = ?',
+      whereArgs: [checkpointId],
+    );
+  }
+
+  /// Retourne les checkpoints créés localement mais pas encore synchronisés (US 3.3).
+  Future<List<Map<String, dynamic>>> getPendingCheckpoints() async {
+    final db = await database;
+    return db.query(
+      'checkpoints',
+      where: 'synced_at IS NULL',
+      orderBy: 'sequence_order ASC',
     );
   }
 

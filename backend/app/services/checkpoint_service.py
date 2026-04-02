@@ -45,6 +45,12 @@ def create_checkpoint(
             f"Impossible de créer un checkpoint : le voyage est en statut {trip.status}."
         )
 
+    # Si UUID client fourni (sync offline US 3.3), vérifier s'il existe déjà
+    if data.id:
+        existing = db.query(Checkpoint).filter(Checkpoint.id == data.id).first()
+        if existing:
+            return CheckpointResponse.model_validate(existing)
+
     # Calcul manuel du sequence_order (trigger PostgreSQL non disponible en test)
     max_order = (
         db.query(func.max(Checkpoint.sequence_order))
@@ -54,6 +60,7 @@ def create_checkpoint(
     next_order = (max_order or 0) + 1
 
     checkpoint = Checkpoint(
+        id=data.id or uuid.uuid4(),
         trip_id=trip_id,
         name=data.name,
         description=data.description,
@@ -202,8 +209,6 @@ def close_checkpoint(
     checkpoint = db.query(Checkpoint).filter(Checkpoint.id == checkpoint_id).first()
     if checkpoint is None:
         raise ValueError(f"Checkpoint {checkpoint_id} introuvable.")
-    if checkpoint.status == "DRAFT":
-        raise ValueError("Impossible de clôturer un checkpoint en statut DRAFT.")
     if checkpoint.status == "CLOSED":
         raise ValueError("Le checkpoint est déjà clôturé.")
 
