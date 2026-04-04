@@ -181,14 +181,23 @@ def test_close_checkpoint_introuvable(client):
     assert "introuvable" in response.json()["detail"]
 
 
-def test_close_checkpoint_draft(client):
-    """Checkpoint DRAFT → 400."""
+def test_close_checkpoint_draft_allowed(client):
+    """Checkpoint DRAFT → CLOSED autorisé (US 3.3 : checkpoint créé et fermé offline)."""
+    fake = type("Obj", (), {
+        "id": uuid.uuid4(),
+        "trip_id": uuid.uuid4(),
+        "name": "Départ",
+        "description": None,
+        "sequence_order": 1,
+        "status": "CLOSED",
+        "created_at": datetime(2026, 1, 1),
+    })()
     with patch("app.routers.checkpoints.checkpoint_service.close_checkpoint") as mock:
-        mock.side_effect = ValueError("Impossible de clôturer un checkpoint en statut DRAFT.")
+        mock.return_value = fake
 
         response = client.post(f"/api/v1/checkpoints/{uuid.uuid4()}/close")
 
-    assert response.status_code == 400
+    assert response.status_code == 200
 
 
 def test_close_checkpoint_deja_closed(client):

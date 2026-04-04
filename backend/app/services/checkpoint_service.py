@@ -200,11 +200,12 @@ def close_checkpoint(
     checkpoint_id: uuid.UUID,
 ) -> CheckpointResponse:
     """
-    Clôture un checkpoint ACTIVE → CLOSED.
+    Clôture un checkpoint DRAFT|ACTIVE → CLOSED.
 
     Enregistre closed_at avec le timestamp UTC courant.
-    Lève ValueError si le checkpoint est introuvable, en statut DRAFT,
-    ou déjà CLOSED.
+    Autorise la transition depuis DRAFT (US 3.3 : checkpoint créé et
+    fermé offline, synchronisé plus tard).
+    Lève ValueError si le checkpoint est introuvable ou déjà CLOSED.
     """
     checkpoint = db.query(Checkpoint).filter(Checkpoint.id == checkpoint_id).first()
     if checkpoint is None:
