@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/sync_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../models/offline_bundle.dart';
 
@@ -53,6 +54,8 @@ class _TripListBody extends StatelessWidget {
                 ? null
                 : () => context.read<TripProvider>().loadTrips(),
           ),
+          // Menu utilisateur (deconnexion)
+          const _UserMenu(),
         ],
       ),
       body: Column(
@@ -392,6 +395,81 @@ class _ErrorBanner extends StatelessWidget {
 // ----------------------------------------------------------------
 // Widgets de synchronisation (US 3.1)
 // ----------------------------------------------------------------
+
+/// Menu utilisateur avec option de deconnexion.
+class _UserMenu extends StatelessWidget {
+  const _UserMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.account_circle),
+      tooltip: 'Mon compte',
+      onSelected: (value) async {
+        if (value == 'logout') {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Déconnexion'),
+              content: Text(
+                'Connecté en tant que ${auth.userDisplayName ?? 'utilisateur'}.\n\nVoulez-vous vous déconnecter ?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Annuler'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Se déconnecter'),
+                ),
+              ],
+            ),
+          );
+          if (confirmed == true && context.mounted) {
+            await context.read<AuthProvider>().logout();
+            if (context.mounted) context.go('/login');
+          }
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                auth.userDisplayName ?? 'Utilisateur',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              if (auth.userEmail != null)
+                Text(
+                  auth.userEmail!,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: 20, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Se déconnecter', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// Bouton sync dans l'AppBar avec badge du nombre de presences en attente.
 class _SyncButton extends StatelessWidget {
