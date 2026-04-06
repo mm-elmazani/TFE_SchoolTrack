@@ -56,10 +56,9 @@ export default function StudentListScreen() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `export_rgpd_${student.last_name}_${student.first_name}.json`);
-      document.body.appendChild(link);
+      link.download = `export_rgpd_${student.last_name}_${student.first_name}.json`;
       link.click();
-      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
     } catch (err) {
       alert("Erreur lors de l'exportation des données.");
     }

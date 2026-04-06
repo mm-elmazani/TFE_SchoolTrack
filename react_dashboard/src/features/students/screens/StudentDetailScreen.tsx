@@ -54,10 +54,9 @@ export default function StudentDetailScreen() {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `profil_${student.last_name}_${student.first_name}.json`);
-    document.body.appendChild(link);
+    link.download = `profil_${student.last_name}_${student.first_name}.json`;
     link.click();
-    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
