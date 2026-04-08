@@ -75,7 +75,11 @@ def parse_and_import_csv(
     - Doublon intra-fichier : même nom+prenom (insensible à la casse)
     - Doublon BDD : idem contre les élèves existants
     """
-    text = content.decode("utf-8-sig")  # utf-8-sig gère le BOM Excel
+    # Détection automatique de l'encodage : UTF-8 (avec BOM Excel) ou Windows-1252
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("cp1252")
     separator = _detect_separator(text.splitlines()[0] if text.splitlines() else "")
 
     reader = csv.DictReader(io.StringIO(text), delimiter=separator)
