@@ -30,3 +30,4 @@ dist-ssr
 # Test artifacts
 test-results
 playwright-report
+coverage
