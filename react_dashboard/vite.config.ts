@@ -16,5 +16,21 @@ export default defineConfig({
     setupFiles: ['./src/setupTests.ts'],
     globals: true,
     exclude: ['e2e/**', 'node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/components/ui/**',   // shadcn/ui : wrappers Radix, pas a tester
+        'src/main.tsx',
+        'src/App.tsx',            // template Vite inutilise
+        'src/App.css',
+        'src/routes/**',          // config routes, teste implicitement
+        'src/vite-env.d.ts',
+        'src/**/*.test.*',
+        'src/test/**',
+        'src/api/axios.ts',          // intercepteurs JWT — niveau integration
+      ],
+    },
   },
 });
