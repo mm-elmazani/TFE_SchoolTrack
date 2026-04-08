@@ -19,18 +19,21 @@ import { CreateStudentDialog } from '../components/CreateStudentDialog';
 import { UpdateStudentDialog } from '../components/UpdateStudentDialog';
 import { DeleteStudentDialog } from '../components/DeleteStudentDialog';
 import { 
-  Plus, 
-  Upload, 
-  Search, 
-  Pencil, 
-  Trash2, 
-  Download, 
-  Eye, 
-  User, 
-  Mail, 
+  Plus,
+  Upload,
+  Search,
+  Pencil,
+  Trash2,
+  Download,
+  Eye,
+  User,
+  Mail,
   Loader2,
   MoreHorizontal,
-  RefreshCw
+  RefreshCw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +46,7 @@ export default function StudentListScreen() {
   const [studentToUpdate, setStudentToUpdate] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortDateAsc, setSortDateAsc] = useState<boolean | null>(null);
 
   const { data: students, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['students'],
@@ -64,10 +68,14 @@ export default function StudentListScreen() {
     }
   };
 
-  const filteredStudents = students?.filter(s => 
+  const filteredStudents = (students?.filter(s =>
     `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  ) || []).sort((a, b) => {
+    if (sortDateAsc === null) return 0;
+    const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    return sortDateAsc ? diff : -diff;
+  });
 
   if (isLoading) return (
     <div className="flex h-64 items-center justify-center">
@@ -120,18 +128,18 @@ export default function StudentListScreen() {
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 group-focus-within:text-schooltrack-action transition-colors">
             <Search className="h-4 w-4" />
           </div>
-          <input 
-            type="text" 
-            placeholder="Rechercher un élève par nom ou email..." 
+          <input
+            type="text"
+            placeholder="Rechercher un élève par nom ou email..."
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-schooltrack-action/10 focus:border-schooltrack-action transition-all shadow-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={() => refetch()} 
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => refetch()}
           disabled={isFetching}
           className="rounded-xl h-11 w-11 border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-all active:scale-95"
           title="Actualiser la liste"
@@ -148,7 +156,18 @@ export default function StudentListScreen() {
                 <TableRow className="hover:bg-transparent border-b-slate-100">
                   <TableHead className="font-semibold text-schooltrack-primary py-4">Élève</TableHead>
                   <TableHead className="font-semibold text-schooltrack-primary py-4">Contact</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4">Inscrit le</TableHead>
+                  <TableHead className="py-4">
+                    <button
+                      onClick={() => setSortDateAsc(prev => prev === null ? true : prev ? false : null)}
+                      className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-schooltrack-action transition-colors"
+                      title="Trier par date d'inscription"
+                    >
+                      Ajouté le
+                      {sortDateAsc === null && <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />}
+                      {sortDateAsc === true  && <ArrowUp   className="w-3.5 h-3.5 text-schooltrack-action" />}
+                      {sortDateAsc === false && <ArrowDown className="w-3.5 h-3.5 text-schooltrack-action" />}
+                    </button>
+                  </TableHead>
                   <TableHead className="text-right font-semibold text-schooltrack-primary py-4">Actions</TableHead>
                 </TableRow>
               </TableHeader>
