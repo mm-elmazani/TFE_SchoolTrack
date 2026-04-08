@@ -5,8 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useSchoolPath } from '@/hooks/useSchoolPath';
-import { Upload, FileText, X, CheckCircle2, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle2, AlertCircle, ArrowLeft, Loader2, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const CSV_TEMPLATE = 'nom;prenom;email;classe\nDupont;Jean;jean.dupont@ecole.be;3A\nMartin;Marie;marie.martin@ecole.be;3B\n';
+
+function downloadTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'modele_import_eleves.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function StudentImportScreen() {
   const sp = useSchoolPath();
@@ -145,7 +157,7 @@ export default function StudentImportScreen() {
                     <p className="text-lg font-semibold text-slate-900">
                       {isDragging ? "Relâchez pour ajouter" : "Glissez-déposez ou cliquez ici"}
                     </p>
-                    <p className="text-sm text-slate-500 mt-1">Format CSV uniquement (nom, prenom, email, classe)</p>
+                    <p className="text-sm text-slate-500 mt-1">Fichier CSV uniquement — séparateur <code className="bg-slate-100 px-1 rounded text-xs">;</code></p>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -227,18 +239,39 @@ export default function StudentImportScreen() {
                   <div className="w-1.5 h-1.5 bg-schooltrack-action rounded-full" />
                   Colonnes requises
                 </p>
-                <p className="pl-3.5 border-l border-slate-100">nom, prenom</p>
+                <p className="pl-3.5 border-l border-slate-100"><code className="bg-slate-100 px-1 rounded text-xs">nom</code>, <code className="bg-slate-100 px-1 rounded text-xs">prenom</code></p>
               </div>
               <div className="space-y-2">
                 <p className="font-semibold text-slate-900 flex items-center gap-2">
                   <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
                   Colonnes optionnelles
                 </p>
-                <p className="pl-3.5 border-l border-slate-100">email, classe</p>
+                <p className="pl-3.5 border-l border-slate-100"><code className="bg-slate-100 px-1 rounded text-xs">email</code>, <code className="bg-slate-100 px-1 rounded text-xs">classe</code></p>
               </div>
-              <div className="pt-4 border-t border-slate-100">
+              <div className="space-y-1">
+                <p className="font-semibold text-slate-900 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-slate-300 rounded-full" />
+                  Format attendu
+                </p>
+                <pre className="pl-3.5 border-l border-slate-100 text-xs font-mono text-slate-500 whitespace-pre-wrap leading-relaxed">
+{`nom;prenom;email;classe
+Dupont;Jean;j.dupont@ecole.be;3A`}
+                </pre>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-9 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 text-xs gap-2"
+                  onClick={downloadTemplate}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Télécharger le modèle CSV
+                </Button>
+              </div>
+              <div className="pt-2 border-t border-slate-100">
                 <p className="text-xs text-slate-400 leading-relaxed italic">
-                  Note : Si un élève avec le même nom et prénom existe déjà dans la même classe, il sera ignoré pour éviter les doublons.
+                  Note : Si un élève avec le même nom et prénom existe déjà, il sera ignoré pour éviter les doublons.
                 </p>
               </div>
             </CardContent>

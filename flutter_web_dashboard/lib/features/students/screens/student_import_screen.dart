@@ -43,8 +43,9 @@ class _StudentImportBody extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Le fichier doit contenir les colonnes : prenom, nom, email, classe. '
-            'Les doublons (email existant) seront ignorés.',
+            'Le fichier doit être un CSV avec séparateur « ; » et les colonnes : nom;prenom;email;classe. '
+            'Les colonnes email et classe sont optionnelles. '
+            'Les doublons (même nom et prénom) seront ignorés.',
             style: TextStyle(color: Colors.grey.shade600),
           ),
           const SizedBox(height: 24),
