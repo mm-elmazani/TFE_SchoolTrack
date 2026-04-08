@@ -67,15 +67,15 @@ export default function TripListScreen() {
 
   const downloadWithAuth = (url: string, filename: string) => {
     const token = useAuthStore.getState().token;
-    const a = document.createElement('a');
-    // On utilise fetch pour injecter le header auth puis telecharger via blob
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => res.blob())
       .then(blob => {
-        a.href = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
         a.download = filename;
         a.click();
-        URL.revokeObjectURL(a.href);
+        URL.revokeObjectURL(blobUrl);
       });
   };
 
