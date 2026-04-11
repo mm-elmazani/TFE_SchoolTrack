@@ -106,6 +106,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     user_info = UserInfo.model_validate(user)
     user_info.school_slug = school_slug
+    user_info.school_name = school.name if school else None
 
     return TokenResponse(
         access_token=create_access_token(user),

@@ -107,6 +107,7 @@ class UserInfo(BaseModel):
     id: UUID
     school_id: UUID
     school_slug: Optional[str] = None
+    school_name: Optional[str] = None
     email: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
