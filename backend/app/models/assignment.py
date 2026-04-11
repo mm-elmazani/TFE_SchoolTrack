@@ -14,6 +14,7 @@ class Token(Base):
     __tablename__ = "tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
     token_uid = Column(String(50), unique=True, nullable=False)  # Ex: "ST-001"
     token_type = Column(String(20), nullable=False)              # NFC_PHYSICAL, QR_PHYSICAL
     status = Column(String(20), default="AVAILABLE")             # AVAILABLE, ASSIGNED, DAMAGED, LOST

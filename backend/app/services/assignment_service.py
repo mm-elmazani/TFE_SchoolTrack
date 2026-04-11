@@ -425,7 +425,7 @@ def _update_token_status(db: Session, token_uid: str, status: str) -> None:
 # ----------------------------------------------------------------
 
 
-def init_token(db: Session, data: TokenCreate) -> TokenResponse:
+def init_token(db: Session, data: TokenCreate, school_id: uuid.UUID) -> TokenResponse:
     """
     Enregistre un token unique dans le stock.
     Verifie que le token_uid n'existe pas deja.
@@ -438,6 +438,7 @@ def init_token(db: Session, data: TokenCreate) -> TokenResponse:
         raise ValueError(f"Le token '{data.token_uid}' existe deja dans le stock.")
 
     token = Token(
+        school_id=school_id,
         token_uid=data.token_uid,
         token_type=data.token_type,
         hardware_uid=data.hardware_uid,
@@ -451,7 +452,7 @@ def init_token(db: Session, data: TokenCreate) -> TokenResponse:
     return TokenResponse.model_validate(token)
 
 
-def init_tokens_batch(db: Session, data: TokenBatchCreate) -> List[TokenResponse]:
+def init_tokens_batch(db: Session, data: TokenBatchCreate, school_id: uuid.UUID) -> List[TokenResponse]:
     """
     Enregistre un lot de tokens dans le stock.
     Verifie les doublons et retourne la liste des tokens crees.
@@ -472,6 +473,7 @@ def init_tokens_batch(db: Session, data: TokenBatchCreate) -> List[TokenResponse
     tokens = []
     for item in data.tokens:
         token = Token(
+            school_id=school_id,
             token_uid=item.token_uid,
             token_type=item.token_type,
             hardware_uid=item.hardware_uid,
@@ -492,14 +494,15 @@ def init_tokens_batch(db: Session, data: TokenBatchCreate) -> List[TokenResponse
 
 def list_tokens(
     db: Session,
+    school_id: uuid.UUID,
     status: Optional[str] = None,
     token_type: Optional[str] = None,
 ) -> List[TokenResponse]:
     """
-    Liste tous les tokens du stock, avec filtres optionnels.
+    Liste les tokens du stock pour une école donnée, avec filtres optionnels.
     Enrichit les tokens ASSIGNED avec le nom de l'eleve et du voyage.
     """
-    query = select(Token).order_by(Token.token_uid)
+    query = select(Token).where(Token.school_id == school_id).order_by(Token.token_uid)
 
     if status:
         query = query.where(Token.status == status)
@@ -535,22 +538,24 @@ def list_tokens(
     return results
 
 
-def get_token_stats(db: Session) -> TokenStatsResponse:
+def get_token_stats(db: Session, school_id: uuid.UUID) -> TokenStatsResponse:
     """
-    Retourne les statistiques du stock de tokens.
+    Retourne les statistiques du stock de tokens pour une école donnée.
     """
-    total = db.execute(select(func.count()).select_from(Token)).scalar() or 0
+    total = db.execute(
+        select(func.count()).select_from(Token).where(Token.school_id == school_id)
+    ).scalar() or 0
     available = db.execute(
-        select(func.count()).select_from(Token).where(Token.status == "AVAILABLE")
+        select(func.count()).select_from(Token).where(Token.school_id == school_id, Token.status == "AVAILABLE")
     ).scalar() or 0
     assigned = db.execute(
-        select(func.count()).select_from(Token).where(Token.status == "ASSIGNED")
+        select(func.count()).select_from(Token).where(Token.school_id == school_id, Token.status == "ASSIGNED")
     ).scalar() or 0
     damaged = db.execute(
-        select(func.count()).select_from(Token).where(Token.status == "DAMAGED")
+        select(func.count()).select_from(Token).where(Token.school_id == school_id, Token.status == "DAMAGED")
     ).scalar() or 0
     lost = db.execute(
-        select(func.count()).select_from(Token).where(Token.status == "LOST")
+        select(func.count()).select_from(Token).where(Token.school_id == school_id, Token.status == "LOST")
     ).scalar() or 0
 
     return TokenStatsResponse(
@@ -562,15 +567,16 @@ def get_token_stats(db: Session) -> TokenStatsResponse:
     )
 
 
-def get_next_sequence(db: Session, prefix: str) -> dict:
+def get_next_sequence(db: Session, prefix: str, school_id: uuid.UUID) -> dict:
     """
-    Retourne le prochain numero de sequence disponible pour un prefixe donne.
+    Retourne le prochain numero de sequence disponible pour un prefixe donne,
+    dans le stock de l'école donnée.
     Scanne les token_uid existants au format PREFIX-NNN et retourne max + 1.
     """
     import re
     pattern = f"{prefix}-"
     rows = db.execute(
-        select(Token.token_uid).where(Token.token_uid.like(f"{pattern}%"))
+        select(Token.token_uid).where(Token.school_id == school_id, Token.token_uid.like(f"{pattern}%"))
     ).scalars().all()
 
     max_seq = 0
@@ -584,12 +590,14 @@ def get_next_sequence(db: Session, prefix: str) -> dict:
     return {"prefix": prefix, "next_sequence": max_seq + 1}
 
 
-def get_token_assignment_info(db: Session, token_id: int) -> Optional[dict]:
+def get_token_assignment_info(db: Session, token_id: int, school_id: uuid.UUID) -> Optional[dict]:
     """
     Retourne les infos de l'assignation active d'un token (eleve + voyage).
-    Retourne None si le token n'est pas assigne.
+    Retourne None si le token n'est pas assigne ou n'appartient pas a l'ecole.
     """
-    token = db.execute(select(Token).where(Token.id == token_id)).scalar()
+    token = db.execute(
+        select(Token).where(Token.id == token_id, Token.school_id == school_id)
+    ).scalar()
     if token is None or token.status != "ASSIGNED":
         return None
 
@@ -617,12 +625,14 @@ def get_token_assignment_info(db: Session, token_id: int) -> Optional[dict]:
     }
 
 
-def delete_token(db: Session, token_id: int) -> None:
+def delete_token(db: Session, token_id: int, school_id: uuid.UUID) -> None:
     """
     Supprime un token du stock par son id.
-    Interdit si le token est actuellement ASSIGNED.
+    Interdit si le token est actuellement ASSIGNED ou n'appartient pas a l'ecole.
     """
-    token = db.execute(select(Token).where(Token.id == token_id)).scalar()
+    token = db.execute(
+        select(Token).where(Token.id == token_id, Token.school_id == school_id)
+    ).scalar()
 
     if not token:
         raise ValueError(f"Token avec id={token_id} introuvable.")
@@ -636,13 +646,16 @@ def delete_token(db: Session, token_id: int) -> None:
     logger.info("Token %s (id=%d) supprime du stock", token.token_uid, token_id)
 
 
-def update_token_status_by_id(db: Session, token_id: int, status: str) -> TokenResponse:
+def update_token_status_by_id(db: Session, token_id: int, status: str, school_id: uuid.UUID) -> TokenResponse:
     """
     Met a jour le statut d'un token par son id.
     Si le token etait ASSIGNED et passe a un autre statut,
     l'assignment actif est automatiquement libere.
+    Leve ValueError si le token n'appartient pas a l'ecole.
     """
-    token = db.execute(select(Token).where(Token.id == token_id)).scalar()
+    token = db.execute(
+        select(Token).where(Token.id == token_id, Token.school_id == school_id)
+    ).scalar()
 
     if not token:
         raise ValueError(f"Token avec id={token_id} introuvable.")

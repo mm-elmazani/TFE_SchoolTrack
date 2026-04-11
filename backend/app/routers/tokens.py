@@ -54,7 +54,7 @@ def init_token(
     avec le statut AVAILABLE. Utilise apres l'encodage NFC sur le terrain.
     """
     try:
-        result = assignment_service.init_token(db, data)
+        result = assignment_service.init_token(db, data, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -82,7 +82,7 @@ def init_tokens_batch(
     Utile pour l'initialisation en serie (ST-001 a ST-100).
     """
     try:
-        results = assignment_service.init_tokens_batch(db, data)
+        results = assignment_service.init_tokens_batch(db, data, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -108,7 +108,7 @@ def list_tokens(
     """
     Retourne la liste des tokens du stock avec filtres optionnels.
     """
-    return assignment_service.list_tokens(db, status=status, token_type=token_type)
+    return assignment_service.list_tokens(db, school_id=current_user.school_id, status=status, token_type=token_type)
 
 
 @router.get("/tokens/stats", response_model=TokenStatsResponse,
@@ -120,7 +120,7 @@ def get_token_stats(
     """
     Retourne les compteurs du stock : total, disponibles, assignes, endommages, perdus.
     """
-    return assignment_service.get_token_stats(db)
+    return assignment_service.get_token_stats(db, school_id=current_user.school_id)
 
 
 @router.get("/tokens/next-sequence",
@@ -134,7 +134,7 @@ def get_next_sequence(
     Retourne le prochain numero de sequence disponible pour le prefixe donne.
     Exemple : si le dernier token est ST-042, retourne {"next_sequence": 43}.
     """
-    return assignment_service.get_next_sequence(db, prefix)
+    return assignment_service.get_next_sequence(db, prefix, school_id=current_user.school_id)
 
 
 @router.get("/tokens/{token_id}/assignment-info",
@@ -148,7 +148,7 @@ def get_token_assignment_info(
     Retourne les details de l'assignation active (eleve + voyage) si le token est assigne.
     Retourne null si pas d'assignation active.
     """
-    info = assignment_service.get_token_assignment_info(db, token_id)
+    info = assignment_service.get_token_assignment_info(db, token_id, school_id=current_user.school_id)
     return info or {"assignment_id": None}
 
 
@@ -164,7 +164,7 @@ def delete_token(
     Supprime un token du stock. Interdit si le token est actuellement ASSIGNED.
     """
     try:
-        assignment_service.delete_token(db, token_id)
+        assignment_service.delete_token(db, token_id, school_id=current_user.school_id)
     except ValueError as e:
         status = 404 if "introuvable" in str(e) else 409
         raise HTTPException(status_code=status, detail=str(e))
@@ -191,7 +191,7 @@ def update_token_status(
     Met a jour le statut d'un token (ex: DAMAGED, LOST, AVAILABLE).
     """
     try:
-        result = assignment_service.update_token_status_by_id(db, token_id, data.status)
+        result = assignment_service.update_token_status_by_id(db, token_id, data.status, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
