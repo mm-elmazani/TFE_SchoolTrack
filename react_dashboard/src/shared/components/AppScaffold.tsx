@@ -62,7 +62,12 @@ export default function AppScaffold() {
         <div className="w-10 h-10 bg-schooltrack-primary rounded-xl flex items-center justify-center text-white shadow-lg">
           <LayoutDashboard className="w-6 h-6" />
         </div>
-        <span className="text-xl font-bold text-schooltrack-primary tracking-tight font-heading">SchoolTrack</span>
+        <div className="flex flex-col">
+          <span className="text-xl font-bold text-schooltrack-primary tracking-tight font-heading">SchoolTrack</span>
+          {user?.school_name && (
+            <span className="text-xs text-slate-400 font-medium truncate max-w-[140px]">{user.school_name}</span>
+          )}
+        </div>
       </div>
       
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
