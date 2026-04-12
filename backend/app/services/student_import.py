@@ -1,14 +1,17 @@
 """
-Service d'import CSV pour les élèves.
+Service d'import CSV/Excel pour les élèves.
 Gère le parsing, la validation, la détection de doublons et l'insertion bulk.
 
 Colonne optionnelle `classe` : si présente, l'élève est automatiquement assigné
 à la classe correspondante (créée si elle n'existe pas encore).
+
+Formats acceptés : CSV (.csv) et Excel (.xlsx).
 """
 
 import csv
 import io
 import re
+import unicodedata
 import uuid
 from typing import Optional, Tuple
 
@@ -19,15 +22,52 @@ from app.models.school_class import ClassStudent, SchoolClass
 from app.models.student import Student
 from app.schemas.student import ImportError, StudentImportReport, StudentImportRow
 
-# Colonnes acceptées dans le CSV (noms en français, insensibles à la casse)
+# Colonnes acceptées (noms en français, insensibles à la casse et aux accents)
 REQUIRED_COLUMNS = {"nom", "prenom"}
 OPTIONAL_COLUMNS = {"email", "classe", "telephone"}
 EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
 
+# Alias courants pour les colonnes (après suppression des accents et mise en minuscules)
+COLUMN_ALIASES = {
+    "prenom": "prenom",
+    "prénom": "prenom",
+    "firstname": "prenom",
+    "first_name": "prenom",
+    "nom": "nom",
+    "lastname": "nom",
+    "last_name": "nom",
+    "mail": "email",
+    "e-mail": "email",
+    "email": "email",
+    "classe": "classe",
+    "class": "classe",
+    "gsm": "telephone",
+    "gsm eleve": "telephone",
+    "gsm élève": "telephone",
+    "telephone": "telephone",
+    "téléphone": "telephone",
+    "tel": "telephone",
+    "phone": "telephone",
+}
+
+
+def _strip_accents(s: str) -> str:
+    """Supprime les accents d'une chaîne."""
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s)
+        if unicodedata.category(c) != "Mn"
+    )
+
 
 def _normalize_header(raw: str) -> str:
-    """Normalise un nom de colonne : minuscules, sans espaces."""
-    return raw.strip().lower()
+    """Normalise un nom de colonne via la table d'alias (insensible casse/accents)."""
+    cleaned = raw.strip().lower()
+    if cleaned in COLUMN_ALIASES:
+        return COLUMN_ALIASES[cleaned]
+    stripped = _strip_accents(cleaned)
+    if stripped in COLUMN_ALIASES:
+        return COLUMN_ALIASES[stripped]
+    return cleaned
 
 
 def _detect_separator(sample: str) -> str:
@@ -60,74 +100,34 @@ def _get_or_create_class(
     return new_class
 
 
-def parse_and_import_csv(
-    content: bytes,
+def _validate_and_insert(
+    rows: list[dict[str, str]],
+    normalized_fields: set[str],
     db: Session,
     school_id: Optional[uuid.UUID] = None,
 ) -> StudentImportReport:
     """
-    Parse le CSV, valide chaque ligne, détecte les doublons et insère en bulk.
-
-    Règles :
-    - Colonnes requises : nom, prenom
-    - Colonnes optionnelles : email, classe
-    - Si `classe` est présente : l'élève est assigné à cette classe (créée si nécessaire)
-    - Doublon intra-fichier : même nom+prenom (insensible à la casse)
-    - Doublon BDD : idem contre les élèves existants
+    Logique commune de validation, détection de doublons et insertion bulk.
+    `rows` : liste de dicts {colonne_normalisee: valeur} pour chaque ligne de données.
     """
-    # Détection automatique de l'encodage : UTF-8 (avec BOM Excel) ou Windows-1252
-    try:
-        text = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        text = content.decode("cp1252")
-    separator = _detect_separator(text.splitlines()[0] if text.splitlines() else "")
-
-    reader = csv.DictReader(io.StringIO(text), delimiter=separator)
-
-    # Vérification des colonnes obligatoires
-    if reader.fieldnames is None:
-        return StudentImportReport(
-            total_rows=0, inserted=0, rejected=0,
-            duplicates_in_file=0, duplicates_in_db=0,
-            errors=[ImportError(row=0, content="", reason="Fichier CSV vide ou illisible")]
-        )
-
-    normalized_fields = {_normalize_header(f) for f in reader.fieldnames}
-    missing = REQUIRED_COLUMNS - normalized_fields
-    if missing:
-        return StudentImportReport(
-            total_rows=0, inserted=0, rejected=0,
-            duplicates_in_file=0, duplicates_in_db=0,
-            errors=[ImportError(
-                row=0, content=str(reader.fieldnames),
-                reason=f"Colonnes manquantes : {', '.join(missing)}"
-            )]
-        )
-
     has_classe_column = "classe" in normalized_fields
     has_telephone_column = "telephone" in normalized_fields
 
-    # Construire un mapping nom_normalise → nom_original
-    field_map = {_normalize_header(f): f for f in reader.fieldnames}
-
     valid_rows: list[StudentImportRow] = []
     errors: list[ImportError] = []
-    seen_in_file: set[Tuple[str, str]] = set()  # (last_name_lower, first_name_lower)
+    seen_in_file: set[Tuple[str, str]] = set()
     duplicates_in_file = 0
-    row_num = 1
 
-    for row_num, row in enumerate(reader, start=2):  # ligne 1 = header
-        raw_last = row.get(field_map["nom"], "").strip()
-        raw_first = row.get(field_map["prenom"], "").strip()
-        raw_email = row.get(field_map.get("email", ""), "").strip() if "email" in field_map else ""
-        raw_phone = row.get(field_map.get("telephone", ""), "").strip() if has_telephone_column else ""
-        raw_classe = row.get(field_map.get("classe", ""), "").strip() if has_classe_column else ""
+    for row_num, row in enumerate(rows, start=2):  # ligne 1 = header
+        raw_last = row.get("nom", "").strip()
+        raw_first = row.get("prenom", "").strip()
+        raw_email = row.get("email", "").strip() if "email" in normalized_fields else ""
+        raw_phone = row.get("telephone", "").strip() if has_telephone_column else ""
+        raw_classe = row.get("classe", "").strip() if has_classe_column else ""
 
-        # Ligne vide
         if not raw_last and not raw_first:
             continue
 
-        # Validation nom/prénom non vides
         if not raw_last or not raw_first:
             errors.append(ImportError(
                 row=row_num,
@@ -136,7 +136,6 @@ def parse_and_import_csv(
             ))
             continue
 
-        # Validation email si fourni
         if raw_email and not EMAIL_REGEX.match(raw_email):
             errors.append(ImportError(
                 row=row_num,
@@ -145,14 +144,13 @@ def parse_and_import_csv(
             ))
             continue
 
-        # Doublon intra-fichier
         key = (raw_last.lower(), raw_first.lower())
         if key in seen_in_file:
             duplicates_in_file += 1
             errors.append(ImportError(
                 row=row_num,
                 content=f"{raw_last}, {raw_first}",
-                reason="Doublon dans le fichier CSV"
+                reason="Doublon dans le fichier"
             ))
             continue
         seen_in_file.add(key)
@@ -165,7 +163,7 @@ def parse_and_import_csv(
             classe=raw_classe or None,
         ))
 
-    total_rows = row_num - 1 if valid_rows or errors else 0
+    total_rows = len(rows)
 
     if not valid_rows:
         return StudentImportReport(
@@ -203,7 +201,6 @@ def parse_and_import_csv(
         else:
             to_insert.append(student)
 
-    # Insertion des eleves via ORM (chiffrement transparent par EncryptedString)
     if to_insert:
         db.add_all([
             Student(
@@ -215,9 +212,8 @@ def parse_and_import_csv(
             )
             for s in to_insert
         ])
-        db.flush()  # obtenir les IDs avant d'assigner les classes
+        db.flush()
 
-        # Assignation aux classes si la colonne `classe` est présente
         if has_classe_column:
             _assign_classes(db, to_insert, school_id)
 
@@ -231,6 +227,114 @@ def parse_and_import_csv(
         duplicates_in_db=duplicates_in_db,
         errors=errors
     )
+
+
+def parse_and_import_csv(
+    content: bytes,
+    db: Session,
+    school_id: Optional[uuid.UUID] = None,
+) -> StudentImportReport:
+    """
+    Parse un fichier CSV et importe les élèves.
+    """
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("cp1252")
+    separator = _detect_separator(text.splitlines()[0] if text.splitlines() else "")
+
+    reader = csv.DictReader(io.StringIO(text), delimiter=separator)
+
+    if reader.fieldnames is None:
+        return StudentImportReport(
+            total_rows=0, inserted=0, rejected=0,
+            duplicates_in_file=0, duplicates_in_db=0,
+            errors=[ImportError(row=0, content="", reason="Fichier CSV vide ou illisible")]
+        )
+
+    field_map = {_normalize_header(f): f for f in reader.fieldnames}
+    normalized_fields = set(field_map.keys())
+    missing = REQUIRED_COLUMNS - normalized_fields
+    if missing:
+        return StudentImportReport(
+            total_rows=0, inserted=0, rejected=0,
+            duplicates_in_file=0, duplicates_in_db=0,
+            errors=[ImportError(
+                row=0, content=str(reader.fieldnames),
+                reason=f"Colonnes manquantes : {', '.join(missing)}"
+            )]
+        )
+
+    # Convertir chaque ligne en dict avec colonnes normalisées
+    rows = []
+    for raw_row in reader:
+        rows.append({
+            norm_col: (raw_row.get(orig_col, "") or "")
+            for norm_col, orig_col in field_map.items()
+        })
+
+    return _validate_and_insert(rows, normalized_fields, db, school_id)
+
+
+def parse_and_import_excel(
+    content: bytes,
+    db: Session,
+    school_id: Optional[uuid.UUID] = None,
+) -> StudentImportReport:
+    """
+    Parse un fichier Excel (.xlsx) et importe les élèves.
+    Colonnes reconnues via la table d'alias (insensible casse/accents).
+    Les colonnes non reconnues (badge, chambre, etc.) sont ignorées.
+    """
+    from openpyxl import load_workbook
+
+    wb = load_workbook(filename=io.BytesIO(content), read_only=True, data_only=True)
+    ws = wb.active
+
+    # Lire la première ligne comme en-tête
+    header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
+    if not header_row:
+        wb.close()
+        return StudentImportReport(
+            total_rows=0, inserted=0, rejected=0,
+            duplicates_in_file=0, duplicates_in_db=0,
+            errors=[ImportError(row=0, content="", reason="Fichier Excel vide ou illisible")]
+        )
+
+    # Mapper index de colonne → nom normalisé (seules les colonnes reconnues)
+    col_mapping: list[Tuple[int, str]] = []
+    for idx, cell_value in enumerate(header_row):
+        if cell_value is None:
+            continue
+        normalized = _normalize_header(str(cell_value))
+        known = REQUIRED_COLUMNS | OPTIONAL_COLUMNS
+        if normalized in known:
+            col_mapping.append((idx, normalized))
+
+    normalized_fields = {name for _, name in col_mapping}
+    missing = REQUIRED_COLUMNS - normalized_fields
+    if missing:
+        wb.close()
+        return StudentImportReport(
+            total_rows=0, inserted=0, rejected=0,
+            duplicates_in_file=0, duplicates_in_db=0,
+            errors=[ImportError(
+                row=0, content=str([h for h in header_row if h]),
+                reason=f"Colonnes manquantes : {', '.join(missing)}"
+            )]
+        )
+
+    # Lire les lignes de données
+    rows = []
+    for data_row in ws.iter_rows(min_row=2, values_only=True):
+        row_dict = {}
+        for idx, norm_name in col_mapping:
+            val = data_row[idx] if idx < len(data_row) else None
+            row_dict[norm_name] = str(val).strip() if val is not None else ""
+        rows.append(row_dict)
+
+    wb.close()
+    return _validate_and_insert(rows, normalized_fields, db, school_id)
 
 
 def _assign_classes(
