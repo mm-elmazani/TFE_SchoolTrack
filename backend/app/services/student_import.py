@@ -51,6 +51,11 @@ COLUMN_ALIASES = {
 }
 
 
+def _clean_phone(raw: str) -> str:
+    """Nettoie un numéro de téléphone : supprime les points, espaces et tirets."""
+    return raw.replace(".", "").replace(" ", "").replace("-", "")
+
+
 def _strip_accents(s: str) -> str:
     """Supprime les accents d'une chaîne."""
     return "".join(
@@ -122,7 +127,7 @@ def _validate_and_insert(
         raw_last = row.get("nom", "").strip()
         raw_first = row.get("prenom", "").strip()
         raw_email = row.get("email", "").strip() if "email" in normalized_fields else ""
-        raw_phone = row.get("telephone", "").strip() if has_telephone_column else ""
+        raw_phone = _clean_phone(row.get("telephone", "").strip()) if has_telephone_column else ""
         raw_classe = row.get("classe", "").strip() if has_classe_column else ""
 
         if not raw_last and not raw_first:
