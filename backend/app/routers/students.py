@@ -175,6 +175,46 @@ def get_student_photo(
     return FileResponse(photo_path)
 
 
+@router.delete("/bulk", status_code=200, summary="Supprimer plusieurs élèves en lot (soft delete RGPD)")
+def bulk_delete_students(
+    request: Request,
+    student_ids: List[uuid.UUID] = Query(..., alias="ids", description="Liste des IDs à supprimer"),
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """Suppression logique en lot. Retourne le nombre d'élèves effectivement supprimés."""
+    students = db.execute(
+        select(Student).where(
+            Student.id.in_(student_ids),
+            Student.school_id == current_user.school_id,
+            Student.is_deleted == False,  # noqa: E712
+        )
+    ).scalars().all()
+
+    if not students:
+        raise HTTPException(status_code=404, detail="Aucun élève trouvé à supprimer.")
+
+    now = datetime.utcnow()
+    deleted_names = []
+    for student in students:
+        student.is_deleted = True
+        student.deleted_at = now
+        student.deleted_by = current_user.id
+        deleted_names.append(f"{student.first_name} {student.last_name}")
+
+    db.commit()
+
+    log_audit(
+        db, user_id=current_user.id, action="STUDENTS_BULK_DELETED",
+        resource_type="STUDENT",
+        ip_address=get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        details={"count": len(students), "names": deleted_names},
+    )
+
+    return {"deleted": len(students)}
+
+
 @router.delete("/{student_id}", status_code=204, summary="Supprimer un élève (soft delete RGPD)")
 def delete_student(
     student_id: uuid.UUID,

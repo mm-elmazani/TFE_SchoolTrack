@@ -1,16 +1,16 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { studentApi } from '../api/studentApi';
 import type { Student } from '../api/studentApi';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSchoolPath } from '@/hooks/useSchoolPath';
@@ -18,7 +18,7 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { CreateStudentDialog } from '../components/CreateStudentDialog';
 import { UpdateStudentDialog } from '../components/UpdateStudentDialog';
 import { DeleteStudentDialog } from '../components/DeleteStudentDialog';
-import { 
+import {
   Plus,
   Upload,
   Search,
@@ -33,7 +33,8 @@ import {
   RefreshCw,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,11 +48,47 @@ export default function StudentListScreen() {
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortDateAsc, setSortDateAsc] = useState<boolean | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
   const { data: students, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['students'],
     queryFn: studentApi.getAll,
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: studentApi.bulkDelete,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      setSelectedIds(new Set());
+      alert(`${data.deleted} élève(s) supprimé(s) avec succès.`);
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || 'Erreur lors de la suppression groupée.');
+    },
+  });
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredStudents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredStudents.map(s => s.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Supprimer ${selectedIds.size} élève(s) ? Cette action est irréversible.`)) return;
+    bulkDeleteMutation.mutate(Array.from(selectedIds));
+  };
 
   const handleExportGdpr = async (student: Student) => {
     try {
@@ -148,12 +185,51 @@ export default function StudentListScreen() {
         </Button>
       </div>
 
+      {/* Barre d'action bulk */}
+      {isAdmin && selectedIds.size > 0 && (
+        <div className="flex items-center gap-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl animate-in fade-in duration-200">
+          <span className="text-sm font-semibold text-red-700">
+            {selectedIds.size} élève{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="rounded-lg h-9 px-4 flex items-center gap-2"
+            onClick={handleBulkDelete}
+            disabled={bulkDeleteMutation.isPending}
+          >
+            <Trash2 className="w-4 h-4" />
+            {bulkDeleteMutation.isPending ? 'Suppression...' : 'Supprimer la sélection'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-lg h-9 px-3 text-slate-500 hover:text-slate-700"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            <X className="w-4 h-4 mr-1" />
+            Annuler
+          </Button>
+        </div>
+      )}
+
       <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-b-slate-100">
+                  {isAdmin && (
+                    <TableHead className="w-12 py-4">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-slate-300 text-schooltrack-action focus:ring-schooltrack-action/20 cursor-pointer"
+                        checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                        onChange={toggleSelectAll}
+                        title="Tout sélectionner"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="font-semibold text-schooltrack-primary py-4">Élève</TableHead>
                   <TableHead className="font-semibold text-schooltrack-primary py-4">Contact</TableHead>
                   <TableHead className="py-4">
@@ -174,13 +250,29 @@ export default function StudentListScreen() {
               <TableBody>
                 {filteredStudents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-48 text-center text-slate-500 italic">
+                    <TableCell colSpan={isAdmin ? 5 : 4} className="h-48 text-center text-slate-500 italic">
                       {searchTerm ? 'Aucun résultat pour votre recherche' : 'Aucun élève trouvé dans la base'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredStudents.map((student) => (
-                    <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <TableRow
+                      key={student.id}
+                      className={cn(
+                        "hover:bg-slate-50/50 transition-colors group",
+                        selectedIds.has(student.id) && "bg-red-50/40"
+                      )}
+                    >
+                      {isAdmin && (
+                        <TableCell className="w-12">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-slate-300 text-schooltrack-action focus:ring-schooltrack-action/20 cursor-pointer"
+                            checked={selectedIds.has(student.id)}
+                            onChange={() => toggleSelect(student.id)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs group-hover:bg-white group-hover:shadow-sm transition-all">
@@ -207,19 +299,19 @@ export default function StudentListScreen() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-9 w-9 p-0 text-slate-500 hover:text-slate-900 hover:bg-white hover:shadow-sm rounded-lg"
                             title="Voir les détails"
                             onClick={() => navigate(sp(`/students/${student.id}`))}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-9 w-9 p-0 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                             title="Exporter RGPD (JSON)"
                             onClick={() => handleExportGdpr(student)}
@@ -229,18 +321,18 @@ export default function StudentListScreen() {
 
                           {isAdmin && (
                             <>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="h-9 w-9 p-0 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
                                 title="Modifier"
                                 onClick={() => setStudentToUpdate(student)}
                               >
                                 <Pencil className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="h-9 w-9 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                                 title="Supprimer"
                                 onClick={() => setStudentToDelete(student)}
@@ -250,7 +342,6 @@ export default function StudentListScreen() {
                             </>
                           )}
                         </div>
-                        {/* Fallback for touch devices or visible by default if needed */}
                         <div className="sm:hidden">
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                             <MoreHorizontal className="w-4 h-4" />

@@ -57,6 +57,13 @@ export const studentApi = {
     await apiClient.delete(`/api/v1/students/${id}`);
   },
 
+  bulkDelete: async (ids: string[]): Promise<{ deleted: number }> => {
+    const params = new URLSearchParams();
+    ids.forEach(id => params.append('ids', id));
+    const response = await apiClient.delete(`/api/v1/students/bulk?${params.toString()}`);
+    return response.data;
+  },
+
   getGdprExport: async (id: string): Promise<any> => {
     const response = await apiClient.get(`/api/v1/students/${id}/data-export`);
     return response.data;

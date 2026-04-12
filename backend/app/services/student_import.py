@@ -181,7 +181,10 @@ def _validate_and_insert(
         )
 
     # Detection doublons contre la BDD (colonnes chiffrees → comparaison Python, scopé par école)
-    dup_query = select(Student.last_name, Student.first_name)
+    # Exclut les élèves supprimés (soft delete) pour permettre la réimportation
+    dup_query = select(Student.last_name, Student.first_name).where(
+        Student.is_deleted == False  # noqa: E712
+    )
     if school_id is not None:
         dup_query = dup_query.where(Student.school_id == school_id)
     all_students = db.execute(dup_query).fetchall()
