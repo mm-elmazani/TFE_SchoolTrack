@@ -109,7 +109,7 @@ export default function AuditLogScreen() {
       {/* Filters */}
       <Card className="border-slate-200 shadow-sm bg-white rounded-2xl">
         <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Action</label>
               <select
@@ -184,18 +184,18 @@ export default function AuditLogScreen() {
             <Table>
               <TableHeader className="bg-slate-50/50 font-heading">
                 <TableRow className="hover:bg-transparent border-b-slate-100">
-                  <TableHead className="w-[180px] font-semibold text-schooltrack-primary py-4 px-6">
+                  <TableHead className="min-w-[140px] font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">
                     <div className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5" /> Date & Heure</div>
                   </TableHead>
-                  <TableHead className="w-[150px] font-semibold text-schooltrack-primary py-4 px-6">Action</TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">
+                  <TableHead className="min-w-[120px] font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Action</TableHead>
+                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">
                     <div className="flex items-center gap-2"><User className="w-3.5 h-3.5" /> Utilisateur</div>
                   </TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 text-center">
+                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6 text-center">
                     <div className="flex items-center justify-center gap-2"><Globe className="w-3.5 h-3.5" /> IP</div>
                   </TableHead>
-                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Ressource</TableHead>
-                  <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-6">Détails</TableHead>
+                  <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Ressource</TableHead>
+                  <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Détails</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,16 +208,16 @@ export default function AuditLogScreen() {
                 ) : (
                   data?.items.map((log) => (
                     <TableRow key={log.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <TableCell className="font-medium text-slate-600 py-4 px-6 font-sans">
+                      <TableCell className="font-medium text-slate-600 py-4 px-3 sm:px-6 font-sans">
                         <div className="flex flex-col">
                           <span>{new Date(log.performed_at).toLocaleDateString('fr-FR')}</span>
                           <span className="text-[10px] text-slate-400">{new Date(log.performed_at).toLocaleTimeString('fr-FR')}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 px-6">
+                      <TableCell className="py-4 px-3 sm:px-6">
                         {getActionBadge(log.action)}
                       </TableCell>
-                      <TableCell className="py-4 px-6 font-sans">
+                      <TableCell className="py-4 px-3 sm:px-6 font-sans">
                         <div className="flex flex-col">
                           <span className="text-sm text-slate-900 font-bold" title={log.user_id || 'Système'}>
                             {log.user_email || 'Système'}
@@ -227,10 +227,10 @@ export default function AuditLogScreen() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-center py-4 px-6 font-mono text-[11px] text-slate-500">
+                      <TableCell className="text-center py-4 px-3 sm:px-6 font-mono text-[11px] text-slate-500">
                         {log.ip_address || '—'}
                       </TableCell>
-                      <TableCell className="py-4 px-6 font-sans">
+                      <TableCell className="py-4 px-3 sm:px-6 font-sans">
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="font-normal bg-slate-100 text-slate-600 hover:bg-slate-100 border-0 text-[10px]">
                             {log.resource_type || '—'}
@@ -242,7 +242,7 @@ export default function AuditLogScreen() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right py-4 px-6">
+                      <TableCell className="text-right py-4 px-3 sm:px-6">
                         <Button 
                           variant="ghost" 
                           size="sm" 

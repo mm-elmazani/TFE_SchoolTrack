@@ -183,32 +183,32 @@ export default function StudentDetailScreen() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50/50 border-y border-slate-100">
                     <tr>
-                      <th className="px-6 py-3 text-left font-semibold text-schooltrack-primary">Token UID</th>
-                      <th className="px-6 py-3 text-left font-semibold text-schooltrack-primary">Type</th>
-                      <th className="px-6 py-3 text-left font-semibold text-schooltrack-primary">Statut</th>
-                      <th className="px-6 py-3 text-right font-semibold text-schooltrack-primary">Assigné le</th>
+                      <th className="px-3 sm:px-6 py-3 text-left font-semibold text-schooltrack-primary">Token UID</th>
+                      <th className="px-3 sm:px-6 py-3 text-left font-semibold text-schooltrack-primary">Type</th>
+                      <th className="px-3 sm:px-6 py-3 text-left font-semibold text-schooltrack-primary">Statut</th>
+                      <th className="px-3 sm:px-6 py-3 text-right font-semibold text-schooltrack-primary">Assigné le</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {assignments.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-slate-400 italic">Aucun bracelet historisé</td>
+                        <td colSpan={4} className="px-3 sm:px-6 py-8 text-center text-slate-400 italic">Aucun bracelet historisé</td>
                       </tr>
                     ) : (
                       assignments.map((as: any) => (
                         <tr key={as.id} className="hover:bg-slate-50/30 transition-colors">
-                          <td className="px-6 py-4 font-mono text-xs">{as.token_uid}</td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-4 font-mono text-xs">{as.token_uid}</td>
+                          <td className="px-3 sm:px-6 py-4">
                             <Badge variant="secondary" className="bg-blue-50 text-schooltrack-action text-[10px] uppercase border-blue-100 shadow-none">{as.assignment_type}</Badge>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-4">
                             {as.released_at ? (
                               <Badge variant="outline" className="text-slate-400 border-slate-200">Libéré</Badge>
                             ) : (
                               <Badge className="bg-blue-100 text-schooltrack-primary border-blue-200">Actif</Badge>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-right text-slate-500">
+                          <td className="px-3 sm:px-6 py-4 text-right text-slate-500">
                             {new Date(as.assigned_at).toLocaleDateString()}
                           </td>
                         </tr>
@@ -233,38 +233,38 @@ export default function StudentDetailScreen() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50/50 border-y border-slate-100">
                     <tr>
-                      <th className="px-6 py-3 text-left font-semibold text-schooltrack-primary">Date & Heure</th>
-                      <th className="px-6 py-3 text-left font-semibold text-schooltrack-primary">Méthode</th>
-                      <th className="px-6 py-3 text-left font-semibold text-schooltrack-primary">Manuel</th>
-                      <th className="px-6 py-3 text-right font-semibold text-schooltrack-primary">Détails</th>
+                      <th className="px-3 sm:px-6 py-3 text-left font-semibold text-schooltrack-primary">Date & Heure</th>
+                      <th className="px-3 sm:px-6 py-3 text-left font-semibold text-schooltrack-primary">Méthode</th>
+                      <th className="px-3 sm:px-6 py-3 text-left font-semibold text-schooltrack-primary">Manuel</th>
+                      <th className="px-3 sm:px-6 py-3 text-right font-semibold text-schooltrack-primary">Détails</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {attendances.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center text-slate-400 italic">Aucun scan enregistré</td>
+                        <td colSpan={4} className="px-3 sm:px-6 py-8 text-center text-slate-400 italic">Aucun scan enregistré</td>
                       </tr>
                     ) : (
                       attendances.reverse().slice(0, 10).map((att: any) => (
                         <tr key={att.id} className="hover:bg-slate-50/30 transition-colors">
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-4">
                             <div className="flex flex-col">
                               <span className="font-medium text-slate-900">{new Date(att.scanned_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-3 sm:px-6 py-4">
                             <Badge variant="outline" className="text-[10px] uppercase font-semibold text-schooltrack-action border-blue-100">
                               {att.scan_method}
                             </Badge>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-3 sm:px-6 py-4 text-center">
                             {att.is_manual ? (
                               <CheckCircle2 className="w-4 h-4 text-schooltrack-warning mx-auto" />
                             ) : (
                               <span className="text-slate-300">-</span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-right text-xs text-slate-500 max-w-[150px] truncate" title={att.justification || att.comment}>
+                          <td className="px-3 sm:px-6 py-4 text-right text-xs text-slate-500 max-w-[150px] truncate" title={att.justification || att.comment}>
                             {att.justification || att.comment || '-'}
                           </td>
                         </tr>

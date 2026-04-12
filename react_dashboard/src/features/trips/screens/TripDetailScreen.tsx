@@ -136,7 +136,7 @@ export default function TripDetailScreen() {
         {/* Main Content (Tabs) */}
         <div className="lg:col-span-2 space-y-6">
           <Tabs defaultValue="classes" className="w-full">
-            <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-8">
+            <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent gap-4 sm:gap-8 overflow-x-auto">
               <TabsTrigger 
                 value="classes" 
                 className="data-[state=active]:border-b-2 data-[state=active]:border-schooltrack-primary data-[state=active]:text-schooltrack-primary data-[state=active]:shadow-none rounded-none py-3 px-1 bg-transparent text-slate-500 font-bold transition-all"

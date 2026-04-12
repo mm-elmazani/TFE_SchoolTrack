@@ -210,7 +210,7 @@ export default function TripListScreen() {
 
       {/* Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-1 gap-4 max-w-2xl">
+        <div className="flex flex-col sm:flex-row flex-1 gap-4 max-w-2xl">
           <div className="relative group flex-1">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400 group-focus-within:text-schooltrack-action transition-colors">
               <Search className="h-4 w-4" />
@@ -225,7 +225,7 @@ export default function TripListScreen() {
           </div>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] h-[44px] bg-white border-slate-200 rounded-xl font-sans">
+            <SelectTrigger className="w-full sm:w-[180px] h-[44px] bg-white border-slate-200 rounded-xl font-sans">
               <SelectValue placeholder="Tous les statuts" />
             </SelectTrigger>
             <SelectContent>

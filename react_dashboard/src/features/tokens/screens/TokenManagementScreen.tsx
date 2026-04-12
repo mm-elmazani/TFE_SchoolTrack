@@ -271,7 +271,7 @@ export default function TokenManagementScreen() {
               )}
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-sans">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-sans">
                 <Card className="border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
                   <div className="h-1 bg-slate-200" />
                   <CardContent className="p-6 flex items-center gap-4">
@@ -344,12 +344,12 @@ export default function TokenManagementScreen() {
                     <Table>
                       <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-b-slate-100">
-                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Nom</TableHead>
-                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Prenom</TableHead>
-                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6">Token UID</TableHead>
-                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 text-center">Type</TableHead>
-                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-6 text-center">QR Digital</TableHead>
-                          <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-6">Action</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Nom</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Prenom</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Token UID</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6 text-center">Type</TableHead>
+                          <TableHead className="font-semibold text-schooltrack-primary py-4 px-3 sm:px-6 text-center">QR Digital</TableHead>
+                          <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-3 sm:px-6">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -368,8 +368,8 @@ export default function TokenManagementScreen() {
                         ) : (
                           filteredStudents.map((student) => (
                             <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors group">
-                              <TableCell className="font-bold text-slate-900 py-4 px-6 font-sans uppercase text-xs tracking-tight">{student.last_name}</TableCell>
-                              <TableCell className="text-slate-600 py-4 px-6 font-sans">{student.first_name}</TableCell>
+                              <TableCell className="font-bold text-slate-900 py-4 px-3 sm:px-6 font-sans uppercase text-xs tracking-tight">{student.last_name}</TableCell>
+                              <TableCell className="text-slate-600 py-4 px-3 sm:px-6 font-sans">{student.first_name}</TableCell>
                               <TableCell className="py-4 px-6">
                                 {student.token_uid ? (
                                   <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">

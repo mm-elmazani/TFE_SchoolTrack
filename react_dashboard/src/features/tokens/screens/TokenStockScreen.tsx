@@ -159,7 +159,7 @@ export default function TokenStockScreen() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 font-sans">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-sans">
         <Card className="border-slate-200 shadow-sm bg-white rounded-2xl overflow-hidden">
           <div className="h-1 bg-slate-400" />
           <CardContent className="p-4 flex flex-col items-center justify-center text-center gap-2">
@@ -271,32 +271,32 @@ export default function TokenStockScreen() {
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-b-slate-100">
-                  <TableHead className="py-4 px-6 font-heading">
+                  <TableHead className="py-4 px-3 sm:px-6 font-heading">
                     <button onClick={() => toggleSort('token_uid')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
                       Token UID <SortIcon column="token_uid" />
                     </button>
                   </TableHead>
-                  <TableHead className="py-4 px-6 font-heading">
+                  <TableHead className="py-4 px-3 sm:px-6 font-heading">
                     <button onClick={() => toggleSort('token_type')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
                       Type <SortIcon column="token_type" />
                     </button>
                   </TableHead>
-                  <TableHead className="py-4 px-6 font-heading">
+                  <TableHead className="py-4 px-3 sm:px-6 font-heading">
                     <button onClick={() => toggleSort('status')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
                       Statut <SortIcon column="status" />
                     </button>
                   </TableHead>
-                  <TableHead className="py-4 px-6 font-heading">
+                  <TableHead className="py-4 px-3 sm:px-6 font-heading">
                     <button onClick={() => toggleSort('assigned_to')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
                       Assigné à <SortIcon column="assigned_to" />
                     </button>
                   </TableHead>
-                  <TableHead className="py-4 px-6 font-heading">
+                  <TableHead className="py-4 px-3 sm:px-6 font-heading">
                     <button onClick={() => toggleSort('created_at')} className="flex items-center gap-1.5 font-semibold text-schooltrack-primary hover:text-blue-900 transition-colors">
                       Créé le <SortIcon column="created_at" />
                     </button>
                   </TableHead>
-                  <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-6 font-heading">Actions</TableHead>
+                  <TableHead className="text-right font-semibold text-schooltrack-primary py-4 px-3 sm:px-6 font-heading">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -315,7 +315,7 @@ export default function TokenStockScreen() {
                 ) : (
                   sortedTokens.map((token: any) => (
                     <TableRow key={token.id} className="hover:bg-slate-50/50 transition-colors group font-sans">
-                      <TableCell className="py-4 px-6">
+                      <TableCell className="py-4 px-3 sm:px-6">
                         <div className="flex flex-col">
                           <code className="text-[13px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded w-fit">
                             {token.token_uid}
@@ -325,13 +325,13 @@ export default function TokenStockScreen() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 px-6">
+                      <TableCell className="py-4 px-3 sm:px-6">
                         {getTypeBadge(token.token_type)}
                       </TableCell>
-                      <TableCell className="py-4 px-6">
+                      <TableCell className="py-4 px-3 sm:px-6">
                         {getStatusBadge(token.status)}
                       </TableCell>
-                      <TableCell className="py-4 px-6">
+                      <TableCell className="py-4 px-3 sm:px-6">
                         {token.assigned_to ? (
                           <div className="flex flex-col">
                             <span className="text-sm font-medium text-slate-800">{token.assigned_to}</span>
@@ -341,10 +341,10 @@ export default function TokenStockScreen() {
                           <span className="italic text-slate-300 text-[11px]">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-4 px-6 text-sm text-slate-600">
+                      <TableCell className="py-4 px-3 sm:px-6 text-sm text-slate-600">
                         {new Date(token.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </TableCell>
-                      <TableCell className="text-right py-4 px-6">
+                      <TableCell className="text-right py-4 px-3 sm:px-6">
                         {isAdmin ? (
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
