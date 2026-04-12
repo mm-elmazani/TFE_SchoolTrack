@@ -25,7 +25,7 @@ from app.schemas.student import (
     StudentCreate, StudentGdprExport, StudentImportReport,
     StudentResponse, StudentUpdate,
 )
-from app.services.student_import import parse_and_import_csv
+from app.services.student_import import parse_and_import_csv, parse_and_import_excel
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_PHOTO_SIZE = 5 * 1024 * 1024  # 5 Mo
@@ -229,6 +229,7 @@ def export_student_data(
         "first_name": student.first_name,
         "last_name": student.last_name,
         "email": student.email,
+        "phone": student.phone,
         "photo_url": student.photo_url,
         "parent_consent": student.parent_consent,
         "is_deleted": student.is_deleted,
@@ -345,11 +346,25 @@ def export_student_data(
     )
 
 
-ALLOWED_CONTENT_TYPES = {"text/csv", "text/plain", "application/vnd.ms-excel"}
+ALLOWED_CSV_TYPES = {"text/csv", "text/plain", "application/vnd.ms-excel"}
+ALLOWED_EXCEL_TYPES = {
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+}
+ALLOWED_CONTENT_TYPES = ALLOWED_CSV_TYPES | ALLOWED_EXCEL_TYPES
 MAX_FILE_SIZE_MB = 5
 
 
-@router.post("/upload", response_model=StudentImportReport, summary="Importer des élèves via CSV")
+def _is_excel_file(file: UploadFile) -> bool:
+    """Détermine si le fichier uploadé est un Excel (.xlsx)."""
+    if file.filename and file.filename.lower().endswith(".xlsx"):
+        return True
+    if file.content_type in ALLOWED_EXCEL_TYPES:
+        return True
+    return False
+
+
+@router.post("/upload", response_model=StudentImportReport, summary="Importer des élèves via CSV ou Excel")
 async def upload_students(
     request: Request,
     file: UploadFile = File(...),
@@ -357,26 +372,24 @@ async def upload_students(
     db: Session = Depends(get_db),
 ):
     """
-    Importe une liste d'élèves depuis un fichier CSV.
+    Importe une liste d'élèves depuis un fichier CSV ou Excel (.xlsx).
 
-    Format attendu du CSV :
-    - Colonnes obligatoires : `nom`, `prenom`
-    - Colonne optionnelle : `email`
-    - Séparateur : virgule (`,`) ou point-virgule (`;`)
-    - Encodage : UTF-8 (avec ou sans BOM)
-
-    Retourne un rapport détaillant les insertions et les rejets.
+    Colonnes obligatoires : `nom`, `prenom` (ou alias : Prénom, Nom, etc.)
+    Colonnes optionnelles : `email`/`mail`, `classe`, `telephone`/`GSM Élève`
+    Les colonnes non reconnues sont ignorées.
     """
-    # Validation du type de fichier
-    if file.content_type not in ALLOWED_CONTENT_TYPES and not file.filename.endswith(".csv"):
+    filename = file.filename or ""
+    is_csv = filename.lower().endswith(".csv")
+    is_excel = filename.lower().endswith(".xlsx")
+
+    if not is_csv and not is_excel and file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=400,
-            detail="Format invalide. Seuls les fichiers CSV sont acceptés."
+            detail="Format invalide. Fichiers acceptés : CSV (.csv) ou Excel (.xlsx)."
         )
 
     content = await file.read()
 
-    # Validation de la taille
     if len(content) > MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(
             status_code=400,
@@ -384,9 +397,12 @@ async def upload_students(
         )
 
     if not content:
-        raise HTTPException(status_code=400, detail="Le fichier CSV est vide.")
+        raise HTTPException(status_code=400, detail="Le fichier est vide.")
 
-    report = parse_and_import_csv(content, db, school_id=current_user.school_id)
+    if _is_excel_file(file):
+        report = parse_and_import_excel(content, db, school_id=current_user.school_id)
+    else:
+        report = parse_and_import_csv(content, db, school_id=current_user.school_id)
 
     log_audit(
         db, user_id=current_user.id, action="STUDENTS_IMPORTED",

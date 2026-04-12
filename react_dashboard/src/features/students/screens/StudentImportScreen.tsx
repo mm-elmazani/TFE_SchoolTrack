@@ -30,8 +30,9 @@ export default function StudentImportScreen() {
   const queryClient = useQueryClient();
 
   const validateAndSetFile = (selectedFile: File) => {
-    if (!selectedFile.name.endsWith('.csv')) {
-      setErrorMsg('Le fichier doit être au format CSV.');
+    const ext = selectedFile.name.toLowerCase();
+    if (!ext.endsWith('.csv') && !ext.endsWith('.xlsx')) {
+      setErrorMsg('Le fichier doit être au format CSV ou Excel (.xlsx).');
       setFile(null);
       return false;
     }
@@ -157,13 +158,13 @@ export default function StudentImportScreen() {
                     <p className="text-lg font-semibold text-slate-900">
                       {isDragging ? "Relâchez pour ajouter" : "Glissez-déposez ou cliquez ici"}
                     </p>
-                    <p className="text-sm text-slate-500 mt-1">Fichier CSV uniquement — séparateur <code className="bg-slate-100 px-1 rounded text-xs">;</code></p>
+                    <p className="text-sm text-slate-500 mt-1">Fichiers acceptés : CSV (<code className="bg-slate-100 px-1 rounded text-xs">;</code>) ou Excel (.xlsx)</p>
                   </div>
                   <input
                     ref={fileInputRef}
                     id="csv_file"
                     type="file"
-                    accept=".csv"
+                    accept=".csv,.xlsx"
                     className="hidden"
                     onChange={handleFileChange}
                   />

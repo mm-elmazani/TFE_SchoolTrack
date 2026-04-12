@@ -4,14 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { studentApi } from '../api/studentApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  ArrowLeft, 
-  User, 
-  Mail, 
-  School, 
-  Calendar, 
-  Rss, 
-  CheckCircle2, 
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  School,
+  Calendar,
+  Rss,
+  CheckCircle2,
   XCircle,
   Loader2,
   Download
@@ -111,6 +112,15 @@ export default function StudentDetailScreen() {
                   <span>{student.email || 'Non renseigné'}</span>
                 </div>
               </div>
+              {student.phone && (
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Téléphone</p>
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <Phone className="w-4 h-4 text-schooltrack-action opacity-60" />
+                    <span>{student.phone}</span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-1">
                 <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Date d'inscription</p>
                 <div className="flex items-center gap-2 text-slate-700">
