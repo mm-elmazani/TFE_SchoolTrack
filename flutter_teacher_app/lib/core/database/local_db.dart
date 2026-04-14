@@ -53,7 +53,9 @@ class LocalDb {
   // ----------------------------------------------------------------
 
   Future<Database> get database async {
-    _db ??= await _open();
+    if (_db == null || !_db!.isOpen) {
+      _db = await _open();
+    }
     return _db!;
   }
 
@@ -79,7 +81,7 @@ class LocalDb {
     try {
       return await sqlcipher.openDatabase(
         path,
-        version: 6,
+        version: 7,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -89,7 +91,7 @@ class LocalDb {
       await sqlcipher.deleteDatabase(path);
       return sqlcipher.openDatabase(
         path,
-        version: 5,
+        version: 7,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
