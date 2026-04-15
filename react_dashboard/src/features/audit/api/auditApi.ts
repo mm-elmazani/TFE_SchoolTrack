@@ -26,8 +26,8 @@ export interface AuditLogFilters {
   page_size?: number;
   action?: string;
   resource_type?: string;
-  start_date?: string;
-  end_date?: string;
+  date_from?: string;
+  date_to?: string;
 }
 
 export const auditApi = {
