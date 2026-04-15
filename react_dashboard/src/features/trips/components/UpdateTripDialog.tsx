@@ -46,6 +46,7 @@ interface UpdateTripDialogProps {
 export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [pendingCompleteData, setPendingCompleteData] = useState<TripForm | null>(null);
   const queryClient = useQueryClient();
 
   const { data: classes, isLoading: loadingClasses } = useQuery({
@@ -106,10 +107,65 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
 
   const onSubmit = (data: TripForm) => {
     setServerError(null);
+    // Demande de confirmation si on passe le voyage en "Terminé"
+    if (data.status === 'COMPLETED' && trip?.status !== 'COMPLETED') {
+      setPendingCompleteData(data);
+      return;
+    }
     updateMutation.mutate(data);
   };
 
+  const confirmComplete = () => {
+    if (pendingCompleteData) {
+      updateMutation.mutate(pendingCompleteData);
+      setPendingCompleteData(null);
+    }
+  };
+
   return (
+    <>
+    {/* Modale de confirmation — passage en "Terminé" */}
+    <Dialog open={!!pendingCompleteData} onOpenChange={(val) => { if (!val) setPendingCompleteData(null); }}>
+      <DialogContent className="sm:max-w-[420px] rounded-2xl overflow-hidden p-0 border-0 shadow-2xl">
+        <div className="h-2 bg-amber-500 w-full" />
+        <div className="p-6">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-bold text-slate-900 font-heading flex items-center gap-2">
+              <Activity className="w-5 h-5 text-amber-500" />
+              Confirmer la clôture du voyage
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 font-sans text-sm leading-relaxed">
+              Vous êtes sur le point de marquer le voyage{' '}
+              <span className="font-semibold text-slate-700">"{trip?.destination}"</span> comme{' '}
+              <span className="font-semibold text-amber-600">Terminé</span>.
+              <br /><br />
+              Cette action indique que le voyage est achevé. Êtes-vous sûr de vouloir continuer ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingCompleteData(null)}
+              className="rounded-xl h-11 border-slate-200 flex-1 hover:bg-slate-50 font-sans"
+            >
+              Annuler
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmComplete}
+              disabled={updateMutation.isPending}
+              className="rounded-xl h-11 bg-amber-500 hover:bg-amber-600 text-white flex-1 font-sans shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            >
+              {updateMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Mise à jour...</>
+              ) : 'Oui, marquer comme terminé'}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+
     <Dialog open={open} onOpenChange={(val) => {
       setServerError(null);
       onOpenChange(val);
@@ -271,6 +327,7 @@ export function UpdateTripDialog({ trip, open, onOpenChange }: UpdateTripDialogP
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
