@@ -31,6 +31,7 @@ class _CheckpointSelectionScreenState
     extends State<CheckpointSelectionScreen> {
   List<OfflineCheckpoint>? _checkpoints;
   String? _error;
+  bool _showClosed = false;
   final _apiClient = ApiClient();
 
   @override
@@ -137,19 +138,89 @@ class _CheckpointSelectionScreenState
       );
     }
 
+    final active = _checkpoints!
+        .where((cp) => cp.status == 'DRAFT' || cp.status == 'ACTIVE')
+        .toList();
+    final closed = _checkpoints!
+        .where((cp) => cp.status == 'CLOSED')
+        .toList();
+
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: _checkpoints!.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 8),
-        itemBuilder: (context, i) {
-          final cp = _checkpoints![i];
-          return _CheckpointCard(
-            checkpoint: cp,
-            onTap: () => _onCheckpointSelected(cp),
-          );
-        },
+      child: CustomScrollView(
+        slivers: [
+          // ── Section "À réaliser" ──────────────────────────────
+          SliverToBoxAdapter(
+            child: _SectionHeader(
+              label: 'À réaliser',
+              count: active.length,
+              color: const Color(0xFF1A73E8),
+            ),
+          ),
+          if (active.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Tous les checkpoints sont clôturés.',
+                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _CheckpointCard(
+                      checkpoint: active[i],
+                      onTap: () => _onCheckpointSelected(active[i]),
+                    ),
+                  ),
+                  childCount: active.length,
+                ),
+              ),
+            ),
+
+          // ── Section "Clôturés" (repliable) ───────────────────
+          if (closed.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: InkWell(
+                onTap: () => setState(() => _showClosed = !_showClosed),
+                child: _SectionHeader(
+                  label: 'Clôturés',
+                  count: closed.length,
+                  color: Colors.grey,
+                  trailing: Icon(
+                    _showClosed ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            if (_showClosed)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _CheckpointCard(
+                        checkpoint: closed[i],
+                        onTap: () => _onCheckpointSelected(closed[i]),
+                      ),
+                    ),
+                    childCount: closed.length,
+                  ),
+                ),
+              ),
+          ],
+
+          const SliverToBoxAdapter(child: SizedBox(height: 80)),
+        ],
       ),
     );
   }
@@ -174,6 +245,64 @@ class _CheckpointSelectionScreenState
         'checkpointId': checkpoint.id,
         'checkpointName': checkpoint.name,
       },
+    );
+  }
+}
+
+// ----------------------------------------------------------------
+// En-tête de section
+// ----------------------------------------------------------------
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  final Widget? trailing;
+
+  const _SectionHeader({
+    required this.label,
+    required this.count,
+    required this.color,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+            decoration: BoxDecoration(
+              color: color.withAlpha(25),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+          if (trailing != null) ...[
+            const Spacer(),
+            trailing!,
+          ],
+        ],
+      ),
     );
   }
 }
