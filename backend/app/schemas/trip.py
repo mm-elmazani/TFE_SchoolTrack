@@ -54,13 +54,6 @@ class TripUpdate(BaseModel):
     status: Optional[str] = None
     class_ids: Optional[List[uuid.UUID]] = None  # si fourni, remplace les élèves du voyage
 
-    @field_validator("date")
-    @classmethod
-    def date_must_be_future(cls, v: Optional[dt.date]) -> Optional[dt.date]:
-        if v is not None and v <= dt.date.today():
-            raise ValueError("La date du voyage doit être dans le futur.")
-        return v
-
     @field_validator("status")
     @classmethod
     def valid_status(cls, v: Optional[str]) -> Optional[str]:
