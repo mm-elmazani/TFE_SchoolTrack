@@ -90,7 +90,8 @@ def _auto_update_trip_statuses() -> None:
     en fonction de la date du jour.
     - PLANNED + date == aujourd'hui  → ACTIVE
     - PLANNED + date <  aujourd'hui  → COMPLETED (rattrapage)
-    - ACTIVE  + date <  aujourd'hui  → COMPLETED (+ liberation bracelets)
+    - ACTIVE  → reste ACTIVE jusqu'à clôture manuelle par l'enseignant
+      (un voyage peut durer plusieurs jours — pas de clôture automatique)
     """
     from app.services import assignment_service
 
@@ -127,32 +128,17 @@ def _auto_update_trip_statuses() -> None:
                 trip.id, trip.destination,
             )
 
-        # ACTIVE → COMPLETED (date < aujourd'hui)
-        active_past_trips = db.execute(
-            select(Trip).where(
-                Trip.status == "ACTIVE",
-                Trip.date < today,
-            )
-        ).scalars().all()
-
-        for trip in active_past_trips:
-            trip.status = "COMPLETED"
-            logger.info(
-                "Transition automatique ACTIVE → COMPLETED — voyage %s (%s)",
-                trip.id, trip.destination,
-            )
-
         db.commit()
 
         # Liberer les bracelets des voyages termines (apres commit)
-        for trip in planned_past + active_past_trips:
+        for trip in planned_past:
             assignment_service.release_trip_tokens(db, trip.id)
 
-        total = len(planned_today) + len(planned_past) + len(active_past_trips)
+        total = len(planned_today) + len(planned_past)
         if total > 0:
             logger.info(
-                "Transition statuts : %d PLANNED→ACTIVE, %d PLANNED→COMPLETED, %d ACTIVE→COMPLETED.",
-                len(planned_today), len(planned_past), len(active_past_trips),
+                "Transition statuts : %d PLANNED→ACTIVE, %d PLANNED→COMPLETED.",
+                len(planned_today), len(planned_past),
             )
         else:
             logger.debug("Transition statuts : aucun voyage a mettre a jour.")
