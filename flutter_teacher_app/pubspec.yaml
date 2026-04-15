@@ -39,6 +39,9 @@ dependencies:
   # Stockage securise des tokens JWT (Android Keystore)
   flutter_secure_storage: ^10.0.0
 
+  # Ouverture de l'app email depuis l'écran 2FA
+  url_launcher: ^6.3.1
+
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

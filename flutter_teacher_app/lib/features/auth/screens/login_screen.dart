@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_client.dart';
 import '../providers/auth_provider.dart';
@@ -252,6 +253,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                       onFieldSubmitted: (_) => _submit(),
+                    ),
+                    const SizedBox(height: 8),
+                    // Bouton pour ouvrir l'app email sans quitter SchoolTrack
+                    // (évite que Android tue l'app lors du changement d'app — problème OPPO/Xiaomi)
+                    TextButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse('mailto:');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: const Icon(Icons.mail_outline, size: 18),
+                      label: const Text('Ouvrir les emails'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey.shade600,
+                        textStyle: const TextStyle(fontSize: 13),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
