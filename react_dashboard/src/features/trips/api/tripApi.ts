@@ -49,6 +49,20 @@ export const tripApi = {
     return response.data;
   },
 
+  createCheckpoint: async (tripId: string, data: { name: string; description?: string }): Promise<CheckpointTimelineEntry> => {
+    const response = await apiClient.post(`/api/v1/trips/${tripId}/checkpoints`, data);
+    return response.data;
+  },
+
+  updateCheckpoint: async (checkpointId: string, data: { name: string; description?: string }): Promise<CheckpointTimelineEntry> => {
+    const response = await apiClient.put(`/api/v1/checkpoints/${checkpointId}`, data);
+    return response.data;
+  },
+
+  deleteCheckpoint: async (checkpointId: string): Promise<void> => {
+    await apiClient.delete(`/api/v1/checkpoints/${checkpointId}`);
+  },
+
   getExportUrl: (tripId: string): string => {
     const base = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     return `${base}/api/v1/trips/${tripId}/export`;

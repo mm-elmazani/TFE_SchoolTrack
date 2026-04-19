@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_client_ip, log_audit, require_role
 from app.models.user import User
-from app.schemas.checkpoint import CheckpointCreate, CheckpointResponse, CheckpointsSummary
+from app.schemas.checkpoint import CheckpointCreate, CheckpointUpdate, CheckpointResponse, CheckpointsSummary
 from app.services import checkpoint_service
 
 # POST /api/v1/trips/{trip_id}/checkpoints (US 2.5)
@@ -84,6 +84,72 @@ def create_checkpoint(
     )
 
     return result
+
+
+@checkpoints_router.put(
+    "/{checkpoint_id}",
+    response_model=CheckpointResponse,
+    summary="Modifier un checkpoint DRAFT (dashboard web)",
+)
+def update_checkpoint(
+    checkpoint_id: uuid.UUID,
+    data: CheckpointUpdate,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Modifie le nom et la description d'un checkpoint en statut DRAFT.
+    Réservé à la direction. Retourne 404 si introuvable, 400 si non DRAFT.
+    """
+    try:
+        result = checkpoint_service.update_checkpoint(db, checkpoint_id, data)
+    except ValueError as e:
+        msg = str(e)
+        if "introuvable" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+    log_audit(
+        db, user_id=current_user.id, action="CHECKPOINT_UPDATED",
+        resource_type="CHECKPOINT", resource_id=checkpoint_id,
+        ip_address=get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+        details={"name": data.name},
+    )
+
+    return result
+
+
+@checkpoints_router.delete(
+    "/{checkpoint_id}",
+    status_code=204,
+    summary="Supprimer un checkpoint DRAFT sans scans (dashboard web)",
+)
+def delete_checkpoint(
+    checkpoint_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Supprime un checkpoint DRAFT sans aucun scan enregistré.
+    Réservé à la direction. Retourne 404 si introuvable, 400 si non DRAFT ou scans existants.
+    """
+    try:
+        checkpoint_service.delete_checkpoint(db, checkpoint_id)
+    except ValueError as e:
+        msg = str(e)
+        if "introuvable" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+    log_audit(
+        db, user_id=current_user.id, action="CHECKPOINT_DELETED",
+        resource_type="CHECKPOINT", resource_id=checkpoint_id,
+        ip_address=get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
 
 
 @checkpoints_router.post(

@@ -24,6 +24,19 @@ class CheckpointCreate(BaseModel):
         return v.strip()
 
 
+class CheckpointUpdate(BaseModel):
+    """Modification d'un checkpoint depuis le dashboard web (DRAFT uniquement)."""
+    name: str
+    description: Optional[str] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Le nom du checkpoint ne peut pas être vide.")
+        return v.strip()
+
+
 class CheckpointResponse(BaseModel):
     """Réponse renvoyée après création ou lecture d'un checkpoint."""
     id: uuid.UUID

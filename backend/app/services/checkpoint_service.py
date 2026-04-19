@@ -16,6 +16,7 @@ from app.models.trip import Trip
 from app.models.user import User
 from app.schemas.checkpoint import (
     CheckpointCreate,
+    CheckpointUpdate,
     CheckpointResponse,
     CheckpointsSummary,
     CheckpointTimelineEntry,
@@ -193,6 +194,56 @@ def get_checkpoints_summary(
         avg_duration_minutes=avg_duration,
         timeline=timeline,
     )
+
+
+def update_checkpoint(
+    db: Session,
+    checkpoint_id: uuid.UUID,
+    data: CheckpointUpdate,
+) -> CheckpointResponse:
+    """
+    Modifie le nom et la description d'un checkpoint DRAFT depuis le dashboard web.
+    Lève ValueError si introuvable ou si le statut n'est pas DRAFT.
+    """
+    checkpoint = db.query(Checkpoint).filter(Checkpoint.id == checkpoint_id).first()
+    if checkpoint is None:
+        raise ValueError(f"Checkpoint {checkpoint_id} introuvable.")
+    if checkpoint.status != "DRAFT":
+        raise ValueError("Seuls les checkpoints en statut DRAFT peuvent être modifiés.")
+
+    checkpoint.name = data.name
+    checkpoint.description = data.description
+    db.commit()
+    db.refresh(checkpoint)
+
+    return CheckpointResponse.model_validate(checkpoint)
+
+
+def delete_checkpoint(
+    db: Session,
+    checkpoint_id: uuid.UUID,
+) -> None:
+    """
+    Supprime un checkpoint DRAFT sans aucun scan enregistré.
+    Lève ValueError si introuvable, si le statut n'est pas DRAFT,
+    ou si des scans existent déjà pour ce checkpoint.
+    """
+    checkpoint = db.query(Checkpoint).filter(Checkpoint.id == checkpoint_id).first()
+    if checkpoint is None:
+        raise ValueError(f"Checkpoint {checkpoint_id} introuvable.")
+    if checkpoint.status != "DRAFT":
+        raise ValueError("Seuls les checkpoints en statut DRAFT peuvent être supprimés.")
+
+    scan_count = (
+        db.query(func.count(Attendance.id))
+        .filter(Attendance.checkpoint_id == checkpoint_id)
+        .scalar()
+    )
+    if scan_count > 0:
+        raise ValueError("Impossible de supprimer un checkpoint ayant des scans enregistrés.")
+
+    db.delete(checkpoint)
+    db.commit()
 
 
 def close_checkpoint(
