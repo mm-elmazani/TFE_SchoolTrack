@@ -27,7 +27,7 @@ describe('StudentImportScreen', () => {
 
   it('renders format requirement', () => {
     render(<StudentImportScreen />);
-    expect(screen.getByText(/Format CSV/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fichiers accept/i)).toBeInTheDocument();
   });
 
   it('renders directives section', () => {
@@ -57,8 +57,7 @@ describe('StudentImportScreen', () => {
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     fireEvent.change(input);
     await waitFor(() => {
-      // Error: "Le fichier doit être au format CSV."
-      expect(screen.getByText(/doit.*format CSV/i)).toBeInTheDocument();
+      expect(screen.getByText(/doit.*format CSV ou Excel/i)).toBeInTheDocument();
     });
   });
 
