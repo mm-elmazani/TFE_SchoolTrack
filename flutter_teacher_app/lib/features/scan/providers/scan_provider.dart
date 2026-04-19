@@ -3,6 +3,7 @@ library;
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/database/local_db.dart';
@@ -11,6 +12,7 @@ import '../../../features/scan/models/attendance_record.dart';
 import '../../../features/trips/models/offline_bundle.dart';
 
 const _uuid = Uuid();
+const _kScanModeKey = 'scan_mode_pref';
 
 /// État de l'écran de scan.
 enum ScanState { idle, scanning, success, duplicate, error }
@@ -142,6 +144,11 @@ class ScanProvider extends ChangeNotifier {
     _students = List.unmodifiable(students);
     _totalStudents = students.length;
 
+    // Restaurer le mode de scan préféré
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_kScanModeKey);
+    if (saved == 'nfc') _scanMode = ScanMode.nfc;
+
     // Charger le statut du checkpoint pour la transition DRAFT→ACTIVE (US 2.5)
     final checkpoint = await LocalDb.instance.getCheckpointById(checkpointId);
     if (checkpoint != null) _checkpointStatus = checkpoint.status;
@@ -189,10 +196,13 @@ class ScanProvider extends ChangeNotifier {
     _state = ScanState.idle;
     _qrPaused = false;
 
+    final prefs = await SharedPreferences.getInstance();
+
     if (mode == ScanMode.nfc) {
       // On arrete la camera cote ecran ; ici on demarre le NFC
       _scanMode = ScanMode.nfc;
       _nfcAvailable = await _reader.startNfc(_onScanResult);
+      if (_nfcAvailable) await prefs.setString(_kScanModeKey, 'nfc');
       notifyListeners();
       return _nfcAvailable;
     } else {
@@ -200,6 +210,7 @@ class ScanProvider extends ChangeNotifier {
       await _reader.stopNfc();
       _nfcAvailable = false;
       _scanMode = ScanMode.qr;
+      await prefs.setString(_kScanModeKey, 'qr');
       notifyListeners();
       return true;
     }

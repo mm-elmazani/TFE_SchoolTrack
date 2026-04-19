@@ -66,8 +66,15 @@ class _ScanScreenState extends State<ScanScreen> {
   Future<void> _initSession() async {
     final students = await LocalDb.instance.getStudents(widget.tripId);
     await _provider.startSession(students);
+
+    // Restaurer le mode NFC si c'était la préférence sauvegardée
+    if (_provider.scanMode == ScanMode.nfc) {
+      _cameraController?.dispose();
+      _cameraController = null;
+      await _provider.startNfc();
+    }
+
     if (mounted) setState(() {});
-    // Pas de demarrage NFC automatique — l'utilisateur choisit le mode via le toggle
   }
 
   @override
