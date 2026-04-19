@@ -89,33 +89,7 @@ class AttendanceListScreen extends StatelessWidget {
             body: CustomScrollView(
               slivers: [
                 // ------------------------------------------------
-                // Section Présents
-                // ------------------------------------------------
-                _SectionHeader(
-                  label: 'Présents',
-                  count: present.length,
-                  color: Colors.green.shade700,
-                  icon: Icons.check_circle,
-                ),
-                if (present.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: _EmptyHint(
-                      message: 'Aucun élève scanné pour l\'instant.',
-                    ),
-                  )
-                else
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) => _PresentTile(
-                        student: present[i],
-                        info: p.scanInfoOf(present[i].id)!,
-                      ),
-                      childCount: present.length,
-                    ),
-                  ),
-
-                // ------------------------------------------------
-                // Section Manquants
+                // Section Manquants (en premier pour action rapide)
                 // ------------------------------------------------
                 _SectionHeader(
                   label: 'Manquants',
@@ -145,6 +119,32 @@ class AttendanceListScreen extends StatelessWidget {
                         ),
                       ),
                       childCount: missing.length,
+                    ),
+                  ),
+
+                // ------------------------------------------------
+                // Section Présents (en bas)
+                // ------------------------------------------------
+                _SectionHeader(
+                  label: 'Présents',
+                  count: present.length,
+                  color: Colors.green.shade700,
+                  icon: Icons.check_circle,
+                ),
+                if (present.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: _EmptyHint(
+                      message: 'Aucun élève scanné pour l\'instant.',
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _PresentTile(
+                        student: present[i],
+                        info: p.scanInfoOf(present[i].id)!,
+                      ),
+                      childCount: present.length,
                     ),
                   ),
 
