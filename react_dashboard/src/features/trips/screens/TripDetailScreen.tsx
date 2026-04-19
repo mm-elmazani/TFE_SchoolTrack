@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tripApi, type CheckpointTimelineEntry } from '../api/tripApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { useState } from 'react';
 import { UpdateTripDialog } from '../components/UpdateTripDialog';
+import { CreateCheckpointDialog } from '../components/CreateCheckpointDialog';
+import { EditCheckpointDialog } from '../components/EditCheckpointDialog';
 import {
   ArrowLeft,
   Calendar,
@@ -34,7 +36,17 @@ export default function TripDetailScreen() {
   const { getIsAdmin } = useAuthStore();
   const isAdmin = getIsAdmin();
   const sp = useSchoolPath();
+  const queryClient = useQueryClient();
   const [isUpdateOpen, setIsUpdateOpen] = useState(false);
+  const [isCreateCheckpointOpen, setIsCreateCheckpointOpen] = useState(false);
+  const [editingCheckpoint, setEditingCheckpoint] = useState<CheckpointTimelineEntry | null>(null);
+
+  const deleteCheckpointMutation = useMutation({
+    mutationFn: (checkpointId: string) => tripApi.deleteCheckpoint(checkpointId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['trips', id, 'checkpoints-summary'] });
+    },
+  });
 
   const { data: trip, isLoading, error } = useQuery({
     queryKey: ['trips', id],
@@ -225,11 +237,18 @@ export default function TripDetailScreen() {
                     </CardDescription>
                   </div>
                   {isAdmin && (
-                    <Link to={sp(`/trips/${trip.id}/checkpoints`)}>
-                      <Button size="sm" variant="outline" className="rounded-lg h-9 border-slate-200 font-sans">
-                        <MapIcon className="w-4 h-4 mr-1.5" /> Voir la timeline
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {trip.status !== 'COMPLETED' && trip.status !== 'ARCHIVED' && (
+                        <Button size="sm" variant="outline" className="rounded-lg h-9 border-slate-200 font-sans" onClick={() => setIsCreateCheckpointOpen(true)}>
+                          <Plus className="w-4 h-4 mr-1.5" /> Ajouter
+                        </Button>
+                      )}
+                      <Link to={sp(`/trips/${trip.id}/checkpoints`)}>
+                        <Button size="sm" variant="outline" className="rounded-lg h-9 border-slate-200 font-sans">
+                          <MapIcon className="w-4 h-4 mr-1.5" /> Voir la timeline
+                        </Button>
+                      </Link>
+                    </div>
                   )}
                 </CardHeader>
                 <CardContent className="p-0 font-sans">
@@ -246,29 +265,57 @@ export default function TripDetailScreen() {
                     <div className="divide-y divide-slate-50">
                       {checkpointsSummary.timeline.map((cp: CheckpointTimelineEntry) => {
                         const isClosed = cp.status === 'CLOSED';
+                        const isDraft = cp.status === 'DRAFT';
+                        const badgeClass = isClosed
+                          ? 'bg-green-50 text-green-700 border-green-100'
+                          : isDraft
+                          ? 'bg-slate-50 text-slate-500 border-slate-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-100';
+                        const badgeLabel = isClosed ? 'Fermé' : isDraft ? 'Brouillon' : 'Actif';
                         return (
                           <div key={cp.id} className="flex justify-between items-center p-4 hover:bg-slate-50/50 transition-colors group">
                             <div className="flex items-center gap-4">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isClosed ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isClosed ? 'bg-green-50 text-green-600' : isDraft ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-600'}`}>
                                 {isClosed ? <CheckCircle2 className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
                                   <p className="font-bold text-slate-900">{cp.name}</p>
-                                  <Badge variant="outline" className={`text-[10px] py-0 h-4 ${isClosed ? 'bg-green-50 text-green-700 border-green-100' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
-                                    {isClosed ? 'Fermé' : 'Actif'}
+                                  <Badge variant="outline" className={`text-[10px] py-0 h-4 ${badgeClass}`}>
+                                    {badgeLabel}
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
                                   <span className="flex items-center gap-1"><ScanLine className="w-3 h-3" /> {cp.scan_count} scans</span>
-                                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {cp.student_count} eleves</span>
+                                  <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {cp.student_count} élèves</span>
                                   {cp.duration_minutes != null && (
                                     <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {cp.duration_minutes.toFixed(0)} min</span>
                                   )}
                                 </div>
                               </div>
                             </div>
-                            <span className="text-xs text-slate-400">{cp.scan_count} scan{cp.scan_count !== 1 ? 's' : ''}</span>
+                            <div className="flex items-center gap-1">
+                              {isAdmin && isDraft && (
+                                <>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-schooltrack-action hover:bg-blue-50" onClick={() => setEditingCheckpoint(cp)}>
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-slate-400 hover:text-schooltrack-error hover:bg-red-50"
+                                    disabled={deleteCheckpointMutation.isPending}
+                                    onClick={() => {
+                                      if (window.confirm(`Supprimer le checkpoint "${cp.name}" ?`)) {
+                                        deleteCheckpointMutation.mutate(cp.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         );
                       })}
@@ -331,10 +378,21 @@ export default function TripDetailScreen() {
         </div>
       </div>
 
-      <UpdateTripDialog 
+      <UpdateTripDialog
         trip={trip}
         open={isUpdateOpen}
         onOpenChange={setIsUpdateOpen}
+      />
+      <CreateCheckpointDialog
+        tripId={trip.id}
+        open={isCreateCheckpointOpen}
+        onOpenChange={setIsCreateCheckpointOpen}
+      />
+      <EditCheckpointDialog
+        tripId={trip.id}
+        checkpoint={editingCheckpoint}
+        open={editingCheckpoint !== null}
+        onOpenChange={(open) => { if (!open) setEditingCheckpoint(null); }}
       />
     </div>
   );
