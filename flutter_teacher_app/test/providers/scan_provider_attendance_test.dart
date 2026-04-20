@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter_teacher_app/core/database/local_db.dart';
 import 'package:flutter_teacher_app/features/scan/models/attendance_record.dart';
@@ -90,6 +91,7 @@ void main() {
 
   setUp(() {
     LocalDb.testDatabasePath = inMemoryDatabasePath;
+    SharedPreferences.setMockInitialValues({});
   });
 
   tearDown(() async {
