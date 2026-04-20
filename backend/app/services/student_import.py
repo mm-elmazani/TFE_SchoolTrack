@@ -10,6 +10,7 @@ Formats acceptés : CSV (.csv) et Excel (.xlsx).
 
 import csv
 import io
+import zipfile
 import re
 import unicodedata
 import uuid
@@ -295,8 +296,20 @@ def parse_and_import_excel(
     Les colonnes non reconnues (badge, chambre, etc.) sont ignorées.
     """
     from openpyxl import load_workbook
+    from openpyxl.utils.exceptions import InvalidFileException
 
-    wb = load_workbook(filename=io.BytesIO(content), read_only=True, data_only=True)
+    try:
+        wb = load_workbook(filename=io.BytesIO(content), read_only=True, data_only=True)
+    except (InvalidFileException, KeyError, ValueError, zipfile.BadZipFile) as e:
+        # Fichier corrompu, mauvais format ou pas un vrai xlsx → rapport lisible plutôt que 500
+        return StudentImportReport(
+            total_rows=0, inserted=0, rejected=0,
+            duplicates_in_file=0, duplicates_in_db=0,
+            errors=[ImportError(
+                row=0, content="",
+                reason=f"Fichier Excel invalide ou corrompu : {type(e).__name__}"
+            )]
+        )
     ws = wb.active
 
     # Lire la première ligne comme en-tête

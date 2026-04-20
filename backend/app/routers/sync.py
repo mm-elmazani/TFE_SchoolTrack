@@ -8,7 +8,7 @@ Audit logging sur chaque synchronisation.
 import math
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -46,10 +46,14 @@ def sync_attendances(
     """
     Reçoit un batch de scans générés hors-ligne par l'app Flutter et les insère en base.
     """
-    result = sync_service.sync_attendances(
-        db, data.scans, data.device_id, scanned_by=current_user.id,
-        school_id=current_user.school_id,
-    )
+    try:
+        result = sync_service.sync_attendances(
+            db, data.scans, data.device_id, scanned_by=current_user.id,
+            school_id=current_user.school_id,
+        )
+    except ValueError as exc:
+        # Conflit d'insertion concurrente (race condition sync) → 409, le client retry
+        raise HTTPException(status_code=409, detail=str(exc))
 
     log_audit(
         db, user_id=current_user.id, action="SYNC_ATTENDANCES",

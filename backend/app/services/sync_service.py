@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import List
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.attendance import Attendance, AttendanceHistory
@@ -206,7 +207,23 @@ def sync_attendances(
     )
     db.add(sync_log)
 
-    db.commit()
+    # Protection contre la race condition : deux enseignants scannant le même élève
+    # au même checkpoint au même instant peuvent passer le SELECT sans trouver de canonique
+    # et tenter deux INSERT concurrents sur `uq_attendance_canonical (student,checkpoint,trip)`.
+    # Si cela arrive, on rollback et on lève une ValueError que le client Flutter retry
+    # automatiquement (à la 2e tentative, le canonique existe → merge/supersède normalement).
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        logger.warning(
+            "Sync rollback : conflit d'insertion concurrente (uq_attendance_canonical). "
+            "Le client retry. Détail : %s",
+            exc.orig,
+        )
+        raise ValueError(
+            "Conflit d'insertion concurrente — veuillez relancer la synchronisation."
+        )
 
     logger.info(
         "Sync device=%s : %d reçus, %d insérés, %d fusionnés, %d doublons, %d rejetés, %d anomalies",

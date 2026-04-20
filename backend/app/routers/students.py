@@ -149,6 +149,8 @@ async def upload_student_photo(
     ext = file.content_type.split("/")[-1].replace("jpeg", "jpg")
     filename = f"{student_id}.{ext}"
     dest = Path(settings.MEDIA_DIR, "students", filename)
+    # Garantit que le dossier cible existe (évite FileNotFoundError sur premier upload / VPS fresh)
+    dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(content)
 
     # Stockage du chemin relatif (pas une URL publique — servi via endpoint protégé)
