@@ -76,7 +76,10 @@ def delete_user(
     if str(current_user.id) == user_id:
         raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(
+        User.id == user_id,
+        User.school_id == current_user.school_id,
+    ).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
 

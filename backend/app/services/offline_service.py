@@ -9,6 +9,7 @@ sans réseau : voyage + élèves (avec assignation active, classe, contact) + ch
 import uuid
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,7 +30,11 @@ from app.schemas.offline import (
 logger = logging.getLogger(__name__)
 
 
-def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
+def get_offline_data(
+    db: Session,
+    trip_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> OfflineDataBundle:
     """
     Génère le bundle complet de données offline pour un voyage.
 
@@ -39,9 +44,13 @@ def get_offline_data(db: Session, trip_id: uuid.UUID) -> OfflineDataBundle:
     - Checkpoints existants triés par sequence_order
 
     Lève ValueError si le voyage est introuvable ou archivé.
+    Si school_id est fourni, la recherche est restreinte à cette école (isolation multi-tenant).
     """
     # Vérifier que le voyage existe et est disponible
-    trip = db.execute(select(Trip).where(Trip.id == trip_id)).scalar()
+    trip_query = select(Trip).where(Trip.id == trip_id)
+    if school_id is not None:
+        trip_query = trip_query.where(Trip.school_id == school_id)
+    trip = db.execute(trip_query).scalar()
     if not trip:
         raise ValueError("Voyage introuvable.")
     if trip.status == "ARCHIVED":

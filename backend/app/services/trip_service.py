@@ -88,15 +88,34 @@ def get_trips(db: Session, school_id: Optional[uuid.UUID] = None) -> list[TripRe
     return [_to_response(db, t) for t in trips]
 
 
-def get_trip(db: Session, trip_id: uuid.UUID) -> Optional[TripResponse]:
+def _get_owned_trip(db: Session, trip_id: uuid.UUID, school_id: Optional[uuid.UUID]) -> Optional[Trip]:
+    """Retourne un voyage uniquement s'il appartient à l'école demandée.
+    Si school_id=None, renvoie le voyage sans filtre (mode scheduler/tests internes)."""
+    if school_id is None:
+        return db.get(Trip, trip_id)
+    return db.execute(
+        select(Trip).where(Trip.id == trip_id, Trip.school_id == school_id)
+    ).scalar_one_or_none()
+
+
+def get_trip(
+    db: Session,
+    trip_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> Optional[TripResponse]:
     """Retourne un voyage par son ID, ou None s'il n'existe pas."""
-    trip = db.get(Trip, trip_id)
+    trip = _get_owned_trip(db, trip_id, school_id)
     if trip is None:
         return None
     return _to_response(db, trip)
 
 
-def update_trip(db: Session, trip_id: uuid.UUID, data: TripUpdate) -> Optional[TripResponse]:
+def update_trip(
+    db: Session,
+    trip_id: uuid.UUID,
+    data: TripUpdate,
+    school_id: Optional[uuid.UUID] = None,
+) -> Optional[TripResponse]:
     """
     Met à jour les champs modifiables d'un voyage.
     Si class_ids est fourni, les élèves du voyage sont recalculés depuis les nouvelles classes
@@ -104,7 +123,7 @@ def update_trip(db: Session, trip_id: uuid.UUID, data: TripUpdate) -> Optional[T
     Si le statut passe à COMPLETED ou ARCHIVED, libère automatiquement
     toutes les assignations de bracelets actives du voyage.
     """
-    trip = db.get(Trip, trip_id)
+    trip = _get_owned_trip(db, trip_id, school_id)
     if trip is None:
         return None
 
@@ -152,12 +171,16 @@ def update_trip(db: Session, trip_id: uuid.UUID, data: TripUpdate) -> Optional[T
     return _to_response(db, trip)
 
 
-def archive_trip(db: Session, trip_id: uuid.UUID) -> bool:
+def archive_trip(
+    db: Session,
+    trip_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> bool:
     """
     Archive un voyage (suppression logique) et libère les bracelets actifs.
     Retourne True si archivé, False si non trouvé.
     """
-    trip = db.get(Trip, trip_id)
+    trip = _get_owned_trip(db, trip_id, school_id)
     if trip is None:
         return False
 
@@ -215,13 +238,17 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
 # ---------------------------------------------------------------------------
 
 
-def export_attendance_csv(db: Session, trip_id: uuid.UUID) -> tuple[str, Trip]:
+def export_attendance_csv(
+    db: Session,
+    trip_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> tuple[str, Trip]:
     """
     Genere le contenu CSV des presences pour un voyage.
     Retourne (csv_string, trip_object) pour que le router construise le filename.
     Leve ValueError si le voyage est introuvable.
     """
-    trip = db.get(Trip, trip_id)
+    trip = _get_owned_trip(db, trip_id, school_id)
     if trip is None:
         raise ValueError("Voyage introuvable.")
 

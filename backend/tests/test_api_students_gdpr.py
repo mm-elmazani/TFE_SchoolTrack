@@ -62,6 +62,7 @@ class TestGdprExportPermissions:
         student = _make_student(id=sid)
         mock_db = MagicMock()
         mock_db.get.return_value = student
+        mock_db.execute.return_value.scalar_one_or_none.return_value = student
         mock_db.execute.return_value.fetchall.return_value = []
 
         app.dependency_overrides[get_db] = lambda: mock_db
@@ -78,6 +79,7 @@ class TestGdprExportPermissions:
         student = _make_student(id=sid)
         mock_db = MagicMock()
         mock_db.get.return_value = student
+        mock_db.execute.return_value.scalar_one_or_none.return_value = student
         mock_db.execute.return_value.fetchall.return_value = []
 
         app.dependency_overrides[get_db] = lambda: mock_db
@@ -122,6 +124,7 @@ class TestGdprExportResponse:
                                 email="alice@school.be", parent_consent=True)
         mock_db = MagicMock()
         mock_db.get.return_value = student
+        mock_db.execute.return_value.scalar_one_or_none.return_value = student
         mock_db.execute.return_value.fetchall.return_value = []
 
         app.dependency_overrides[get_db] = lambda: mock_db
@@ -177,6 +180,7 @@ class TestGdprExportResponse:
         sid = uuid.uuid4()
         mock_db = MagicMock()
         mock_db.get.return_value = None
+        mock_db.execute.return_value.scalar_one_or_none.return_value = None
 
         app.dependency_overrides[get_db] = lambda: mock_db
         app.dependency_overrides[get_current_user] = lambda: _make_user("DIRECTION")
@@ -194,6 +198,7 @@ class TestGdprExportResponse:
                                 deleted_at=datetime(2025, 6, 1))
         mock_db = MagicMock()
         mock_db.get.return_value = student
+        mock_db.execute.return_value.scalar_one_or_none.return_value = student
         mock_db.execute.return_value.fetchall.return_value = []
 
         app.dependency_overrides[get_db] = lambda: mock_db

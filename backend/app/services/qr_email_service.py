@@ -15,6 +15,7 @@ Flux :
 import io
 import logging
 import uuid
+from typing import Optional
 
 import qrcode
 from sqlalchemy import select
@@ -45,7 +46,11 @@ def _generate_token_uid() -> str:
     return "QRD-" + uuid.uuid4().hex[:8].upper()
 
 
-def send_qr_emails_for_trip(db: Session, trip_id: uuid.UUID) -> QrEmailSendResult:
+def send_qr_emails_for_trip(
+    db: Session,
+    trip_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> QrEmailSendResult:
     """
     Envoie les QR codes digitaux par email à tous les élèves d'un voyage.
 
@@ -58,7 +63,10 @@ def send_qr_emails_for_trip(db: Session, trip_id: uuid.UUID) -> QrEmailSendResul
     Lève ValueError si le voyage est introuvable ou archivé.
     """
     # Vérifier que le voyage existe et peut recevoir des envois
-    trip = db.execute(select(Trip).where(Trip.id == trip_id)).scalar()
+    trip_query = select(Trip).where(Trip.id == trip_id)
+    if school_id is not None:
+        trip_query = trip_query.where(Trip.school_id == school_id)
+    trip = db.execute(trip_query).scalar()
     if not trip:
         raise ValueError("Voyage introuvable.")
     if trip.status == "ARCHIVED":

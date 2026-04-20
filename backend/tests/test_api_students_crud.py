@@ -122,6 +122,7 @@ def test_update_student_prenom_seul(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = student
+    mock_db.execute.return_value.scalar_one_or_none.return_value = student
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.put(f"/api/v1/students/{sid}", json={"first_name": "Jean-Pierre"})
@@ -143,6 +144,7 @@ def test_update_student_introuvable(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = None
+    mock_db.execute.return_value.scalar_one_or_none.return_value = None
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.put(f"/api/v1/students/{sid}", json={"first_name": "Test"})
@@ -184,6 +186,7 @@ def test_update_student_succes_complet(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = student
+    mock_db.execute.return_value.scalar_one_or_none.return_value = student
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.put(f"/api/v1/students/{sid}", json={
@@ -214,6 +217,7 @@ def test_delete_student_succes(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = student
+    mock_db.execute.return_value.scalar_one_or_none.return_value = student
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.delete(f"/api/v1/students/{sid}")
@@ -237,6 +241,7 @@ def test_delete_student_deja_supprime(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = student
+    mock_db.execute.return_value.scalar_one_or_none.return_value = student
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.delete(f"/api/v1/students/{sid}")
@@ -256,6 +261,7 @@ def test_update_student_supprime(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = student
+    mock_db.execute.return_value.scalar_one_or_none.return_value = student
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.put(f"/api/v1/students/{sid}", json={"first_name": "Test"})
@@ -274,6 +280,7 @@ def test_delete_student_introuvable(client):
 
     mock_db = MagicMock()
     mock_db.get.return_value = None
+    mock_db.execute.return_value.scalar_one_or_none.return_value = None
     app.dependency_overrides[get_db] = lambda: mock_db
 
     response = client.delete(f"/api/v1/students/{sid}")

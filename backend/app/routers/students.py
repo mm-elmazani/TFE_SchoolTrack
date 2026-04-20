@@ -90,7 +90,12 @@ def update_student(
     db: Session = Depends(get_db),
 ):
     """Met à jour les champs fournis d'un élève. Les champs absents ne sont pas modifiés."""
-    student = db.get(Student, student_id)
+    student = db.execute(
+        select(Student).where(
+            Student.id == student_id,
+            Student.school_id == current_user.school_id,
+        )
+    ).scalar_one_or_none()
     if student is None:
         raise HTTPException(status_code=404, detail="Élève introuvable.")
     if getattr(student, "is_deleted", False):
@@ -123,7 +128,12 @@ async def upload_student_photo(
     db: Session = Depends(get_db),
 ):
     """Upload ou remplace la photo d'un élève. Formats acceptés : JPEG, PNG, WebP. Max 5 Mo."""
-    student = db.get(Student, student_id)
+    student = db.execute(
+        select(Student).where(
+            Student.id == student_id,
+            Student.school_id == current_user.school_id,
+        )
+    ).scalar_one_or_none()
     if student is None:
         raise HTTPException(status_code=404, detail="Élève introuvable.")
     if getattr(student, "is_deleted", False):
@@ -164,7 +174,12 @@ def get_student_photo(
     db: Session = Depends(get_db),
 ):
     """Sert la photo d'un élève. Requiert un JWT valide (tous les rôles authentifiés)."""
-    student = db.get(Student, student_id)
+    student = db.execute(
+        select(Student).where(
+            Student.id == student_id,
+            Student.school_id == current_user.school_id,
+        )
+    ).scalar_one_or_none()
     if student is None or not student.photo_url:
         raise HTTPException(status_code=404, detail="Photo introuvable.")
 
@@ -224,7 +239,12 @@ def delete_student(
 ):
     """Suppression logique d'un eleve (RGPD droit a l'effacement).
     L'eleve est marque is_deleted=True, les donnees sont conservees pour l'historique."""
-    student = db.get(Student, student_id)
+    student = db.execute(
+        select(Student).where(
+            Student.id == student_id,
+            Student.school_id == current_user.school_id,
+        )
+    ).scalar_one_or_none()
     if student is None:
         raise HTTPException(status_code=404, detail="Élève introuvable.")
     if getattr(student, "is_deleted", False):
@@ -257,7 +277,12 @@ def export_student_data(
 ):
     """RGPD droit d'acces (art. 15) : exporte toutes les donnees personnelles
     d'un eleve sous forme JSON structuree."""
-    student = db.get(Student, student_id)
+    student = db.execute(
+        select(Student).where(
+            Student.id == student_id,
+            Student.school_id == current_user.school_id,
+        )
+    ).scalar_one_or_none()
     if student is None:
         raise HTTPException(status_code=404, detail="Élève introuvable.")
 

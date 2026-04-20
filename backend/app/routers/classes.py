@@ -67,7 +67,7 @@ def get_class(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    school_class = class_service.get_class(db, class_id)
+    school_class = class_service.get_class(db, class_id, school_id=current_user.school_id)
     if school_class is None:
         raise HTTPException(status_code=404, detail="Classe introuvable.")
     return school_class
@@ -82,7 +82,7 @@ def update_class(
     db: Session = Depends(get_db),
 ):
     try:
-        result = class_service.update_class(db, class_id, data)
+        result = class_service.update_class(db, class_id, data, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     if result is None:
@@ -111,7 +111,7 @@ def delete_class(
     Bloqué si des élèves participent à un voyage planifié ou en cours.
     """
     try:
-        success = class_service.delete_class(db, class_id)
+        success = class_service.delete_class(db, class_id, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     if not success:
@@ -152,7 +152,7 @@ def assign_students(
 ):
     """Assigne un ou plusieurs élèves à une classe. Les doublons sont ignorés."""
     try:
-        result = class_service.assign_students(db, class_id, data)
+        result = class_service.assign_students(db, class_id, data, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -176,7 +176,7 @@ def remove_student(
     db: Session = Depends(get_db),
 ):
     """Retire un élève d'une classe."""
-    success = class_service.remove_student(db, class_id, student_id)
+    success = class_service.remove_student(db, class_id, student_id, school_id=current_user.school_id)
     if not success:
         raise HTTPException(status_code=404, detail="Lien classe-élève introuvable.")
 
@@ -201,7 +201,7 @@ def assign_teachers(
 ):
     """Assigne un ou plusieurs enseignants à une classe. Les doublons sont ignorés."""
     try:
-        result = class_service.assign_teachers(db, class_id, data)
+        result = class_service.assign_teachers(db, class_id, data, school_id=current_user.school_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -225,7 +225,7 @@ def remove_teacher(
     db: Session = Depends(get_db),
 ):
     """Retire un enseignant d'une classe."""
-    success = class_service.remove_teacher(db, class_id, teacher_id)
+    success = class_service.remove_teacher(db, class_id, teacher_id, school_id=current_user.school_id)
     if not success:
         raise HTTPException(status_code=404, detail="Lien classe-enseignant introuvable.")
 

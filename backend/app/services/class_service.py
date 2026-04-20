@@ -52,17 +52,42 @@ def get_classes(db: Session, school_id: Optional[uuid.UUID] = None) -> list[Clas
     return [_to_response(db, c) for c in classes]
 
 
-def get_class(db: Session, class_id: uuid.UUID) -> Optional[ClassResponse]:
+def _get_owned_class(
+    db: Session,
+    class_id: uuid.UUID,
+    school_id: Optional[uuid.UUID],
+) -> Optional[SchoolClass]:
+    """Retourne une classe uniquement si elle appartient à l'école demandée."""
+    if school_id is None:
+        return db.get(SchoolClass, class_id)
+    return db.execute(
+        select(SchoolClass).where(
+            SchoolClass.id == class_id,
+            SchoolClass.school_id == school_id,
+        )
+    ).scalar_one_or_none()
+
+
+def get_class(
+    db: Session,
+    class_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> Optional[ClassResponse]:
     """Retourne une classe par son ID, ou None si inexistante."""
-    school_class = db.get(SchoolClass, class_id)
+    school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         return None
     return _to_response(db, school_class)
 
 
-def update_class(db: Session, class_id: uuid.UUID, data: ClassUpdate) -> Optional[ClassResponse]:
+def update_class(
+    db: Session,
+    class_id: uuid.UUID,
+    data: ClassUpdate,
+    school_id: Optional[uuid.UUID] = None,
+) -> Optional[ClassResponse]:
     """Met à jour les champs fournis d'une classe."""
-    school_class = db.get(SchoolClass, class_id)
+    school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         return None
 
@@ -79,13 +104,17 @@ def update_class(db: Session, class_id: uuid.UUID, data: ClassUpdate) -> Optiona
     return _to_response(db, school_class)
 
 
-def delete_class(db: Session, class_id: uuid.UUID) -> bool:
+def delete_class(
+    db: Session,
+    class_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> bool:
     """
     Supprime une classe.
     Bloqué si des élèves de cette classe participent à un voyage PLANNED ou ACTIVE.
     Retourne True si supprimé, False si introuvable.
     """
-    school_class = db.get(SchoolClass, class_id)
+    school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         return False
 
@@ -112,14 +141,19 @@ def delete_class(db: Session, class_id: uuid.UUID) -> bool:
     return True
 
 
-def assign_students(db: Session, class_id: uuid.UUID, data: ClassStudentsAssign) -> ClassResponse:
+def assign_students(
+    db: Session,
+    class_id: uuid.UUID,
+    data: ClassStudentsAssign,
+    school_id: Optional[uuid.UUID] = None,
+) -> ClassResponse:
     """
     Assigne des élèves à une classe.
     Un élève ne peut appartenir qu'à une seule classe : s'il est déjà dans
     une autre classe, il en est retiré automatiquement avant d'être ajouté.
     Les élèves déjà dans cette classe sont ignorés (pas de doublon).
     """
-    school_class = db.get(SchoolClass, class_id)
+    school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         raise ValueError("Classe introuvable.")
 
@@ -149,8 +183,16 @@ def assign_students(db: Session, class_id: uuid.UUID, data: ClassStudentsAssign)
     return _to_response(db, school_class)
 
 
-def remove_student(db: Session, class_id: uuid.UUID, student_id: uuid.UUID) -> bool:
+def remove_student(
+    db: Session,
+    class_id: uuid.UUID,
+    student_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> bool:
     """Retire un élève d'une classe. Retourne True si retiré, False si lien inexistant."""
+    # Vérifier d'abord que la classe appartient à l'école (sinon 404)
+    if _get_owned_class(db, class_id, school_id) is None:
+        return False
     link = db.get(ClassStudent, (class_id, student_id))
     if link is None:
         return False
@@ -159,12 +201,17 @@ def remove_student(db: Session, class_id: uuid.UUID, student_id: uuid.UUID) -> b
     return True
 
 
-def assign_teachers(db: Session, class_id: uuid.UUID, data: ClassTeachersAssign) -> ClassResponse:
+def assign_teachers(
+    db: Session,
+    class_id: uuid.UUID,
+    data: ClassTeachersAssign,
+    school_id: Optional[uuid.UUID] = None,
+) -> ClassResponse:
     """
     Assigne des enseignants à une classe.
     Les enseignants déjà assignés sont ignorés.
     """
-    school_class = db.get(SchoolClass, class_id)
+    school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         raise ValueError("Classe introuvable.")
 
@@ -186,8 +233,15 @@ def assign_teachers(db: Session, class_id: uuid.UUID, data: ClassTeachersAssign)
     return _to_response(db, school_class)
 
 
-def remove_teacher(db: Session, class_id: uuid.UUID, teacher_id: uuid.UUID) -> bool:
+def remove_teacher(
+    db: Session,
+    class_id: uuid.UUID,
+    teacher_id: uuid.UUID,
+    school_id: Optional[uuid.UUID] = None,
+) -> bool:
     """Retire un enseignant d'une classe. Retourne True si retiré, False si lien inexistant."""
+    if _get_owned_class(db, class_id, school_id) is None:
+        return False
     link = db.get(ClassTeacher, (class_id, teacher_id))
     if link is None:
         return False

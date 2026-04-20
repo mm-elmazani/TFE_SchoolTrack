@@ -93,7 +93,9 @@ def export_all_trips(
     csv_files: list[tuple[str, str]] = []  # (filename, csv_content)
     for tid in parsed_ids:
         try:
-            csv_content, trip_obj = trip_service.export_attendance_csv(db, tid)
+            csv_content, trip_obj = trip_service.export_attendance_csv(
+                db, tid, school_id=current_user.school_id
+            )
             filename = trip_service._generate_export_filename(
                 trip_obj.destination, trip_obj.date
             )
@@ -146,7 +148,7 @@ def get_trip(
     db: Session = Depends(get_db),
 ):
     """Retourne le détail d'un voyage par son ID."""
-    trip = trip_service.get_trip(db, trip_id)
+    trip = trip_service.get_trip(db, trip_id, school_id=current_user.school_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Voyage introuvable.")
     return trip
@@ -164,7 +166,7 @@ def update_trip(
     Met à jour les informations d'un voyage.
     Seuls les champs fournis sont modifiés.
     """
-    trip = trip_service.update_trip(db, trip_id, data)
+    trip = trip_service.update_trip(db, trip_id, data, school_id=current_user.school_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Voyage introuvable.")
 
@@ -190,7 +192,7 @@ def archive_trip(
     Archive un voyage (suppression logique — status → ARCHIVED).
     Les données sont conservées pour l'historique.
     """
-    success = trip_service.archive_trip(db, trip_id)
+    success = trip_service.archive_trip(db, trip_id, school_id=current_user.school_id)
     if not success:
         raise HTTPException(status_code=404, detail="Voyage introuvable.")
 
@@ -215,7 +217,9 @@ def export_trip_attendances(
     Sans mot de passe : CSV brut. Avec mot de passe : ZIP AES-256.
     """
     try:
-        csv_content, trip_obj = trip_service.export_attendance_csv(db, trip_id)
+        csv_content, trip_obj = trip_service.export_attendance_csv(
+            db, trip_id, school_id=current_user.school_id
+        )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -267,7 +271,7 @@ def get_offline_data(
     Retourne le bundle complet de données nécessaire au mode offline de l'app Flutter.
     """
     try:
-        return offline_service.get_offline_data(db, trip_id)
+        return offline_service.get_offline_data(db, trip_id, school_id=current_user.school_id)
     except ValueError as e:
         msg = str(e)
         if "introuvable" in msg:
@@ -290,7 +294,9 @@ def send_qr_emails(
     Envoie les QR codes digitaux par email à tous les élèves inscrits au voyage.
     """
     try:
-        result = qr_email_service.send_qr_emails_for_trip(db, trip_id)
+        result = qr_email_service.send_qr_emails_for_trip(
+            db, trip_id, school_id=current_user.school_id
+        )
     except ValueError as e:
         msg = str(e)
         if "introuvable" in msg:
