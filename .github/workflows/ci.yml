@@ -30,6 +30,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Lancer pytest
+        env:
+          MEDIA_DIR: /tmp/schooltrack-media
         run: pytest
 
   # ----------------------------------------------------------------
