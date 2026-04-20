@@ -126,8 +126,8 @@ def test_ligne_nom_manquant_rejetee():
 
 
 def test_colonne_manquante():
-    """Un CSV sans colonne 'nom' ou 'prenom' doit retourner une erreur globale."""
-    csv_content = b"first_name,last_name\nJean,Dupont\n"
+    """Un CSV sans colonne reconnue comme 'nom' ou 'prenom' doit retourner une erreur globale."""
+    csv_content = b"surname,givenname\nDupont,Jean\n"
     db = make_db_mock()
 
     report = parse_and_import_csv(csv_content, db)

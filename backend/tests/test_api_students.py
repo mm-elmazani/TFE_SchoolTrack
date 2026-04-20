@@ -23,6 +23,8 @@ def make_student(**kwargs) -> Student:
     s.first_name = kwargs.get("first_name", "Jean")
     s.last_name = kwargs.get("last_name", "Dupont")
     s.email = kwargs.get("email", None)
+    s.phone = kwargs.get("phone", None)
+    s.photo_url = kwargs.get("photo_url", None)
     s.is_deleted = kwargs.get("is_deleted", False)
     s.created_at = kwargs.get("created_at", datetime.now())
     return s

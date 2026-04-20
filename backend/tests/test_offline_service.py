@@ -31,6 +31,9 @@ def make_student(first_name="Alice", last_name="Dupont"):
     s.id = uuid.uuid4()
     s.first_name = first_name
     s.last_name = last_name
+    s.email = None
+    s.phone = None
+    s.photo_url = None
     return s
 
 
@@ -56,7 +59,8 @@ def make_checkpoint(name="Départ", sequence_order=1, status="DRAFT"):
 def make_db(trip=None, students=None, assignments=None, checkpoints=None):
     """
     Construit un mock de session DB.
-    Execute order: trip, students (scalars), assignments (scalars), checkpoints (scalars).
+    Execute order : trip, students, assignments, [class_rows si students],
+    trip_class_rows, checkpoints.
     """
     db = MagicMock()
 
@@ -69,10 +73,21 @@ def make_db(trip=None, students=None, assignments=None, checkpoints=None):
     assignments_result = MagicMock()
     assignments_result.scalars.return_value.all.return_value = assignments or []
 
+    class_rows_result = MagicMock()
+    class_rows_result.all.return_value = []  # pas de mapping classes dans les tests
+
+    trip_classes_result = MagicMock()
+    trip_classes_result.scalars.return_value.all.return_value = []
+
     checkpoints_result = MagicMock()
     checkpoints_result.scalars.return_value.all.return_value = checkpoints or []
 
-    db.execute.side_effect = [trip_result, students_result, assignments_result, checkpoints_result]
+    side_effects = [trip_result, students_result, assignments_result]
+    if students:
+        side_effects.append(class_rows_result)
+    side_effects.extend([trip_classes_result, checkpoints_result])
+
+    db.execute.side_effect = side_effects
     return db
 
 
