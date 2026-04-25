@@ -383,7 +383,7 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
     base_url = str(request.headers.get("origin", "http://localhost:5173"))
 
     try:
-        user = request_password_reset(db, body.email, base_url)
+        user = request_password_reset(db, body.email, base_url, school_slug=body.school_slug)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception:

@@ -78,6 +78,7 @@ class ChangePasswordRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    school_slug: Optional[str] = None
 
 
 class ResetPasswordRequest(BaseModel):

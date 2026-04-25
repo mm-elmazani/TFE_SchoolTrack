@@ -393,7 +393,7 @@ def _send_password_reset_email(to_email: str, reset_url: str) -> None:
     logger.info("Email de reinitialisation envoye a %s", to_email)
 
 
-def request_password_reset(db: Session, email: str, base_url: str) -> User:
+def request_password_reset(db: Session, email: str, base_url: str, school_slug: str | None = None) -> User:
     """
     Genere un token de reset et envoie l'email.
     Leve AuthError si l'email n'existe pas.
@@ -408,7 +408,12 @@ def request_password_reset(db: Session, email: str, base_url: str) -> User:
     user.password_reset_expires = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRY_MINUTES)
     db.commit()
 
-    reset_url = f"{base_url}/reset-password?token={token}&email={email}"
+    # Inclure le school_slug dans l'URL pour correspondre aux routes React /:schoolSlug/reset-password
+    if school_slug:
+        reset_url = f"{base_url}/{school_slug}/reset-password?token={token}&email={email}"
+    else:
+        reset_url = f"{base_url}/reset-password?token={token}&email={email}"
+
     _send_password_reset_email(user.email, reset_url)
     return user
 
