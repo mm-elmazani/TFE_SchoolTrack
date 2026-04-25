@@ -10,6 +10,7 @@ services:
     container_name: schooltrack_traefik
     environment:
       DOCKER_API_VERSION: "1.45"
+      TRAEFIK_AUTH: ${TRAEFIK_AUTH}
     command:
       - "--log.level=DEBUG"
       - "--providers.docker=true"
