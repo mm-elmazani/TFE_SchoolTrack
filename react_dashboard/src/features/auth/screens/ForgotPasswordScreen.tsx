@@ -30,7 +30,7 @@ export default function ForgotPasswordScreen() {
     setIsLoading(true);
     setError(null);
     try {
-      await apiClient.post('/api/v1/auth/forgot-password', { email: data.email });
+      await apiClient.post('/api/v1/auth/forgot-password', { email: data.email, school_slug: schoolSlug });
       setSuccess(true);
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Une erreur est survenue. Veuillez reessayer.';
