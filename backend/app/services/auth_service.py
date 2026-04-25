@@ -9,6 +9,7 @@ import smtplib
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from urllib.parse import quote
 
 import bcrypt
 import pyotp
@@ -409,10 +410,12 @@ def request_password_reset(db: Session, email: str, base_url: str, school_slug: 
     db.commit()
 
     # Inclure le school_slug dans l'URL pour correspondre aux routes React /:schoolSlug/reset-password
+    # L'email est URL-encodé pour éviter les problèmes avec + et autres caractères spéciaux
+    encoded_email = quote(email, safe='')
     if school_slug:
-        reset_url = f"{base_url}/{school_slug}/reset-password?token={token}&email={email}"
+        reset_url = f"{base_url}/{school_slug}/reset-password?token={token}&email={encoded_email}"
     else:
-        reset_url = f"{base_url}/reset-password?token={token}&email={email}"
+        reset_url = f"{base_url}/reset-password?token={token}&email={encoded_email}"
 
     _send_password_reset_email(user.email, reset_url)
     return user

@@ -14,9 +14,10 @@ export function cn(...inputs: ClassValue[]) {
 export function getApiError(err: any, fallback = 'Une erreur est survenue'): string {
   const detail = err?.response?.data?.detail;
   if (!detail) return fallback;
+  // Erreur métier FastAPI : detail est une string
   if (typeof detail === 'string') return detail;
-  if (Array.isArray(detail) && detail.length > 0) {
-    return detail[0]?.msg ?? fallback;
-  }
+  // Erreur de validation Pydantic : detail est un tableau d'objets techniques
+  // On affiche un message générique plutôt que le message Pydantic brut
+  if (Array.isArray(detail) && detail.length > 0) return fallback;
   return fallback;
 }
