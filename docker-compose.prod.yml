@@ -27,19 +27,9 @@ services:
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       # TLS 1.3 minimum (US 6.3)
       - "--entrypoints.websecure.http.tls.options=tlsv13only"
-      # Dashboard Traefik (US 8.4) — sécurisé via BasicAuth, jamais exposé en insecure
+      # Dashboard Traefik (US 8.4) — config du router dans traefik-tls.yml (file provider)
+      - "--api=true"
       - "--api.dashboard=true"
-    labels:
-      - "traefik.enable=true"
-      # Router dashboard — accessible sur traefik.schooltrack.yourschool.be
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`${TRAEFIK_DOMAIN}`)"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
-      - "traefik.http.routers.traefik-dashboard.tls=true"
-      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      # Middleware BasicAuth — identifiants dans .env.prod (format htpasswd, $ doublés)
-      - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
-      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_AUTH}"
     ports:
       - "80:80"
       - "443:443"

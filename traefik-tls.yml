@@ -5,3 +5,22 @@ tls:
   options:
     tlsv13only:
       minVersion: VersionTLS13
+
+# Dashboard Traefik (US 8.4) -- file provider (Traefik ne peut pas se router via Docker labels)
+http:
+  routers:
+    traefik-dashboard:
+      rule: 'Host("traefik.schooltrack.yourschool.be")'
+      entryPoints:
+        - websecure
+      service: api@internal
+      middlewares:
+        - traefik-auth
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    traefik-auth:
+      basicAuth:
+        users:
+          - "admin:$2y$05$F4SjgHg8hguvMxK7/o3JRezvuQEKNpL/Arar/58PCdTyIA0ux0iby"
