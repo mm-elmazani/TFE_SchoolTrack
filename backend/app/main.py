@@ -87,7 +87,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     )
 
 
-@app.get("/api/health", tags=["Santé"])
+@app.api_route("/api/health", methods=["GET", "HEAD"], tags=["Santé"])
 def health_check(db: Session = Depends(get_db)):
     """Vérifie que l'API et la connexion PostgreSQL sont opérationnelles."""
     try:

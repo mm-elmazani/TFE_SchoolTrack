@@ -24,3 +24,9 @@ http:
       basicAuth:
         users:
           - '{{ env "TRAEFIK_AUTH" }}'
+
+    # Rate limiting global (US 8.4) — protège l'API contre les abus
+    rate-limit:
+      rateLimit:
+        average: 50
+        burst: 30
