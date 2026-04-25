@@ -10,7 +10,7 @@ tls:
 http:
   routers:
     traefik-dashboard:
-      rule: 'Host("traefik.schooltrack.yourschool.be") && (PathPrefix("/api") || PathPrefix("/dashboard"))'
+      rule: "Host(`traefik.schooltrack.yourschool.be`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))"
       entryPoints:
         - websecure
       service: api@internal
