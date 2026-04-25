@@ -23,7 +23,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Loader2, Mail, Lock, User, Shield } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getApiError } from '@/lib/utils';
 
 const userSchema = z.object({
   first_name: z.string().min(1, 'Le prénom est requis'),
@@ -69,7 +69,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
       onOpenChange(false);
     },
     onError: (error: any) => {
-      const detail = error.response?.data?.detail;
+      const detail = getApiError(error);
       if (Array.isArray(detail)) {
         setServerError(detail[0]?.msg || 'Erreur de validation');
       } else {

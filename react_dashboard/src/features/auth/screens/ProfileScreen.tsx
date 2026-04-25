@@ -23,7 +23,7 @@ import {
   KeyRound,
   Smartphone,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getApiError } from '@/lib/utils';
 
 type TwoFAStep = 'idle' | 'choose' | 'qr' | 'verify-app' | 'email-sent' | 'verify-email' | 'done';
 
@@ -56,7 +56,7 @@ export default function ProfileScreen() {
       setTwoFAError(null);
     },
     onError: (err: any) => {
-      setTwoFAError(err.response?.data?.detail || 'Erreur lors de l\'activation');
+      setTwoFAError(getApiError(err, 'Erreur lors de l\'activation'));
     },
   });
 
@@ -70,7 +70,7 @@ export default function ProfileScreen() {
       setTotpCode('');
     },
     onError: (err: any) => {
-      setTwoFAError(err.response?.data?.detail || 'Code invalide');
+      setTwoFAError(getApiError(err, 'Code invalide'));
     },
   });
 
@@ -82,7 +82,7 @@ export default function ProfileScreen() {
       setTwoFAError(null);
     },
     onError: (err: any) => {
-      setTwoFAError(err.response?.data?.detail || 'Erreur lors de l\'envoi du code');
+      setTwoFAError(getApiError(err, 'Erreur lors de l\'envoi du code'));
     },
   });
 
@@ -96,14 +96,14 @@ export default function ProfileScreen() {
       setTotpCode('');
     },
     onError: (err: any) => {
-      setTwoFAError(err.response?.data?.detail || 'Code invalide ou expire');
+      setTwoFAError(getApiError(err, 'Code invalide ou expire'));
     },
   });
 
   const resendCodeMutation = useMutation({
     mutationFn: authApi.resend2FACode,
     onSuccess: () => { setTwoFAError(null); setTwoFASuccess('Nouveau code envoye !'); },
-    onError: (err: any) => { setTwoFAError(err.response?.data?.detail || 'Erreur'); },
+    onError: (err: any) => { setTwoFAError(getApiError(err, 'Erreur')); },
   });
 
   const disableMutation = useMutation({
@@ -116,7 +116,7 @@ export default function ProfileScreen() {
       setTwoFAData(null);
     },
     onError: (err: any) => {
-      setTwoFAError(err.response?.data?.detail || 'Erreur lors de la desactivation');
+      setTwoFAError(getApiError(err, 'Erreur lors de la desactivation'));
     },
   });
 
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
       setConfirmPassword('');
     },
     onError: (err: any) => {
-      setPwError(err.response?.data?.detail || 'Erreur lors du changement');
+      setPwError(getApiError(err, 'Erreur lors du changement'));
       setPwSuccess(null);
     },
   });

@@ -24,6 +24,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Loader2, Rss, QrCode, AlignLeft } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 const assignSchema = z.object({
   token_uid: z.string().min(1, 'L\'UID du token est requis'),
@@ -102,7 +103,7 @@ export function AssignTokenDialog({ student, tripId, open, onOpenChange, isReass
       reset();
     },
     onError: (error: any) => {
-      const detail = error.response?.data?.detail;
+      const detail = getApiError(error);
       if (Array.isArray(detail)) {
         setServerError(detail[0]?.msg || 'Erreur de validation');
       } else {

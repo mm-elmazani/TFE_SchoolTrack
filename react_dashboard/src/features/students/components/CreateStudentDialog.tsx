@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Camera } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 const studentSchema = z.object({
   first_name: z.string().min(1, 'Le prénom est requis'),
@@ -67,7 +68,7 @@ export function CreateStudentDialog({ open, onOpenChange }: CreateStudentDialogP
       handleClose();
     },
     onError: (error: any) => {
-      const detail = error.response?.data?.detail;
+      const detail = getApiError(error);
       setServerError(Array.isArray(detail) ? detail[0]?.msg : detail || 'Erreur lors de la création');
     }
   });

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { GraduationCap, Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 const forgotSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -33,8 +34,7 @@ export default function ForgotPasswordScreen() {
       await apiClient.post('/api/v1/auth/forgot-password', { email: data.email, school_slug: schoolSlug });
       setSuccess(true);
     } catch (err: any) {
-      const detail = err.response?.data?.detail || 'Une erreur est survenue. Veuillez reessayer.';
-      setError(detail);
+      setError(getApiError(err, 'Une erreur est survenue. Veuillez reessayer.'));
     } finally {
       setIsLoading(false);
     }

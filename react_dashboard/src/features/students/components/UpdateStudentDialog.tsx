@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Camera } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 const studentSchema = z.object({
   first_name: z.string().min(1, 'Le prénom est requis'),
@@ -91,7 +92,7 @@ export function UpdateStudentDialog({ student, open, onOpenChange }: UpdateStude
       onOpenChange(false);
     },
     onError: (error: any) => {
-      setServerError(error.response?.data?.detail || 'Erreur lors de la modification');
+      setServerError(getApiError(error, 'Erreur lors de la modification'));
     }
   });
 

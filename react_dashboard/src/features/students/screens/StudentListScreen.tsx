@@ -36,7 +36,7 @@ import {
   ArrowDown,
   X
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getApiError } from '@/lib/utils';
 
 export default function StudentListScreen() {
   const { getIsAdmin } = useAuthStore();
@@ -64,7 +64,7 @@ export default function StudentListScreen() {
       alert(`${data.deleted} élève(s) supprimé(s) avec succès.`);
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || 'Erreur lors de la suppression groupée.');
+      alert(getApiError(err, 'Erreur lors de la suppression groupée.'));
     },
   });
 

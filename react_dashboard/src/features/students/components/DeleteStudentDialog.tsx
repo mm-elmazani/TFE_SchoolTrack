@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { getApiError } from '@/lib/utils';
 
 interface DeleteStudentDialogProps {
   student: Student | null;
@@ -29,7 +30,7 @@ export function DeleteStudentDialog({ student, open, onOpenChange }: DeleteStude
       onOpenChange(false);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de la suppression');
+      setError(getApiError(err, 'Erreur lors de la suppression'));
     }
   });
 

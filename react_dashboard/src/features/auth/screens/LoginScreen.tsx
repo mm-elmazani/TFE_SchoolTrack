@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck, GraduationCap } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -46,7 +47,7 @@ export default function LoginScreen() {
       setAuth(access_token, refresh_token, user);
       navigate(`/${schoolSlug}/students`, { replace: true });
     } catch (err: any) {
-      const detail = err.response?.data?.detail || '';
+      const detail = getApiError(err);
       if (detail === '2FA_REQUIRED' || detail === '2FA_REQUIRED_EMAIL') {
         setNeeds2FA(true);
         setTwoFAMethod(detail === '2FA_REQUIRED_EMAIL' ? 'EMAIL' : 'APP');

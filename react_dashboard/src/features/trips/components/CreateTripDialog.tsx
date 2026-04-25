@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, MapPin, Calendar, School, CheckSquare, Square } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getApiError } from '@/lib/utils';
 
 const tripSchema = z.object({
   destination: z.string().min(1, 'La destination est requise'),
@@ -73,7 +73,7 @@ export function CreateTripDialog({ open, onOpenChange }: CreateTripDialogProps) 
       onOpenChange(false);
     },
     onError: (error: any) => {
-      const detail = error.response?.data?.detail;
+      const detail = getApiError(error);
       if (Array.isArray(detail)) {
         setServerError(detail[0]?.msg || 'Erreur de validation');
       } else {

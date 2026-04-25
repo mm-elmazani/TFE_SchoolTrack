@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 const classSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
@@ -54,7 +55,7 @@ export function UpdateClassDialog({ cls, open, onOpenChange }: UpdateClassDialog
       onOpenChange(false);
     },
     onError: (error: any) => {
-      const detail = error.response?.data?.detail;
+      const detail = getApiError(error);
       if (Array.isArray(detail)) {
         setServerError(detail[0]?.msg || 'Erreur de validation');
       } else {

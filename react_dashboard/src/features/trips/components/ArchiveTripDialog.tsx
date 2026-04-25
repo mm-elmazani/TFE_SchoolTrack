@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { getApiError } from '@/lib/utils';
 
 interface ArchiveTripDialogProps {
   trip: Trip | null;
@@ -29,7 +30,7 @@ export function ArchiveTripDialog({ trip, open, onOpenChange }: ArchiveTripDialo
       onOpenChange(false);
     },
     onError: (err: any) => {
-      setError(err.response?.data?.detail || 'Erreur lors de l\'archivage');
+      setError(getApiError(err, "Erreur lors de l'archivage"));
     }
   });
 

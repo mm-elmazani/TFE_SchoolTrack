@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { getApiError } from '@/lib/utils';
 
 interface DeleteClassDialogProps {
   cls: Class | null;
@@ -29,7 +30,7 @@ export function DeleteClassDialog({ cls, open, onOpenChange }: DeleteClassDialog
       onOpenChange(false);
     },
     onError: (error: any) => {
-      setServerError(error.response?.data?.detail || 'Erreur lors de la suppression');
+      setServerError(getApiError(error, 'Erreur lors de la suppression'));
     }
   });
 

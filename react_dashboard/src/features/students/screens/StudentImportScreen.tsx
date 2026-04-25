@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useSchoolPath } from '@/hooks/useSchoolPath';
 import { Upload, FileText, X, CheckCircle2, AlertCircle, ArrowLeft, Loader2, Download } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getApiError } from '@/lib/utils';
 
 const CSV_TEMPLATE = 'nom;prenom;email;classe\nDupont;Jean;jean.dupont@ecole.be;3A\nMartin;Marie;marie.martin@ecole.be;3B\n';
 
@@ -74,7 +74,7 @@ export default function StudentImportScreen() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
     onError: (error: any) => {
-      setErrorMsg(error.response?.data?.detail || 'Une erreur est survenue lors de l\'importation');
+      setErrorMsg(getApiError(error, "Une erreur est survenue lors de l'importation"));
       setSuccessData(null);
     },
   });
