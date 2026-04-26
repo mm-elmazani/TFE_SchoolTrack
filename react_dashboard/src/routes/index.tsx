@@ -12,6 +12,7 @@ import ClassListScreen from '@/features/classes/screens/ClassListScreen';
 import ClassDetailScreen from '@/features/classes/screens/ClassDetailScreen';
 import UserListScreen from '@/features/users/screens/UserListScreen';
 import AuditLogScreen from '@/features/audit/screens/AuditLogScreen';
+import SyncScreen from '@/features/sync/screens/SyncScreen';
 import TokenManagementScreen from '@/features/tokens/screens/TokenManagementScreen';
 import TokenStockScreen from '@/features/tokens/screens/TokenStockScreen';
 import AlertScreen from '@/features/alerts/screens/AlertScreen';
@@ -128,6 +129,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requireAdmin>
             <AuditLogScreen />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'sync',
+        element: (
+          <ProtectedRoute requireAdmin>
+            <SyncScreen />
           </ProtectedRoute>
         ),
       },

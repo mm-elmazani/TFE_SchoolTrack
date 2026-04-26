@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   Package,
   Bell,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -43,6 +44,7 @@ export default function AppScaffold() {
     { label: 'Stock Bracelets', path: `${base}/tokens/stock`, icon: Package },
     { label: 'Utilisateurs', path: `${base}/users`, icon: UserCog },
     { label: 'Logs d\'Audit', path: `${base}/audit`, icon: ShieldCheck },
+    { label: 'Supervision Sync', path: `${base}/sync`, icon: RefreshCw },
   ];
 
   const isActive = (path: string) =>
