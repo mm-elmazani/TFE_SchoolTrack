@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { syncApi, SyncLogItem } from '../api/syncApi';
+import { syncApi } from '../api/syncApi';
+import type { SyncLogItem } from '../api/syncApi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
