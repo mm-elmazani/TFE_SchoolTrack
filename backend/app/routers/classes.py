@@ -133,11 +133,16 @@ def list_class_students(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retourne les IDs des élèves assignés à une classe."""
+    """Retourne les IDs des élèves assignés à une classe (même école, hors élèves supprimés)."""
     from sqlalchemy import select
     from app.models.school_class import ClassStudent
+    from app.models.student import Student
     ids = db.execute(
-        select(ClassStudent.student_id).where(ClassStudent.class_id == class_id)
+        select(ClassStudent.student_id)
+        .join(Student, Student.id == ClassStudent.student_id)
+        .where(ClassStudent.class_id == class_id)
+        .where(Student.school_id == current_user.school_id)
+        .where(Student.is_deleted == False)  # noqa: E712
     ).scalars().all()
     return ids
 

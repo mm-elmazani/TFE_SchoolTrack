@@ -202,7 +202,7 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
 
     # Classes explicitement sélectionnées pour le voyage (trip_classes)
     class_rows = db.execute(
-        select(SchoolClass.name, func.count(TripStudent.student_id).label("cnt"))
+        select(SchoolClass.id, SchoolClass.name, SchoolClass.year, func.count(TripStudent.student_id).label("cnt"))
         .join(TripClass, TripClass.class_id == SchoolClass.id)
         .outerjoin(ClassStudent, ClassStudent.class_id == SchoolClass.id)
         .outerjoin(
@@ -213,11 +213,11 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
             ),
         )
         .where(TripClass.trip_id == trip.id)
-        .group_by(SchoolClass.id, SchoolClass.name)
+        .group_by(SchoolClass.id, SchoolClass.name, SchoolClass.year)
         .order_by(SchoolClass.name)
     ).all()
 
-    classes = [ClassSummary(name=row.name, student_count=row.cnt) for row in class_rows]
+    classes = [ClassSummary(id=row.id, name=row.name, year=row.year, student_count=row.cnt) for row in class_rows]
 
     return TripResponse(
         id=trip.id,

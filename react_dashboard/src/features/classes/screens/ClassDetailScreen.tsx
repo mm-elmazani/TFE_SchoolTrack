@@ -161,7 +161,7 @@ export default function ClassDetailScreen() {
                 {cls.year || 'Année non spécifiée'}
               </Badge>
               <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Users className="w-3 h-3" /> {cls.nb_students} élèves
+                <Users className="w-3 h-3" /> {enrolledStudents.length} élèves
               </span>
             </div>
           </div>
@@ -329,7 +329,7 @@ export default function ClassDetailScreen() {
                   </div>
                   <div>
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Effectif Total</p>
-                    <p className="text-2xl font-black text-schooltrack-primary">{cls.nb_students}</p>
+                    <p className="text-2xl font-black text-schooltrack-primary">{enrolledStudents.length}</p>
                   </div>
                 </div>
                 

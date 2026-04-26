@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.school_class import ClassStudent, ClassTeacher, SchoolClass
+from app.models.student import Student
 from app.models.trip import Trip, TripStudent
 from app.schemas.school_class import (
     ClassCreate,
@@ -255,7 +256,10 @@ def _to_response(db: Session, school_class: SchoolClass) -> ClassResponse:
     nb_students = db.execute(
         select(func.count())
         .select_from(ClassStudent)
+        .join(Student, Student.id == ClassStudent.student_id)
         .where(ClassStudent.class_id == school_class.id)
+        .where(Student.school_id == school_class.school_id)
+        .where(Student.is_deleted == False)  # noqa: E712
     ).scalar() or 0
 
     nb_teachers = db.execute(

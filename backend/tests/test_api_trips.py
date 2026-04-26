@@ -28,7 +28,7 @@ def make_trip_response(**kwargs) -> TripResponse:
         description=kwargs.get("description", None),
         status=kwargs.get("status", "PLANNED"),
         total_students=kwargs.get("total_students", 5),
-        classes=kwargs.get("classes", [ClassSummary(name="3B", student_count=5)]),
+        classes=kwargs.get("classes", [ClassSummary(id=uuid.uuid4(), name="3B", year=None, student_count=5)]),
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
