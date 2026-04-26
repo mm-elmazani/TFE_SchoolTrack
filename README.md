@@ -4,6 +4,7 @@
 > TFE — Bachelier en Technologies de l'Informatique · EPHEC · 2025-2026  
 > Développeur : Mohamed Mokhtar El Mazani
 
+[![CI](https://github.com/mm-elmazani/TFE_SchoolTrack/actions/workflows/ci.yml/badge.svg)](https://github.com/mm-elmazani/TFE_SchoolTrack/actions/workflows/ci.yml)
 ![Flutter](https://img.shields.io/badge/Flutter-3.11-blue?logo=flutter)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)

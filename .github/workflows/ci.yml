@@ -29,10 +29,10 @@ jobs:
       - name: Installer les dépendances
         run: pip install -r requirements.txt
 
-      - name: Lancer pytest
+      - name: Lancer pytest + vérification couverture 80%
         env:
           MEDIA_DIR: /tmp/schooltrack-media
-        run: pytest
+        run: pytest --cov=app --cov-fail-under=80
 
   # ----------------------------------------------------------------
   # Job 2 — Tests React (vitest)
