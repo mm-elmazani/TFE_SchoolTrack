@@ -132,11 +132,10 @@ class _ScanScreenState extends State<ScanScreen> {
             onPressed: () => nav.pop(false),
             child: const Text('Annuler'),
           ),
-          FilledButton.icon(
+          FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.orange),
             onPressed: () => nav.pop(true),
-            icon: const Icon(Icons.lock_outline, size: 18),
-            label: const Text('Clôturer'),
+            child: const Text('Clôturer'),
           ),
         ],
       ),
@@ -241,12 +240,14 @@ class _ScanScreenState extends State<ScanScreen> {
             'tripDestination': widget.tripDestination,
           }),
         ),
-        // Bouton clôturer checkpoint (US 2.7)
-        if (!provider.isClosed)
-          IconButton(
-            icon: const Icon(Icons.lock_outline),
-            tooltip: 'Clôturer le checkpoint',
+        // Bouton clôturer checkpoint (US 2.7) — visible uniquement sur ACTIVE
+        if (provider.checkpointStatus == 'ACTIVE')
+          TextButton(
             onPressed: () => _showCloseDialog(context),
+            child: const Text(
+              'Clôturer',
+              style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+            ),
           ),
         const SizedBox(width: 8),
       ],
