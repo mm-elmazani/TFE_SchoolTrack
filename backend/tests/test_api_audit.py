@@ -18,7 +18,7 @@ from app.models.user import User
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
-def _make_user(role: str = "DIRECTION") -> User:
+def _make_user(role: str = "DIRECTION", school_id: uuid.UUID | None = None) -> User:
     user = User()
     user.id = uuid.uuid4()
     user.email = f"{role.lower()}@schooltrack.be"
@@ -26,6 +26,7 @@ def _make_user(role: str = "DIRECTION") -> User:
     user.first_name = "Test"
     user.last_name = role.title()
     user.role = role
+    user.school_id = school_id or uuid.uuid4()
     user.totp_secret = None
     user.is_2fa_enabled = False
     user.failed_attempts = 0
@@ -315,3 +316,41 @@ class TestAuditExport:
         client, _ = admin_tech_client
         resp = client.get("/api/v1/audit/logs/export")
         assert resp.status_code == 200
+
+
+# ── Tests isolation multi-tenant (US 6.6) ────────────────────────────────
+
+class TestAuditMultiTenancy:
+    """Verifie qu'aucun role ne peut voir les logs d'une autre ecole."""
+
+    def test_direction_filters_by_school_id(self, direction_client):
+        client, mock_db = direction_client
+        resp = client.get("/api/v1/audit/logs")
+        assert resp.status_code == 200
+        # Tous les appels execute() doivent contenir school_id dans les params
+        for call in mock_db.execute.call_args_list:
+            params = call[0][1]
+            assert "school_id" in params, (
+                "DIRECTION sans filtre school_id — fuite multi-tenant"
+            )
+
+    def test_admin_tech_filters_by_school_id(self, admin_tech_client):
+        """Garde-fou contre la regression du bug 'vision globale ADMIN_TECH'.
+        Avant le fix de 2026-04-27, ADMIN_TECH bypassait le filtre school_id."""
+        client, mock_db = admin_tech_client
+        resp = client.get("/api/v1/audit/logs")
+        assert resp.status_code == 200
+        for call in mock_db.execute.call_args_list:
+            params = call[0][1]
+            assert "school_id" in params, (
+                "ADMIN_TECH sans filtre school_id — fuite multi-tenant"
+            )
+
+    def test_export_admin_tech_filters_by_school_id(self, admin_tech_client):
+        client, mock_db = admin_tech_client
+        resp = client.get("/api/v1/audit/logs/export")
+        assert resp.status_code == 200
+        # L'export fait au moins un execute() data + un log_audit() — verifier
+        # que le SELECT principal (premier appel) inclut school_id.
+        first_call_params = mock_db.execute.call_args_list[0][0][1]
+        assert "school_id" in first_call_params

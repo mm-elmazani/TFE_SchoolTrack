@@ -36,12 +36,13 @@ def _build_where(
     current_user: Optional[User] = None,
 ) -> tuple[str, dict]:
     """Retourne (where_sql, params) a partir des filtres optionnels.
-    Filtre par school_id sauf pour ADMIN_TECH (vision globale)."""
+    Isolation multi-tenant US 6.6 : tous les roles (y compris ADMIN_TECH)
+    sont scope a l'ecole de leur JWT. Acces global uniquement via SSH+psql."""
     clauses: list[str] = []
     params: dict = {}
 
-    # Isolation par ecole : DIRECTION ne voit que les logs de son ecole
-    if current_user and current_user.role != "ADMIN_TECH":
+    # Isolation par ecole pour tous les roles authentifies.
+    if current_user is not None:
         clauses.append("u.school_id = :school_id")
         params["school_id"] = str(current_user.school_id)
 
