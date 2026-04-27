@@ -51,16 +51,25 @@ class ScanProvider extends ChangeNotifier {
   final String checkpointId;
   final HybridIdentityReader _reader;
 
-  /// null = mode silencieux (tests unitaires).
-  final AudioPlayer? _audio;
+  // Trois players dédiés avec sources pré-chargées : sans cela, des scans
+  // rapides en série voient leur play() avalé pendant que le decoder MP3
+  // charge encore l'asset précédent (bug rapporté en voyage réel).
+  // null = mode silencieux (tests unitaires).
+  final AudioPlayer? _successPlayer;
+  final AudioPlayer? _warningPlayer;
+  final AudioPlayer? _errorPlayer;
+  bool _audioReady = false;
 
-  /// [audioPlayer] peut être injecté pour les tests (évite les appels platform channel).
-  /// En production, passer explicitement [AudioPlayer()].
+  /// [audioPlayer] peut être injecté pour les tests (null = mode silencieux).
+  /// En production, passer explicitement [AudioPlayer()] : deux players
+  /// supplémentaires sont alors créés en interne pour les sons warning/error.
   ScanProvider({
     required this.tripId,
     required this.checkpointId,
     AudioPlayer? audioPlayer,
-  })  : _audio = audioPlayer,
+  })  : _successPlayer = audioPlayer,
+        _warningPlayer = audioPlayer != null ? AudioPlayer() : null,
+        _errorPlayer = audioPlayer != null ? AudioPlayer() : null,
         _reader = HybridIdentityReader(
           tripId: tripId,
           checkpointId: checkpointId,
@@ -124,7 +133,9 @@ class ScanProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _reader.dispose();
-    _audio?.dispose();
+    _successPlayer?.dispose();
+    _warningPlayer?.dispose();
+    _errorPlayer?.dispose();
     super.dispose();
   }
 
@@ -169,8 +180,33 @@ class ScanProvider extends ChangeNotifier {
     }
     _presentCount = _presentMap.length;
 
+    await _initAudio();
+
     _state = ScanState.idle;
     notifyListeners();
+  }
+
+  /// Pré-charge les 3 sources audio pour éviter le décodage à chaque scan.
+  /// Sans ce pré-chargement, des scans rapides en série peuvent voir leur
+  /// son avalé pendant que le decoder MP3 charge encore l'asset précédent.
+  Future<void> _initAudio() async {
+    final success = _successPlayer;
+    final warning = _warningPlayer;
+    final error = _errorPlayer;
+    if (success == null || warning == null || error == null) return;
+    try {
+      await success.setReleaseMode(ReleaseMode.stop);
+      await warning.setReleaseMode(ReleaseMode.stop);
+      await error.setReleaseMode(ReleaseMode.stop);
+
+      await success.setSource(AssetSource('sounds/beep_success.mp3'));
+      await warning.setSource(AssetSource('sounds/beep_warning.mp3'));
+      await error.setSource(AssetSource('sounds/beep_error.mp3'));
+
+      _audioReady = true;
+    } catch (e, st) {
+      debugPrint('ScanProvider: audio init failed: $e\n$st');
+    }
   }
 
   /// Démarre la session NFC séparément.
@@ -382,25 +418,25 @@ class ScanProvider extends ChangeNotifier {
   // ----------------------------------------------------------------
 
   Future<void> _playSuccessSound(bool isDuplicate) async {
-    if (_audio == null) return;
-    try {
-      if (isDuplicate) {
-        // Bip court double pour doublon
-        await _audio.play(AssetSource('sounds/beep_warning.mp3'));
-      } else {
-        await _audio.play(AssetSource('sounds/beep_success.mp3'));
-      }
-    } catch (_) {
-      // Son non disponible (fichiers assets manquants) — mode silencieux
-    }
+    if (!_audioReady) return;
+    final player = isDuplicate ? _warningPlayer! : _successPlayer!;
+    await _restart(player);
   }
 
   Future<void> _playErrorSound() async {
-    if (_audio == null) return;
+    if (!_audioReady) return;
+    await _restart(_errorPlayer!);
+  }
+
+  /// Replay rapide d'un son pré-chargé : seek(0) + resume().
+  /// Évite le décodage à chaque appel et permet aux scans rapides en série
+  /// de toujours déclencher un bip audible (bug rapporté en voyage réel).
+  Future<void> _restart(AudioPlayer player) async {
     try {
-      await _audio.play(AssetSource('sounds/beep_error.mp3'));
-    } catch (_) {
-      // Mode silencieux si assets manquants
+      await player.seek(Duration.zero);
+      await player.resume();
+    } catch (e) {
+      debugPrint('ScanProvider: audio play failed: $e');
     }
   }
 }
