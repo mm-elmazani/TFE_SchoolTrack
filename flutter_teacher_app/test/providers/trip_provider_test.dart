@@ -2,6 +2,7 @@
 /// Utilise un FakeApiClient et une LocalDb en mémoire pour isoler la logique.
 library;
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter_teacher_app/core/api/api_client.dart';
@@ -230,4 +231,98 @@ void main() {
       expect(provider.downloadStateOf('trip-inconnu'), DownloadState.idle);
     });
   });
+
+  // ----------------------------------------------------------------
+  // Auto-refresh
+  // ----------------------------------------------------------------
+
+  group('TripProvider.autoRefresh', () {
+    test('isAutoRefreshActive est false par defaut', () {
+      final provider = TripProvider(
+        api: FakeApiClient(),
+        db: LocalDb.instance,
+      );
+      expect(provider.isAutoRefreshActive, isFalse);
+    });
+
+    test('startAutoRefresh active le timer', () {
+      final provider = TripProvider(
+        api: FakeApiClient(),
+        db: LocalDb.instance,
+      );
+      provider.startAutoRefresh(interval: const Duration(seconds: 1));
+      expect(provider.isAutoRefreshActive, isTrue);
+      provider.stopAutoRefresh();
+    });
+
+    test('stopAutoRefresh annule le timer', () {
+      final provider = TripProvider(
+        api: FakeApiClient(),
+        db: LocalDb.instance,
+      );
+      provider.startAutoRefresh(interval: const Duration(seconds: 1));
+      provider.stopAutoRefresh();
+      expect(provider.isAutoRefreshActive, isFalse);
+    });
+
+    test('startAutoRefresh est idempotent (annule l\'ancien timer)', () {
+      final provider = TripProvider(
+        api: FakeApiClient(),
+        db: LocalDb.instance,
+      );
+      provider.startAutoRefresh(interval: const Duration(seconds: 1));
+      // Deuxieme appel : doit redemarrer proprement sans crash.
+      provider.startAutoRefresh(interval: const Duration(seconds: 2));
+      expect(provider.isAutoRefreshActive, isTrue);
+      provider.stopAutoRefresh();
+    });
+
+    test('dispose annule le timer auto-refresh', () {
+      final provider = TripProvider(
+        api: FakeApiClient(),
+        db: LocalDb.instance,
+      );
+      provider.startAutoRefresh(interval: const Duration(seconds: 1));
+      provider.dispose();
+      expect(provider.isAutoRefreshActive, isFalse);
+    });
+
+    test('le timer declenche un loadTrips apres l\'intervalle', () {
+      fakeAsync((async) {
+        var callCount = 0;
+        final api = _CountingFakeApi(onGetTrips: () => callCount++);
+        final provider = TripProvider(
+          api: api,
+          db: LocalDb.instance,
+        );
+
+        provider.startAutoRefresh(interval: const Duration(seconds: 30));
+        async.elapse(const Duration(seconds: 30));
+        // Laisse les Future async terminer
+        async.flushMicrotasks();
+
+        expect(callCount, 1, reason: 'loadTrips doit avoir ete appele 1 fois');
+
+        async.elapse(const Duration(seconds: 30));
+        async.flushMicrotasks();
+        expect(callCount, 2, reason: 'loadTrips doit avoir ete appele 2 fois');
+
+        provider.stopAutoRefresh();
+      });
+    });
+  });
+}
+
+/// FakeApi qui compte les appels a getTrips (pour tester l'auto-refresh).
+class _CountingFakeApi extends ApiClient {
+  final void Function() onGetTrips;
+
+  _CountingFakeApi({required this.onGetTrips})
+      : super(baseUrl: 'http://fake.local');
+
+  @override
+  Future<List<TripSummary>> getTrips() async {
+    onGetTrips();
+    return const [];
+  }
 }

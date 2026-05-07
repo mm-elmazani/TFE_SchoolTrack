@@ -15,13 +15,60 @@ import '../../auth/providers/auth_provider.dart';
 import '../providers/trip_provider.dart';
 import '../models/offline_bundle.dart';
 
-class TripListScreen extends StatelessWidget {
+/// Ecran de liste des voyages avec auto-refresh periodique.
+///
+/// Le provider [TripProvider] est cree dans [initState] pour pouvoir
+/// piloter son lifecycle (auto-refresh on/off selon l'etat de l'app).
+class TripListScreen extends StatefulWidget {
   const TripListScreen({super.key});
 
   @override
+  State<TripListScreen> createState() => _TripListScreenState();
+}
+
+class _TripListScreenState extends State<TripListScreen>
+    with WidgetsBindingObserver {
+  late final TripProvider _provider;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _provider = TripProvider();
+    // Premier chargement + activation de l'auto-refresh.
+    _provider.loadTrips();
+    _provider.startAutoRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _provider.dispose(); // arrete aussi le timer interne
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // Retour au premier plan : refresh immediat puis reprise du timer.
+        _provider.loadTrips();
+        _provider.startAutoRefresh();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // App en arriere-plan : pause de l'auto-refresh (economie batterie).
+        _provider.stopAutoRefresh();
+        break;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TripProvider()..loadTrips(),
+    return ChangeNotifierProvider.value(
+      value: _provider,
       child: const _TripListBody(),
     );
   }
