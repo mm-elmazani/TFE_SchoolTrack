@@ -11,6 +11,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app.schemas.school_class import ClassCreate, ClassStudentsAssign, ClassTeachersAssign, ClassUpdate
 from app.services.class_service import (
+    _remove_trip_students_for_class,
+    _sync_trip_students_for_class,
     assign_students,
     assign_teachers,
     create_class,
@@ -168,3 +170,122 @@ def test_remove_teacher_existant():
     assert result is True
     db.delete.assert_called_once_with(link)
     db.commit.assert_called_once()
+
+
+# --- Propagation aux voyages PLANNED/ACTIVE (bug fix) ---
+
+def test_sync_trip_students_for_class_aucun_eleve():
+    """Liste vide → no-op, aucun execute lance."""
+    db = MagicMock()
+    _sync_trip_students_for_class(db, uuid.uuid4(), [])
+    db.execute.assert_not_called()
+
+
+def test_sync_trip_students_for_class_aucun_voyage_actif():
+    """Aucun voyage PLANNED/ACTIVE → no bulk_insert."""
+    db = MagicMock()
+    # 1er execute() = lookup voyages → vide
+    db.execute.return_value.scalars.return_value.all.return_value = []
+    _sync_trip_students_for_class(db, uuid.uuid4(), [uuid.uuid4()])
+    db.bulk_insert_mappings.assert_not_called()
+
+
+def test_sync_trip_students_for_class_propage_aux_voyages_actifs():
+    """Voyages PLANNED/ACTIVE trouves → bulk insert dans trip_students."""
+    db = MagicMock()
+    trip_id = uuid.uuid4()
+    student_id = uuid.uuid4()
+
+    # Resultats successifs : 1) voyages trouves, 2) liens existants vides
+    scalars_all = MagicMock()
+    scalars_all.all.return_value = [trip_id]
+    all_method = MagicMock(return_value=[])
+
+    call_count = {"n": 0}
+
+    def execute_side_effect(*args, **kwargs):
+        call_count["n"] += 1
+        result = MagicMock()
+        if call_count["n"] == 1:
+            # SELECT trip ids
+            result.scalars.return_value = scalars_all
+        else:
+            # SELECT existing trip_id+student_id
+            result.all = all_method
+        return result
+
+    db.execute.side_effect = execute_side_effect
+
+    _sync_trip_students_for_class(db, uuid.uuid4(), [student_id])
+
+    # Verification : bulk_insert_mappings appele avec une ligne (trip_id, student_id)
+    db.bulk_insert_mappings.assert_called_once()
+    rows = db.bulk_insert_mappings.call_args[0][1]
+    assert len(rows) == 1
+    assert rows[0] == {"trip_id": trip_id, "student_id": student_id}
+
+
+def test_sync_trip_students_for_class_idempotent_si_lien_existe():
+    """Si le lien (trip_id, student_id) existe deja → pas de bulk insert."""
+    db = MagicMock()
+    trip_id = uuid.uuid4()
+    student_id = uuid.uuid4()
+
+    scalars_all = MagicMock()
+    scalars_all.all.return_value = [trip_id]
+    # Le lien existe deja
+    all_method = MagicMock(return_value=[(trip_id, student_id)])
+
+    call_count = {"n": 0}
+
+    def execute_side_effect(*args, **kwargs):
+        call_count["n"] += 1
+        result = MagicMock()
+        if call_count["n"] == 1:
+            result.scalars.return_value = scalars_all
+        else:
+            result.all = all_method
+        return result
+
+    db.execute.side_effect = execute_side_effect
+
+    _sync_trip_students_for_class(db, uuid.uuid4(), [student_id])
+    db.bulk_insert_mappings.assert_not_called()
+
+
+def test_remove_trip_students_for_class_aucun_voyage_actif():
+    """Aucun voyage PLANNED/ACTIVE → no delete."""
+    db = MagicMock()
+    db.execute.return_value.scalars.return_value.all.return_value = []
+    _remove_trip_students_for_class(db, uuid.uuid4(), uuid.uuid4())
+    db.delete.assert_not_called()
+
+
+def test_remove_trip_students_for_class_supprime_les_liens():
+    """Voyages actifs trouves + liens existants → delete chaque lien."""
+    db = MagicMock()
+    trip_id = uuid.uuid4()
+    student_id = uuid.uuid4()
+    fake_link1 = MagicMock()
+    fake_link2 = MagicMock()
+
+    call_count = {"n": 0}
+
+    def execute_side_effect(*args, **kwargs):
+        call_count["n"] += 1
+        result = MagicMock()
+        if call_count["n"] == 1:
+            # SELECT trip ids
+            result.scalars.return_value.all.return_value = [trip_id]
+        else:
+            # SELECT TripStudent links
+            result.scalars.return_value.all.return_value = [fake_link1, fake_link2]
+        return result
+
+    db.execute.side_effect = execute_side_effect
+
+    _remove_trip_students_for_class(db, uuid.uuid4(), student_id)
+
+    assert db.delete.call_count == 2
+    db.delete.assert_any_call(fake_link1)
+    db.delete.assert_any_call(fake_link2)

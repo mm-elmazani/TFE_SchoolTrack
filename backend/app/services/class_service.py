@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models.school_class import ClassStudent, ClassTeacher, SchoolClass
 from app.models.student import Student
-from app.models.trip import Trip, TripStudent
+from app.models.trip import Trip, TripClass, TripStudent
 from app.schemas.school_class import (
     ClassCreate,
     ClassResponse,
@@ -142,6 +142,86 @@ def delete_class(
     return True
 
 
+def _sync_trip_students_for_class(
+    db: Session,
+    class_id: uuid.UUID,
+    student_ids_added: list[uuid.UUID],
+) -> None:
+    """Ajoute les eleves dans `trip_students` pour les voyages PLANNED/ACTIVE
+    lies a cette classe via `trip_classes`.
+
+    Idempotent : ignore les liens existants. Ne touche pas aux voyages
+    COMPLETED/ARCHIVED (preserve l'historique des presences).
+    """
+    if not student_ids_added:
+        return
+
+    # Voyages encore modifiables lies a cette classe
+    trip_ids = db.execute(
+        select(Trip.id)
+        .join(TripClass, TripClass.trip_id == Trip.id)
+        .where(
+            TripClass.class_id == class_id,
+            Trip.status.in_(["PLANNED", "ACTIVE"]),
+        )
+    ).scalars().all()
+
+    if not trip_ids:
+        return
+
+    # Liens deja presents pour eviter doublons (composite unique trip_id+student_id)
+    existing = set(db.execute(
+        select(TripStudent.trip_id, TripStudent.student_id)
+        .where(
+            TripStudent.trip_id.in_(trip_ids),
+            TripStudent.student_id.in_(student_ids_added),
+        )
+    ).all())
+
+    rows = []
+    for tid in trip_ids:
+        for sid in student_ids_added:
+            if (tid, sid) in existing:
+                continue
+            rows.append({"trip_id": tid, "student_id": sid})
+
+    if rows:
+        db.bulk_insert_mappings(TripStudent, rows)
+
+
+def _remove_trip_students_for_class(
+    db: Session,
+    class_id: uuid.UUID,
+    student_id: uuid.UUID,
+) -> None:
+    """Retire un eleve des `trip_students` pour les voyages PLANNED/ACTIVE
+    lies a cette classe via `trip_classes`.
+
+    Ne touche pas aux voyages COMPLETED/ARCHIVED (historique).
+    """
+    trip_ids = db.execute(
+        select(Trip.id)
+        .join(TripClass, TripClass.trip_id == Trip.id)
+        .where(
+            TripClass.class_id == class_id,
+            Trip.status.in_(["PLANNED", "ACTIVE"]),
+        )
+    ).scalars().all()
+
+    if not trip_ids:
+        return
+
+    links = db.execute(
+        select(TripStudent).where(
+            TripStudent.trip_id.in_(trip_ids),
+            TripStudent.student_id == student_id,
+        )
+    ).scalars().all()
+
+    for link in links:
+        db.delete(link)
+
+
 def assign_students(
     db: Session,
     class_id: uuid.UUID,
@@ -153,6 +233,10 @@ def assign_students(
     Un élève ne peut appartenir qu'à une seule classe : s'il est déjà dans
     une autre classe, il en est retiré automatiquement avant d'être ajouté.
     Les élèves déjà dans cette classe sont ignorés (pas de doublon).
+
+    Effet de bord : les eleves ajoutes sont aussi inseres dans `trip_students`
+    pour tous les voyages PLANNED/ACTIVE lies a cette classe (les voyages
+    COMPLETED/ARCHIVED ne sont pas modifies — historique preserve).
     """
     school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
@@ -165,6 +249,7 @@ def assign_students(
     ).scalars().all())
 
     to_insert = []
+    newly_added_ids: list[uuid.UUID] = []
     for sid in data.student_ids:
         if sid in existing:
             continue
@@ -175,10 +260,13 @@ def assign_students(
         for old_link in old_links:
             db.delete(old_link)
         to_insert.append({"class_id": class_id, "student_id": sid})
+        newly_added_ids.append(sid)
 
     if to_insert:
         db.flush()  # S'assurer que les DELETE sont envoyés avant les INSERT
         db.bulk_insert_mappings(ClassStudent, to_insert)
+        # Propagation aux voyages PLANNED/ACTIVE lies a cette classe
+        _sync_trip_students_for_class(db, class_id, newly_added_ids)
         db.commit()
 
     return _to_response(db, school_class)
@@ -190,7 +278,12 @@ def remove_student(
     student_id: uuid.UUID,
     school_id: Optional[uuid.UUID] = None,
 ) -> bool:
-    """Retire un élève d'une classe. Retourne True si retiré, False si lien inexistant."""
+    """Retire un élève d'une classe. Retourne True si retiré, False si lien inexistant.
+
+    Effet de bord : l'eleve est aussi retire des voyages PLANNED/ACTIVE lies
+    a cette classe (les voyages COMPLETED/ARCHIVED ne sont pas modifies —
+    historique preserve).
+    """
     # Vérifier d'abord que la classe appartient à l'école (sinon 404)
     if _get_owned_class(db, class_id, school_id) is None:
         return False
@@ -198,6 +291,8 @@ def remove_student(
     if link is None:
         return False
     db.delete(link)
+    # Nettoyer trip_students pour les voyages encore modifiables
+    _remove_trip_students_for_class(db, class_id, student_id)
     db.commit()
     return True
 

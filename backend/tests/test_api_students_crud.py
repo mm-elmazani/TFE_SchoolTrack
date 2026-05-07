@@ -108,6 +108,97 @@ def test_create_student_body_manquant(client):
     assert response.status_code == 422
 
 
+# --- Création avec class_id (Bug fix : assignation auto a la classe) ---
+
+def test_create_student_avec_class_id_succes(client):
+    """class_id fourni + classe existe → 201 et propagation appelee."""
+    sid = uuid.uuid4()
+    cid = uuid.uuid4()
+    student = make_student(id=sid, first_name="Alice", last_name="Bernard")
+    fake_class = MagicMock()
+    fake_class.id = cid
+    fake_class.school_id = _SCHOOL_ID
+
+    # On override get_db pour controler les retours selectifs
+    from app.database import get_db
+    from app.main import app
+
+    mock_db = MagicMock()
+    # 1er execute().scalar_one_or_none() = lookup de la classe → trouvee
+    mock_db.execute.return_value.scalar_one_or_none.return_value = fake_class
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    with patch("app.routers.students.Student") as mock_cls, \
+         patch("app.routers.students.ClassStudent") as mock_link, \
+         patch("app.routers.students.class_service._sync_trip_students_for_class") as mock_sync:
+        mock_cls.return_value = student
+        response = client.post("/api/v1/students", json={
+            "first_name": "Alice",
+            "last_name": "Bernard",
+            "class_id": str(cid),
+        })
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 201
+    # Lien classe-eleve cree
+    mock_link.assert_called_once_with(class_id=cid, student_id=sid)
+    # Propagation aux voyages PLANNED/ACTIVE appelee
+    mock_sync.assert_called_once()
+
+
+def test_create_student_avec_class_id_inexistante(client):
+    """class_id pointant vers une classe inexistante → 404."""
+    cid = uuid.uuid4()
+
+    from app.database import get_db
+    from app.main import app
+
+    mock_db = MagicMock()
+    # Lookup de la classe → introuvable
+    mock_db.execute.return_value.scalar_one_or_none.return_value = None
+    app.dependency_overrides[get_db] = lambda: mock_db
+
+    response = client.post("/api/v1/students", json={
+        "first_name": "Alice",
+        "last_name": "Bernard",
+        "class_id": str(cid),
+    })
+
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 404
+    assert "classe" in response.json()["detail"].lower()
+
+
+def test_create_student_sans_class_id_ne_touche_pas_classes(client):
+    """class_id absent → aucune insertion dans class_students ni propagation."""
+    student = make_student(first_name="Bob", last_name="Marley")
+
+    with patch("app.routers.students.Student") as mock_cls, \
+         patch("app.routers.students.ClassStudent") as mock_link, \
+         patch("app.routers.students.class_service._sync_trip_students_for_class") as mock_sync:
+        mock_cls.return_value = student
+        response = client.post("/api/v1/students", json={
+            "first_name": "Bob",
+            "last_name": "Marley",
+        })
+
+    assert response.status_code == 201
+    mock_link.assert_not_called()
+    mock_sync.assert_not_called()
+
+
+def test_create_student_class_id_uuid_invalide(client):
+    """class_id mal forme → 422."""
+    response = client.post("/api/v1/students", json={
+        "first_name": "Alice",
+        "last_name": "Bernard",
+        "class_id": "pas-un-uuid",
+    })
+    assert response.status_code == 422
+
+
 # ============================================================
 # PUT /api/v1/students/{id}
 # ============================================================

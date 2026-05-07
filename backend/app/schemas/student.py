@@ -9,11 +9,16 @@ from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 
 class StudentCreate(BaseModel):
-    """Schéma de création manuelle d'un élève (POST /students)."""
+    """Schéma de création manuelle d'un élève (POST /students).
+
+    Si `class_id` est fourni, l'élève est immédiatement assigné à cette classe
+    et ajouté aux voyages PLANNED/ACTIVE liés a cette classe.
+    """
     first_name: str
     last_name: str
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    class_id: Optional[uuid.UUID] = None
 
     @field_validator("first_name", "last_name")
     @classmethod

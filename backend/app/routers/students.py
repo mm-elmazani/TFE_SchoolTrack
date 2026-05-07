@@ -19,12 +19,14 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_client_ip, get_current_user, log_audit, require_role
+from app.models.school_class import ClassStudent, SchoolClass
 from app.models.student import Student
 from app.models.user import User
 from app.schemas.student import (
     StudentCreate, StudentGdprExport, StudentImportReport,
     StudentResponse, StudentUpdate,
 )
+from app.services import class_service
 from app.services.student_import import parse_and_import_csv, parse_and_import_excel
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -58,7 +60,23 @@ def create_student(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Crée un élève manuellement (hors import CSV)."""
+    """Crée un élève manuellement (hors import CSV).
+
+    Si `class_id` est fourni, l'élève est immédiatement assigné à cette classe
+    et ajouté aux voyages PLANNED/ACTIVE liés a cette classe.
+    """
+    # Si une classe est demandee, verifier qu'elle existe et appartient a l'ecole
+    target_class: SchoolClass | None = None
+    if data.class_id is not None:
+        target_class = db.execute(
+            select(SchoolClass).where(
+                SchoolClass.id == data.class_id,
+                SchoolClass.school_id == current_user.school_id,
+            )
+        ).scalar_one_or_none()
+        if target_class is None:
+            raise HTTPException(status_code=404, detail="Classe introuvable.")
+
     student = Student(
         first_name=data.first_name,
         last_name=data.last_name,
@@ -67,6 +85,15 @@ def create_student(
         school_id=current_user.school_id,
     )
     db.add(student)
+    db.flush()  # recupere l'id sans committer
+
+    # Lien classe-eleve + propagation aux voyages PLANNED/ACTIVE
+    if target_class is not None:
+        db.add(ClassStudent(class_id=target_class.id, student_id=student.id))
+        class_service._sync_trip_students_for_class(
+            db, target_class.id, [student.id]
+        )
+
     db.commit()
     db.refresh(student)
 
@@ -75,7 +102,11 @@ def create_student(
         resource_type="STUDENT", resource_id=student.id,
         ip_address=get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
-        details={"first_name": data.first_name, "last_name": data.last_name},
+        details={
+            "first_name": data.first_name,
+            "last_name": data.last_name,
+            **({"class_id": str(data.class_id)} if data.class_id else {}),
+        },
     )
 
     return student
