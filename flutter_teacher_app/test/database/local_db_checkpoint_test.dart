@@ -125,6 +125,43 @@ void main() {
       expect(checkpoints.first.status, 'DRAFT');
     });
 
+    // US 2.5 — Description optionnelle
+    test('description sauvegardee et relue depuis SQLite', () async {
+      await LocalDb.instance.saveBundle(_makeBundle());
+
+      final cp = await LocalDb.instance.createCheckpoint(
+        tripId: 'trip-001',
+        name: 'Entree musee',
+        description: 'Verifier les bracelets et compter par classe.',
+      );
+
+      expect(cp.description, 'Verifier les bracelets et compter par classe.');
+
+      // Verifier que la description est persistee et relue depuis SQLite
+      final checkpoints = await LocalDb.instance.getCheckpoints('trip-001');
+      expect(checkpoints.first.description,
+          'Verifier les bracelets et compter par classe.');
+    });
+
+    test('description vide ou null devient null en base', () async {
+      await LocalDb.instance.saveBundle(_makeBundle());
+
+      // Cas 1 : description non fournie
+      final cp1 = await LocalDb.instance.createCheckpoint(
+        tripId: 'trip-001',
+        name: 'Arret 1',
+      );
+      expect(cp1.description, isNull);
+
+      // Cas 2 : description vide (ne doit pas creer une chaine vide)
+      final cp2 = await LocalDb.instance.createCheckpoint(
+        tripId: 'trip-001',
+        name: 'Arret 2',
+        description: '   ',
+      );
+      expect(cp2.description, isNull);
+    });
+
     test('deux créations successives ont des IDs différents', () async {
       await LocalDb.instance.saveBundle(_makeBundle());
 

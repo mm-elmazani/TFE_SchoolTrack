@@ -144,12 +144,14 @@ class SyncService {
     for (final row in pending) {
       final tripId = row['trip_id'] as String;
       final name = row['name'] as String;
+      final description = row['description'] as String?;
       final id = row['id'] as String;
       try {
         final result = await _api.createCheckpoint(
           tripId,
           name,
           clientId: id,
+          description: description,
         );
         if (result != null) {
           await _db.markCheckpointSynced(id);

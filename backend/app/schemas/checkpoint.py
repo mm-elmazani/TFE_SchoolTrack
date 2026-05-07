@@ -7,13 +7,16 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
+
+# Limite alignee avec le frontend mobile et web pour eviter de saturer l'UI.
+DESCRIPTION_MAX_LENGTH = 500
 
 
 class CheckpointCreate(BaseModel):
     """Données nécessaires pour créer un checkpoint sur le terrain."""
     name: str
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
     id: Optional[uuid.UUID] = None  # UUID client pour sync offline (US 3.3)
 
     @field_validator("name")
@@ -27,7 +30,7 @@ class CheckpointCreate(BaseModel):
 class CheckpointUpdate(BaseModel):
     """Modification d'un checkpoint depuis le dashboard web (DRAFT uniquement)."""
     name: str
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
 
     @field_validator("name")
     @classmethod

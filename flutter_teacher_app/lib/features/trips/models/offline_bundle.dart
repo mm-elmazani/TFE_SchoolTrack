@@ -104,12 +104,14 @@ class OfflineStudent {
 class OfflineCheckpoint {
   final String id;
   final String name;
+  final String? description; // US 2.5 — instructions optionnelles
   final int sequenceOrder;
   final String status; // DRAFT, ACTIVE, CLOSED
 
   const OfflineCheckpoint({
     required this.id,
     required this.name,
+    this.description,
     required this.sequenceOrder,
     required this.status,
   });
@@ -118,6 +120,7 @@ class OfflineCheckpoint {
       OfflineCheckpoint(
         id: j['id'] as String,
         name: j['name'] as String,
+        description: j['description'] as String?,
         sequenceOrder: j['sequence_order'] as int,
         status: j['status'] as String,
       );

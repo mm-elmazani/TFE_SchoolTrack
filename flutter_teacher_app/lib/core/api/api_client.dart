@@ -103,10 +103,14 @@ class ApiClient {
     String tripId,
     String name, {
     String? clientId,
+    String? description,
   }) async {
     try {
       final body = <String, dynamic>{'name': name};
       if (clientId != null) body['id'] = clientId;
+      if (description != null && description.trim().isNotEmpty) {
+        body['description'] = description.trim();
+      }
       final response = await _http
           .post(
             Uri.parse('$baseUrl/api/v1/trips/$tripId/checkpoints'),

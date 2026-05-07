@@ -70,7 +70,7 @@ class LocalDb {
     if (testDatabasePath != null) {
       return sqflite_std.openDatabase(
         path,
-        version: 7,
+        version: 8,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
       );
@@ -81,7 +81,7 @@ class LocalDb {
     try {
       return await sqlcipher.openDatabase(
         path,
-        version: 7,
+        version: 8,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -91,7 +91,7 @@ class LocalDb {
       await sqlcipher.deleteDatabase(path);
       return sqlcipher.openDatabase(
         path,
-        version: 7,
+        version: 8,
         password: password,
         onCreate: _onCreate,
         onUpgrade: _onUpgrade,
@@ -151,6 +151,7 @@ class LocalDb {
         id             TEXT NOT NULL,
         trip_id        TEXT NOT NULL,
         name           TEXT NOT NULL,
+        description    TEXT,
         sequence_order INTEGER NOT NULL,
         status         TEXT NOT NULL,
         synced_at      INTEGER,
@@ -283,6 +284,10 @@ class LocalDb {
       // Les checkpoints existants (venus du bundle) sont deja sur le serveur
       await db.execute('UPDATE checkpoints SET synced_at = ${DateTime.now().millisecondsSinceEpoch}');
     }
+    // v7 → v8 : ajout description sur checkpoints (US 2.5 — instructions enseignant)
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE checkpoints ADD COLUMN description TEXT');
+    }
   }
 
   // ----------------------------------------------------------------
@@ -363,6 +368,7 @@ class LocalDb {
           'id': cp.id,
           'trip_id': tripId,
           'name': cp.name,
+          'description': cp.description,
           'sequence_order': cp.sequenceOrder,
           'status': cp.status,
           'synced_at': now,
@@ -682,9 +688,12 @@ class LocalDb {
   /// Génère un UUID client, calcule le prochain sequence_order,
   /// et retourne l'objet créé. Offline-first : la synchronisation
   /// avec le backend se fera via US 3.1.
+  ///
+  /// [description] est optionnelle (US 2.5 — instructions enseignant).
   Future<OfflineCheckpoint> createCheckpoint({
     required String tripId,
     required String name,
+    String? description,
   }) async {
     final db = await database;
     final id = _uuid.v4();
@@ -701,10 +710,16 @@ class LocalDb {
     final nextOrder =
         rows.isEmpty ? 1 : (rows.first['sequence_order'] as int) + 1;
 
+    final cleanedDescription =
+        (description != null && description.trim().isNotEmpty)
+            ? description.trim()
+            : null;
+
     await db.insert('checkpoints', {
       'id': id,
       'trip_id': tripId,
       'name': name,
+      'description': cleanedDescription,
       'sequence_order': nextOrder,
       'status': 'DRAFT',
     });
@@ -712,6 +727,7 @@ class LocalDb {
     return OfflineCheckpoint(
       id: id,
       name: name,
+      description: cleanedDescription,
       sequenceOrder: nextOrder,
       status: 'DRAFT',
     );
@@ -812,6 +828,7 @@ class LocalDb {
     return OfflineCheckpoint(
       id: r['id'] as String,
       name: r['name'] as String,
+      description: r['description'] as String?,
       sequenceOrder: r['sequence_order'] as int,
       status: r['status'] as String,
     );

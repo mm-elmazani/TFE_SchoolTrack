@@ -51,24 +51,33 @@ class _CheckpointSelectionScreenState
 
   /// Ouvre le dialog de création d'un checkpoint (US 2.5).
   Future<void> _showCreateDialog() async {
-    final name = await showDialog<String>(
+    final result = await showDialog<_CheckpointFormResult>(
       context: context,
       builder: (_) => const _CreateCheckpointDialog(),
     );
-    if (name == null || name.isEmpty) return;
+    if (result == null || result.name.isEmpty) return;
+
+    final name = result.name;
+    final description = result.description;
 
     // 1. Créer localement en SQLite (offline-first)
     final created = await LocalDb.instance.createCheckpoint(
       tripId: widget.tripId,
       name: name,
+      description: description,
     );
 
     // 2. Tenter la création sur le backend (best-effort) avec UUID client (US 3.3)
-    _apiClient.createCheckpoint(widget.tripId, name, clientId: created.id).then(
-      (result) {
-        if (result != null) LocalDb.instance.markCheckpointSynced(created.id);
-      },
-    );
+    _apiClient
+        .createCheckpoint(
+          widget.tripId,
+          name,
+          clientId: created.id,
+          description: description,
+        )
+        .then((apiResult) {
+      if (apiResult != null) LocalDb.instance.markCheckpointSynced(created.id);
+    });
 
     // 3. Rafraîchir la liste et sélectionner directement le nouveau checkpoint
     await _load();
@@ -350,7 +359,7 @@ class _CheckpointCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              // Nom + badge statut
+              // Nom + description (US 2.5) + badge statut
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,11 +370,36 @@ class _CheckpointCard extends StatelessWidget {
                             color: isClosed ? Colors.grey : null,
                           ),
                     ),
+                    if (checkpoint.description != null &&
+                        checkpoint.description!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        checkpoint.description!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade600,
+                              height: 1.2,
+                            ),
+                      ),
+                    ],
                     const SizedBox(height: 4),
                     _StatusBadge(status: checkpoint.status),
                   ],
                 ),
               ),
+              // Bouton info (US 2.5) : affiche la description complete
+              if (checkpoint.description != null &&
+                  checkpoint.description!.isNotEmpty)
+                IconButton(
+                  icon: Icon(
+                    Icons.info_outline,
+                    color: Colors.grey.shade600,
+                    size: 20,
+                  ),
+                  tooltip: 'Voir la description',
+                  onPressed: () => _showDescriptionDialog(context, checkpoint),
+                ),
               // Flèche si disponible
               if (!isClosed)
                 Icon(Icons.chevron_right, color: color.onSurfaceVariant),
@@ -375,6 +409,25 @@ class _CheckpointCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Affiche un dialog avec la description complete du checkpoint (US 2.5).
+void _showDescriptionDialog(BuildContext context, OfflineCheckpoint cp) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(cp.name),
+      content: SingleChildScrollView(
+        child: Text(cp.description ?? ''),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Fermer'),
+        ),
+      ],
+    ),
+  );
 }
 
 // ----------------------------------------------------------------
@@ -453,6 +506,16 @@ class _EmptyCheckpoints extends StatelessWidget {
 // Dialog de création d'un checkpoint (US 2.5)
 // ----------------------------------------------------------------
 
+/// Resultat retourne par `_CreateCheckpointDialog`.
+class _CheckpointFormResult {
+  final String name;
+  final String? description;
+  const _CheckpointFormResult({required this.name, this.description});
+}
+
+/// Limite max alignee avec le backend (cf. CheckpointCreate.description).
+const int _kDescriptionMaxLength = 500;
+
 class _CreateCheckpointDialog extends StatefulWidget {
   const _CreateCheckpointDialog();
 
@@ -462,32 +525,79 @@ class _CreateCheckpointDialog extends StatefulWidget {
 }
 
 class _CreateCheckpointDialogState extends State<_CreateCheckpointDialog> {
-  final _controller = TextEditingController();
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
+  void initState() {
+    super.initState();
+    // Rafraichi le compteur de caracteres en bas du champ description.
+    _descriptionController.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
-    _controller.dispose();
+    _nameController.dispose();
+    _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final name = _nameController.text.trim();
+    final desc = _descriptionController.text.trim();
+    Navigator.of(context).pop(_CheckpointFormResult(
+      name: name,
+      description: desc.isEmpty ? null : desc,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
+    final descLength = _descriptionController.text.length;
     return AlertDialog(
       title: const Text('Nouveau checkpoint'),
-      content: Form(
-        key: _formKey,
-        child: TextFormField(
-          controller: _controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Nom du checkpoint',
-            hintText: 'ex : Arrêt bus, Entrée musée…',
-            border: OutlineInputBorder(),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Nom du checkpoint',
+                  hintText: 'ex : Arret bus, Entree musee…',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                textInputAction: TextInputAction.next,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'Nom obligatoire'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 3,
+                maxLength: _kDescriptionMaxLength,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: 'Description (optionnel)',
+                  hintText:
+                      'Instructions, etapes, numero a contacter en cas de probleme…',
+                  border: const OutlineInputBorder(),
+                  helperText: descLength > 0
+                      ? null
+                      : 'Aide les autres enseignants qui passeront a ce point.',
+                  // counterText geree par maxLength
+                ),
+              ),
+            ],
           ),
-          textCapitalization: TextCapitalization.sentences,
-          validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Nom obligatoire' : null,
         ),
       ),
       actions: [
@@ -496,12 +606,8 @@ class _CreateCheckpointDialogState extends State<_CreateCheckpointDialog> {
           child: const Text('Annuler'),
         ),
         FilledButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.of(context).pop(_controller.text.trim());
-            }
-          },
-          child: const Text('Créer'),
+          onPressed: _submit,
+          child: const Text('Creer'),
         ),
       ],
     );
