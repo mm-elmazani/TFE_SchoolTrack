@@ -19,6 +19,7 @@ class LoginRequest(BaseModel):
     password: str
     totp_code: Optional[str] = None
     school_slug: Optional[str] = None
+    remember_me: Optional[bool] = False
 
 
 class RegisterRequest(BaseModel):

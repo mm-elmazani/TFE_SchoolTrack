@@ -100,6 +100,29 @@ class TestJWT:
         assert payload["sub"] == str(user.id)
         assert payload["type"] == "refresh"
         assert "role" not in payload  # le refresh ne contient pas le role
+        assert payload["extended"] is False
+
+    def test_create_refresh_token_default_duration(self):
+        """Sans 'remember_me', le refresh token expire selon la duree par defaut (24h)."""
+        user = make_user()
+        token = create_refresh_token(user)
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        delta = exp - datetime.now(timezone.utc)
+        # Tolerance large : doit etre proche de REFRESH_TOKEN_EXPIRE_MINUTES
+        expected_minutes = settings.REFRESH_TOKEN_EXPIRE_MINUTES
+        assert abs(delta.total_seconds() - expected_minutes * 60) < 60
+
+    def test_create_refresh_token_extended_duration(self):
+        """Avec 'remember_me' coche, le refresh token expire selon la duree etendue (7j)."""
+        user = make_user()
+        token = create_refresh_token(user, extended=True)
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp = datetime.fromtimestamp(payload["exp"], tz=timezone.utc)
+        delta = exp - datetime.now(timezone.utc)
+        expected_minutes = settings.EXTENDED_REFRESH_TOKEN_EXPIRE_MINUTES
+        assert abs(delta.total_seconds() - expected_minutes * 60) < 60
+        assert payload["extended"] is True
 
     def test_decode_token_success(self):
         user = make_user()
@@ -236,8 +259,17 @@ class TestRefreshToken:
         user = make_user()
         db = mock_db_with_user(user)
         token = create_refresh_token(user)
-        result = refresh_access_token(db, token)
-        assert result.email == user.email
+        result_user, extended = refresh_access_token(db, token)
+        assert result_user.email == user.email
+        assert extended is False
+
+    def test_refresh_propagates_extended_flag(self):
+        """Un refresh token cree avec extended=True propage le flag au renouvellement."""
+        user = make_user()
+        db = mock_db_with_user(user)
+        token = create_refresh_token(user, extended=True)
+        _, extended = refresh_access_token(db, token)
+        assert extended is True
 
     def test_refresh_with_access_token_fails(self):
         user = make_user()

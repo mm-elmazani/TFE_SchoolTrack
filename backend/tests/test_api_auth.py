@@ -70,6 +70,45 @@ class TestLogin:
         assert data["user"]["email"] == "test@school.be"
         assert data["user"]["role"] == "TEACHER"
 
+    def test_login_remember_me_extends_refresh_token(self, client):
+        """Quand remember_me=true, le refresh token retourne porte le flag extended."""
+        from jose import jwt
+        from app.config import settings
+
+        user = make_user()
+        with patch("app.routers.auth.authenticate_user", return_value=user):
+            resp = client.post("/api/v1/auth/login", json={
+                "email": "test@school.be",
+                "password": "Test1234!",
+                "remember_me": True,
+            })
+        assert resp.status_code == 200
+        refresh_payload = jwt.decode(
+            resp.json()["refresh_token"],
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        assert refresh_payload["extended"] is True
+
+    def test_login_without_remember_me_default(self, client):
+        """Sans remember_me, le refresh token n'est pas etendu."""
+        from jose import jwt
+        from app.config import settings
+
+        user = make_user()
+        with patch("app.routers.auth.authenticate_user", return_value=user):
+            resp = client.post("/api/v1/auth/login", json={
+                "email": "test@school.be",
+                "password": "Test1234!",
+            })
+        assert resp.status_code == 200
+        refresh_payload = jwt.decode(
+            resp.json()["refresh_token"],
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        assert refresh_payload["extended"] is False
+
     def test_login_wrong_credentials(self, client):
         with patch("app.routers.auth.authenticate_user", side_effect=AuthError("Identifiants invalides")):
             resp = client.post("/api/v1/auth/login", json={
@@ -194,7 +233,8 @@ class TestRegister:
 class TestRefresh:
     def test_refresh_success(self, client):
         user = make_user()
-        with patch("app.routers.auth.refresh_access_token", return_value=user):
+        # refresh_access_token retourne desormais (user, extended)
+        with patch("app.routers.auth.refresh_access_token", return_value=(user, False)):
             resp = client.post("/api/v1/auth/refresh", json={
                 "refresh_token": create_refresh_token(user),
             })

@@ -254,12 +254,14 @@ class ApiClient {
     required String password,
     String? totpCode,
     String? schoolSlug,
+    bool rememberMe = false,
   }) async {
     final body = <String, dynamic>{
       'email': email,
       'password': password,
       if (totpCode != null && totpCode.isNotEmpty) 'totp_code': totpCode,
       if (schoolSlug != null && schoolSlug.isNotEmpty) 'school_slug': schoolSlug,
+      if (rememberMe) 'remember_me': true,
     };
     try {
       final response = await _http

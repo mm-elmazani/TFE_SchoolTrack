@@ -110,7 +110,7 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     return TokenResponse(
         access_token=create_access_token(user),
-        refresh_token=create_refresh_token(user),
+        refresh_token=create_refresh_token(user, extended=bool(body.remember_me)),
         user=user_info,
     )
 
@@ -148,15 +148,17 @@ def register(
 # ---------------------------------------------------------------------------
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
-    """Renouvelle les tokens a partir d'un refresh token valide."""
+    """Renouvelle les tokens a partir d'un refresh token valide.
+    Le flag `extended` est propage : un utilisateur ayant coche "rester
+    connecte" conserve sa session longue a chaque renouvellement."""
     try:
-        user = refresh_access_token(db, body.refresh_token)
+        user, extended = refresh_access_token(db, body.refresh_token)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
     return TokenResponse(
         access_token=create_access_token(user),
-        refresh_token=create_refresh_token(user),
+        refresh_token=create_refresh_token(user, extended=extended),
         user=UserInfo.model_validate(user),
     )
 

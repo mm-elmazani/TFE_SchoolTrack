@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _totpCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _show2FA = false;
+  bool _rememberMe = false;
 
   // Ecoles
   List<Map<String, dynamic>> _schools = [];
@@ -79,6 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _passwordCtrl.text,
       totpCode: _show2FA ? _totpCtrl.text.trim() : null,
       schoolSlug: _selectedSlug,
+      rememberMe: _rememberMe,
     );
 
     if (!mounted) return;
@@ -230,6 +232,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                     onFieldSubmitted: _show2FA ? null : (_) => _submit(),
+                  ),
+
+                  // Checkbox "Rester connecte 7 jours"
+                  // Decochee par defaut. Etend la duree du refresh token a 7j.
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: CheckboxListTile(
+                      value: _rememberMe,
+                      onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                      title: const Text(
+                        'Rester connecte pendant 7 jours',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
                   ),
 
                   // Champ 2FA

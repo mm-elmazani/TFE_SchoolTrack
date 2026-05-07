@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440  # 24h
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440  # 24h (defaut)
+    EXTENDED_REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 jours (case "rester connecte")
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 10
 
     # SMTP — envoi des QR codes par email (US 1.6)

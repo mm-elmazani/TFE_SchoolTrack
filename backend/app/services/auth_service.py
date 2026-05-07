@@ -61,11 +61,22 @@ def create_access_token(user: User) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(user: User) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+def create_refresh_token(user: User, extended: bool = False) -> str:
+    """Genere un refresh token JWT.
+
+    Si `extended=True`, la duree de vie est etendue (case "rester connecte"
+    cochee cote client) — typiquement 7 jours au lieu de 24h.
+    """
+    minutes = (
+        settings.EXTENDED_REFRESH_TOKEN_EXPIRE_MINUTES
+        if extended
+        else settings.REFRESH_TOKEN_EXPIRE_MINUTES
+    )
+    expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     payload = {
         "sub": str(user.id),
         "type": "refresh",
+        "extended": extended,
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -161,8 +172,13 @@ def register_user(
     return user
 
 
-def refresh_access_token(db: Session, refresh_token: str) -> User:
-    """Valide un refresh token et retourne l'utilisateur associe."""
+def refresh_access_token(db: Session, refresh_token: str) -> tuple[User, bool]:
+    """Valide un refresh token et retourne (user, extended_flag).
+
+    Le flag `extended` est propage du refresh token consomme — ainsi un
+    utilisateur ayant coche "rester connecte" garde sa session longue
+    a chaque refresh.
+    """
     try:
         payload = decode_token(refresh_token)
     except JWTError:
@@ -176,7 +192,8 @@ def refresh_access_token(db: Session, refresh_token: str) -> User:
     if not user:
         raise AuthError("Utilisateur introuvable")
 
-    return user
+    extended = bool(payload.get("extended", False))
+    return user, extended
 
 
 # ---------------------------------------------------------------------------
