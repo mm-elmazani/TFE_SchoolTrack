@@ -92,7 +92,6 @@ def authenticate_user(
     if not user:
         raise AuthError("Identifiants invalides")
 
-    # Verifier le verrouillage
     now = datetime.utcnow()
     if user.locked_until and user.locked_until > now:
         remaining = int((user.locked_until - now).total_seconds() // 60) + 1
@@ -100,7 +99,6 @@ def authenticate_user(
             f"Compte verrouille. Reessayez dans {remaining} minute(s)."
         )
 
-    # Verifier le mot de passe
     if not verify_password(password, user.password_hash):
         user.failed_attempts = (user.failed_attempts or 0) + 1
         if user.failed_attempts >= MAX_FAILED_ATTEMPTS:
@@ -108,7 +106,6 @@ def authenticate_user(
         db.commit()
         raise AuthError("Identifiants invalides")
 
-    # Verifier 2FA si active
     if user.is_2fa_enabled:
         if not totp_code:
             # Pour la methode EMAIL, envoyer un code avant de lever l'erreur
@@ -116,7 +113,6 @@ def authenticate_user(
                 send_email_otp(db, user)
                 raise TwoFactorRequiredError("2FA_REQUIRED_EMAIL")
             raise TwoFactorRequiredError("2FA_REQUIRED")
-        # Verification selon la methode
         if user.two_fa_method == "EMAIL":
             if not verify_email_otp(db, user, totp_code):
                 raise AuthError("Code 2FA invalide ou expire")
@@ -125,7 +121,6 @@ def authenticate_user(
             if not totp.verify(totp_code, valid_window=1):
                 raise AuthError("Code 2FA invalide")
 
-    # Succes : reset compteur + mise a jour last_login
     user.failed_attempts = 0
     user.locked_until = None
     user.last_login = datetime.utcnow()
@@ -304,7 +299,6 @@ def verify_email_otp(db: Session, user: User, code: str) -> bool:
         return False
     if user.email_otp_code != code:
         return False
-    # Code valide — nettoyer
     user.email_otp_code = None
     user.email_otp_expires = None
     db.commit()

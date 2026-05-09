@@ -108,7 +108,6 @@ def get_checkpoints_summary(
             timeline=[],
         )
 
-    # Batch : scan counts par checkpoint
     scan_counts = dict(
         db.query(Attendance.checkpoint_id, func.count(Attendance.id))
         .filter(Attendance.checkpoint_id.in_([c.id for c in checkpoints]))
@@ -116,7 +115,6 @@ def get_checkpoints_summary(
         .all()
     )
 
-    # Batch : nombre d'élèves distincts par checkpoint
     student_counts = dict(
         db.query(
             Attendance.checkpoint_id,
@@ -127,7 +125,6 @@ def get_checkpoints_summary(
         .all()
     )
 
-    # Batch : noms des créateurs
     creator_ids = [c.created_by for c in checkpoints if c.created_by]
     creator_names = {}
     if creator_ids:
@@ -137,7 +134,6 @@ def get_checkpoints_summary(
             last = u.last_name or ""
             creator_names[u.id] = f"{first} {last}".strip() or u.email
 
-    # Construction timeline
     timeline = []
     durations = []
     total_scans = 0

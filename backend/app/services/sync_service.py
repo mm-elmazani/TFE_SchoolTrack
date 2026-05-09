@@ -67,12 +67,10 @@ def sync_attendances(
     for scan in scans:
         client_uuid_str = str(scan.client_uuid)
 
-        # 1. Doublon intra-batch (même UUID deux fois dans le même envoi)
         if scan.client_uuid in seen_in_batch:
             duplicate.append(client_uuid_str)
             continue
 
-        # 2. Doublon inter-batch : client_uuid déjà archivé en history
         already_known = db.execute(
             select(AttendanceHistory).where(
                 AttendanceHistory.client_uuid == scan.client_uuid
@@ -84,7 +82,6 @@ def sync_attendances(
             seen_in_batch.add(scan.client_uuid)
             continue
 
-        # 2b. Vérifier que le checkpoint existe et appartient à l'école
         if scan.checkpoint_id not in valid_checkpoints:
             cp_query = select(Checkpoint.id).join(Trip, Trip.id == Checkpoint.trip_id).where(Checkpoint.id == scan.checkpoint_id)
             if school_id is not None:
@@ -101,7 +98,6 @@ def sync_attendances(
             )
             continue
 
-        # 3. Insérer dans l'historique brut (toujours, sauf doublon UUID)
         history = AttendanceHistory(
             client_uuid=scan.client_uuid,
             trip_id=scan.trip_id,
@@ -120,8 +116,6 @@ def sync_attendances(
         )
         db.add(history)
 
-        # 4. Chercher le canonique existant pour (student, checkpoint, trip)
-        # D'abord dans le cache intra-batch, puis en DB
         canon_key = (scan.student_id, scan.checkpoint_id, scan.trip_id)
         canonical = batch_canonicals.get(canon_key)
         if canonical is None:
@@ -134,7 +128,6 @@ def sync_attendances(
             ).scalar()
 
         if canonical is None:
-            # Aucun scan precedent pour cet eleve a ce checkpoint → creer le canonique
             attendance = Attendance(
                 client_uuid=scan.client_uuid,
                 trip_id=scan.trip_id,
@@ -154,7 +147,6 @@ def sync_attendances(
             logger.debug("Nouveau canonique : student=%s, cp=%s", scan.student_id, scan.checkpoint_id)
 
         elif _is_strictly_older(scan.scanned_at, canonical.scanned_at):
-            # Nouveau scan plus ancien → remplace le canonique (on garde le plus ancien)
             canonical.client_uuid = scan.client_uuid
             canonical.scanned_at = scan.scanned_at
             canonical.scanned_by = scanned_by
@@ -171,7 +163,6 @@ def sync_attendances(
             )
 
         else:
-            # Scan plus récent ou même timestamp → canonique existant déjà optimal
             history.merge_status = _SUPERSEDED
             logger.debug(
                 "Scan %s supersédé : canonique déjà plus ancien (student=%s, cp=%s)",
@@ -182,10 +173,8 @@ def sync_attendances(
 
     db.flush()
 
-    # 5. Détecter les anomalies temporelles après la fusion canonique
     anomalies = _detect_temporal_anomalies(db, scans)
 
-    # 6. Enregistrer dans sync_logs
     has_failures = len(rejected) > 0
     status = "SUCCESS" if not has_failures and not anomalies else "PARTIAL"
     trip_ids = {scan.trip_id for scan in scans}
@@ -267,7 +256,6 @@ def _detect_temporal_anomalies(
     if not scans:
         return []
 
-    # Paires (student_id, trip_id) uniques du batch
     student_trips = {(scan.student_id, scan.trip_id) for scan in scans}
     anomalies: List[TemporalAnomaly] = []
 

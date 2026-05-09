@@ -152,7 +152,6 @@ def _sync_trip_students_for_class(
     if not student_ids_added:
         return
 
-    # Voyages encore modifiables lies a cette classe
     trip_ids = db.execute(
         select(Trip.id)
         .join(TripClass, TripClass.trip_id == Trip.id)
@@ -165,7 +164,6 @@ def _sync_trip_students_for_class(
     if not trip_ids:
         return
 
-    # Liens deja presents pour eviter doublons (composite unique trip_id+student_id)
     existing = set(db.execute(
         select(TripStudent.trip_id, TripStudent.student_id)
         .where(
@@ -238,7 +236,6 @@ def assign_students(
     if school_class is None:
         raise ValueError("Classe introuvable.")
 
-    # Récupérer les élèves déjà dans cette classe
     existing = set(db.execute(
         select(ClassStudent.student_id)
         .where(ClassStudent.class_id == class_id)
@@ -261,7 +258,6 @@ def assign_students(
     if to_insert:
         db.flush()  # S'assurer que les DELETE sont envoyés avant les INSERT
         db.bulk_insert_mappings(ClassStudent, to_insert)
-        # Propagation aux voyages PLANNED/ACTIVE lies a cette classe
         _sync_trip_students_for_class(db, class_id, newly_added_ids)
         db.commit()
 
@@ -287,7 +283,6 @@ def remove_student(
     if link is None:
         return False
     db.delete(link)
-    # Nettoyer trip_students pour les voyages encore modifiables
     _remove_trip_students_for_class(db, class_id, student_id)
     db.commit()
     return True

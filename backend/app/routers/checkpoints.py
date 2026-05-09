@@ -15,10 +15,8 @@ from app.models.user import User
 from app.schemas.checkpoint import CheckpointCreate, CheckpointUpdate, CheckpointResponse, CheckpointsSummary
 from app.services import checkpoint_service
 
-# POST /api/v1/trips/{trip_id}/checkpoints
 router = APIRouter(prefix="/api/v1/trips", tags=["Checkpoints"])
 
-# POST /api/v1/checkpoints/{checkpoint_id}/close
 checkpoints_router = APIRouter(prefix="/api/v1/checkpoints", tags=["Checkpoints"])
 
 _field = require_role("DIRECTION", "ADMIN_TECH", "TEACHER")

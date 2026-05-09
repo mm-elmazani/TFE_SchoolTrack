@@ -84,19 +84,16 @@ def get_sync_logs(
     if trip_id:
         query = query.where(SyncLog.trip_id == trip_id)
 
-    # Total
     count_q = select(func.count()).select_from(query.subquery())
     total = db.execute(count_q).scalar() or 0
     total_pages = max(1, math.ceil(total / page_size))
 
-    # Fetch page
     rows = db.execute(
         query.order_by(SyncLog.synced_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
     ).scalars().all()
 
-    # Enrichir avec user_email et trip_name
     user_ids = {r.user_id for r in rows if r.user_id}
     trip_ids = {r.trip_id for r in rows if r.trip_id}
 

@@ -25,8 +25,6 @@ router = APIRouter(prefix="/api/v1/audit", tags=["Audit"])
 _admin = require_role("DIRECTION", "ADMIN_TECH")
 
 
-# ── Helper : construction des filtres SQL ────────────────────────────────
-
 def _build_where(
     user_id: Optional[str],
     action: Optional[str],
@@ -81,8 +79,6 @@ def _row_to_response(row) -> AuditLogResponse:
     )
 
 
-# ── GET /logs — consultation paginee ─────────────────────────────────────
-
 @router.get("/logs", response_model=AuditLogPage, summary="Consulter les logs d'audit")
 def list_audit_logs(
     page: int = Query(1, ge=1, description="Numero de page"),
@@ -102,7 +98,6 @@ def list_audit_logs(
     """
     where_sql, params = _build_where(user_id, action, resource_type, date_from, date_to, current_user)
 
-    # Comptage total
     total = db.execute(
         text(
             f"SELECT COUNT(*) FROM audit_logs a "  # noqa: S608
@@ -112,7 +107,6 @@ def list_audit_logs(
         params,
     ).scalar()
 
-    # Requete paginee
     offset = (page - 1) * page_size
     params["limit"] = page_size
     params["offset"] = offset
@@ -142,8 +136,6 @@ def list_audit_logs(
         total_pages=total_pages,
     )
 
-
-# ── GET /logs/export — export JSON pour audit externe ────────────────────
 
 @router.get("/logs/export", summary="Exporter les logs d'audit en JSON")
 def export_audit_logs(
@@ -187,7 +179,6 @@ def export_audit_logs(
         details={"filters": {k: str(v) for k, v in params.items()}, "count": len(items)},
     )
 
-    # Serialisation JSON avec dates ISO
     export_data = {
         "exported_at": datetime.utcnow().isoformat(),
         "exported_by": current_user.email,

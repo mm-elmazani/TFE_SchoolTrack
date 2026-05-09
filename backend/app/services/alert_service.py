@@ -23,12 +23,10 @@ logger = logging.getLogger(__name__)
 def create_alert(
     db: Session, data: AlertCreate, created_by: Optional[uuid.UUID] = None
 ) -> AlertResponse:
-    # Verifier que le voyage existe
     trip = db.get(Trip, data.trip_id)
     if trip is None:
         raise ValueError("Voyage introuvable.")
 
-    # Verifier que l'eleve existe
     student = db.get(Student, data.student_id)
     if student is None:
         raise ValueError("Eleve introuvable.")

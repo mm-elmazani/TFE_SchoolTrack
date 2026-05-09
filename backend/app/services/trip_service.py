@@ -50,11 +50,9 @@ def create_trip(
     db.add(trip)
     db.flush()  # Obtenir l'ID avant le commit
 
-    # Sauvegarder les classes sélectionnées explicitement
     for cid in data.class_ids:
         db.add(TripClass(trip_id=trip.id, class_id=cid))
 
-    # Récupérer les élèves des classes sélectionnées (dédupliqué)
     student_ids = db.execute(
         select(ClassStudent.student_id)
         .where(ClassStudent.class_id.in_(data.class_ids))
@@ -125,16 +123,13 @@ def update_trip(
     if trip is None:
         return None
 
-    # Mise à jour des champs scalaires (hors class_ids)
     update_data = data.model_dump(exclude_unset=True, exclude={"class_ids"})
     new_status = update_data.get("status")
 
     for field, value in update_data.items():
         setattr(trip, field, value)
 
-    # Recalcul des élèves et classes si de nouvelles classes sont fournies
     if data.class_ids is not None:
-        # Supprimer les anciennes associations classes et élèves
         db.execute(
             delete(TripClass).where(TripClass.trip_id == trip.id)
         )
@@ -142,11 +137,9 @@ def update_trip(
             delete(TripStudent).where(TripStudent.trip_id == trip.id)
         )
 
-        # Sauvegarder les nouvelles classes sélectionnées
         for cid in data.class_ids:
             db.add(TripClass(trip_id=trip.id, class_id=cid))
 
-        # Récupérer les élèves des nouvelles classes (dédupliqué)
         student_ids = db.execute(
             select(ClassStudent.student_id)
             .where(ClassStudent.class_id.in_(data.class_ids))
@@ -197,7 +190,6 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
         .where(TripStudent.trip_id == trip.id)
     ).scalar() or 0
 
-    # Classes explicitement sélectionnées pour le voyage (trip_classes)
     class_rows = db.execute(
         select(SchoolClass.id, SchoolClass.name, SchoolClass.year, func.count(TripStudent.student_id).label("cnt"))
         .join(TripClass, TripClass.class_id == SchoolClass.id)
@@ -244,14 +236,12 @@ def export_attendance_csv(
     if trip is None:
         raise ValueError("Voyage introuvable.")
 
-    # Total eleves inscrits au voyage
     total_students = db.execute(
         select(func.count())
         .select_from(TripStudent)
         .where(TripStudent.trip_id == trip.id)
     ).scalar() or 0
 
-    # Dict {student_id: class_name} via class_students + school_classes
     class_map: dict[uuid.UUID, str] = {}
     class_rows = db.execute(
         select(ClassStudent.student_id, SchoolClass.name)
@@ -267,7 +257,6 @@ def export_attendance_csv(
     for row in class_rows:
         class_map[row[0]] = row[1]
 
-    # Presences avec student + checkpoint
     attendances = db.execute(
         select(Attendance, Student, Checkpoint)
         .join(Student, Student.id == Attendance.student_id)
@@ -285,7 +274,6 @@ def export_attendance_csv(
         ),
     )
 
-    # Taux de presence par checkpoint
     checkpoint_names: dict[uuid.UUID, str] = {}
     checkpoint_counts: dict[uuid.UUID, set] = {}
     for att, student, cp in attendances_sorted:
@@ -294,12 +282,10 @@ def export_attendance_csv(
             checkpoint_counts[cp.id] = set()
         checkpoint_counts[cp.id].add(att.student_id)
 
-    # Construire le CSV
     output = io.StringIO()
     # BOM UTF-8 pour Excel
     output.write("\ufeff")
 
-    # Metadonnees en commentaires
     output.write(f"# Voyage : {trip.destination}\n")
     output.write(f"# Date : {trip.date.strftime('%d/%m/%Y')}\n")
     output.write(f"# Export : {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
@@ -307,7 +293,6 @@ def export_attendance_csv(
     output.write("#\n")
     output.write("# Taux de presence par checkpoint :\n")
 
-    # Ordonner les checkpoints par sequence_order
     ordered_cps = db.execute(
         select(Checkpoint)
         .where(Checkpoint.trip_id == trip.id)
@@ -321,14 +306,12 @@ def export_attendance_csv(
 
     output.write("#\n")
 
-    # En-tete CSV
     writer = csv.writer(output, delimiter=";")
     writer.writerow([
         "Nom", "Prenom", "Classe", "Checkpoint",
         "Heure de passage", "Mode de scan", "Justification",
     ])
 
-    # Lignes de donnees
     for att, student, cp in attendances_sorted:
         if student.is_deleted:
             last_name = "[Supprime]"

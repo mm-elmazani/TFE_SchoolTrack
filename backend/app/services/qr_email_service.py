@@ -60,7 +60,6 @@ def send_qr_emails_for_trip(
 
     Lève ValueError si le voyage est introuvable ou archivé.
     """
-    # Vérifier que le voyage existe et peut recevoir des envois
     trip_query = select(Trip).where(Trip.id == trip_id)
     if school_id is not None:
         trip_query = trip_query.where(Trip.school_id == school_id)
@@ -78,7 +77,6 @@ def send_qr_emails_for_trip(
         errors=[],
     )
 
-    # Récupérer tous les élèves inscrits au voyage
     participants = db.execute(
         select(Student)
         .join(TripStudent, TripStudent.student_id == Student.id)
@@ -88,7 +86,6 @@ def send_qr_emails_for_trip(
     assignments_to_add = []
 
     for student in participants:
-        # Skip si l'élève n'a pas d'adresse email
         if not student.email:
             result.no_email_count += 1
             continue
@@ -109,7 +106,6 @@ def send_qr_emails_for_trip(
             result.already_sent_count += 1
             continue
 
-        # Générer le token unique et l'image QR, puis envoyer l'email
         token_uid = _generate_token_uid()
         try:
             qr_bytes = generate_qr_image(token_uid)
@@ -139,7 +135,6 @@ def send_qr_emails_for_trip(
             result.errors.append(error_msg)
             logger.error(error_msg)
 
-    # Persister toutes les nouvelles assignations en une seule transaction
     for assignment in assignments_to_add:
         db.add(assignment)
     db.commit()

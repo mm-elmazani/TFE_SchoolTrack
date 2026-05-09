@@ -74,7 +74,6 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
         )
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
-    # Verification du slug ecole (si fourni par le frontend)
     school_slug = None
     if body.school_slug:
         school = db.query(School).filter(School.id == user.school_id).first()

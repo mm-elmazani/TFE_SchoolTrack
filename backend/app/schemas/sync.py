@@ -61,13 +61,11 @@ class TemporalAnomaly(BaseModel):
 
 class SyncResponse(BaseModel):
 
-    # idempotence
     accepted: List[str]           # client_uuids insérés comme nouveaux canoniques
     duplicate: List[str]          # client_uuids déjà connus (idempotence)
     total_received: int
     total_inserted: int
 
-    # fusion multi-enseignants
     merged: List[str] = []        # client_uuids dont le scan (plus ancien) a remplacé le canonique
     rejected: List[str] = []      # client_uuids rejetés (checkpoint supprimé, etc.)
     temporal_anomalies: List[TemporalAnomaly] = []  # incohérences d'ordre entre checkpoints

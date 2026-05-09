@@ -98,7 +98,6 @@ def _auto_update_trip_statuses() -> None:
     today = date.today()
     db = SessionLocal()
     try:
-        # PLANNED → ACTIVE (date == aujourd'hui)
         planned_today = db.execute(
             select(Trip).where(
                 Trip.status == "PLANNED",
@@ -113,7 +112,6 @@ def _auto_update_trip_statuses() -> None:
                 trip.id, trip.destination,
             )
 
-        # PLANNED → COMPLETED (date < aujourd'hui, rattrapage)
         planned_past = db.execute(
             select(Trip).where(
                 Trip.status == "PLANNED",

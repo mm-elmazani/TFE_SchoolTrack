@@ -35,7 +35,6 @@ def send_qr_code_email(
         f"le {trip_date.strftime('%d/%m/%Y')}"
     )
 
-    # Corps HTML avec QR code intégré via Content-ID
     html_content = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto;">

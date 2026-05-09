@@ -31,7 +31,6 @@ def get_dashboard_overview(
     Requetes par lots (pas de N+1).
     """
 
-    # 1. Trips (hors archives sauf si filtre explicite), scopés par école
     trip_query = select(Trip)
     if school_id is not None:
         trip_query = trip_query.where(Trip.school_id == school_id)
@@ -58,7 +57,6 @@ def get_dashboard_overview(
             generated_at=datetime.now(),
         )
 
-    # 2. Comptage eleves par voyage (batch)
     student_counts_rows = db.execute(
         select(TripStudent.trip_id, func.count(TripStudent.student_id))
         .where(TripStudent.trip_id.in_(trip_ids))
@@ -66,7 +64,6 @@ def get_dashboard_overview(
     ).all()
     student_counts: dict[uuid.UUID, int] = {row[0]: row[1] for row in student_counts_rows}
 
-    # 3. Eleves distincts presents par voyage (batch)
     present_counts_rows = db.execute(
         select(Attendance.trip_id, func.count(distinct(Attendance.student_id)))
         .where(Attendance.trip_id.in_(trip_ids))
@@ -74,7 +71,6 @@ def get_dashboard_overview(
     ).all()
     present_counts: dict[uuid.UUID, int] = {row[0]: row[1] for row in present_counts_rows}
 
-    # 4. Checkpoints par voyage avec nombre de presents (batch)
     cp_query = (
         select(
             Checkpoint,
@@ -87,12 +83,10 @@ def get_dashboard_overview(
     )
     cp_rows = db.execute(cp_query).all()
 
-    # Grouper checkpoints par trip_id
     checkpoints_by_trip: dict[uuid.UUID, list[tuple]] = {}
     for cp, present_count in cp_rows:
         checkpoints_by_trip.setdefault(cp.trip_id, []).append((cp, present_count))
 
-    # 5. Stats modes de scan (batch)
     scan_rows = db.execute(
         select(Attendance.scan_method, func.count())
         .where(Attendance.trip_id.in_(trip_ids))
@@ -111,7 +105,6 @@ def get_dashboard_overview(
             scan_stats.manual = count
     scan_stats.total = scan_stats.nfc + scan_stats.qr_physical + scan_stats.qr_digital + scan_stats.manual
 
-    # 6. Assembler les reponses par voyage
     trip_summaries: list[DashboardTripSummary] = []
     total_students_global = 0
     total_present_global = 0
@@ -128,7 +121,6 @@ def get_dashboard_overview(
         if trip.status in status_counts:
             status_counts[trip.status] += 1
 
-        # Checkpoints de ce voyage
         cp_list = checkpoints_by_trip.get(trip.id, [])
         cp_summaries = []
         closed_cps = 0

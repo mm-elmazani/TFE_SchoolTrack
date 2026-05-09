@@ -65,7 +65,6 @@ def create_student(
     Si `class_id` est fourni, l'élève est immédiatement assigné à cette classe
     et ajouté aux voyages PLANNED/ACTIVE liés a cette classe.
     """
-    # Si une classe est demandee, verifier qu'elle existe et appartient a l'ecole
     target_class: SchoolClass | None = None
     if data.class_id is not None:
         target_class = db.execute(
@@ -87,7 +86,6 @@ def create_student(
     db.add(student)
     db.flush()  # recupere l'id sans committer
 
-    # Lien classe-eleve + propagation aux voyages PLANNED/ACTIVE
     if target_class is not None:
         db.add(ClassStudent(class_id=target_class.id, student_id=student.id))
         class_service._sync_trip_students_for_class(
@@ -317,7 +315,6 @@ def export_student_data(
 
     sid = str(student_id)
 
-    # Donnees personnelles
     student_data = {
         "id": sid,
         "first_name": student.first_name,
@@ -332,7 +329,6 @@ def export_student_data(
         "deleted_at": str(student.deleted_at) if student.deleted_at else None,
     }
 
-    # Classes
     classes_rows = db.execute(
         text("""
             SELECT c.id, c.name, cs.enrolled_at
@@ -346,7 +342,6 @@ def export_student_data(
         for r in classes_rows
     ]
 
-    # Sorties scolaires
     trips_rows = db.execute(
         text("""
             SELECT t.id, t.destination, t.date, ts.added_at
@@ -364,7 +359,6 @@ def export_student_data(
         for r in trips_rows
     ]
 
-    # Presences
     att_rows = db.execute(
         text("""
             SELECT id, trip_id, checkpoint_id, scanned_at, scan_method,
@@ -383,7 +377,6 @@ def export_student_data(
         for r in att_rows
     ]
 
-    # Assignations de tokens
     asgn_rows = db.execute(
         text("""
             SELECT id, token_uid, trip_id, assignment_type, assigned_at, released_at
@@ -402,7 +395,6 @@ def export_student_data(
         for r in asgn_rows
     ]
 
-    # Alertes
     alert_rows = db.execute(
         text("""
             SELECT id, trip_id, alert_type, severity, message, status, created_at, resolved_at

@@ -123,8 +123,6 @@ def delete_class(
     )
 
 
-# --- Gestion des élèves ---
-
 @router.get("/{class_id}/students", response_model=List[uuid.UUID], summary="Élèves d'une classe")
 def list_class_students(
     class_id: uuid.UUID,
@@ -188,8 +186,6 @@ def remove_student(
         details={"student_id": str(student_id)},
     )
 
-
-# --- Gestion des enseignants ---
 
 @router.post("/{class_id}/teachers", response_model=ClassResponse, summary="Assigner des enseignants")
 def assign_teachers(

@@ -267,7 +267,6 @@ def parse_and_import_csv(
             )]
         )
 
-    # Convertir chaque ligne en dict avec colonnes normalisées
     rows = []
     for raw_row in reader:
         rows.append({
@@ -305,7 +304,6 @@ def parse_and_import_excel(
         )
     ws = wb.active
 
-    # Lire la première ligne comme en-tête
     header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), None)
     if not header_row:
         wb.close()
@@ -315,7 +313,6 @@ def parse_and_import_excel(
             errors=[ImportError(row=0, content="", reason="Fichier Excel vide ou illisible")]
         )
 
-    # Mapper index de colonne → nom normalisé (seules les colonnes reconnues)
     col_mapping: list[Tuple[int, str]] = []
     for idx, cell_value in enumerate(header_row):
         if cell_value is None:
@@ -338,7 +335,6 @@ def parse_and_import_excel(
             )]
         )
 
-    # Lire les lignes de données
     rows = []
     for data_row in ws.iter_rows(min_row=2, values_only=True):
         row_dict = {}
@@ -361,7 +357,6 @@ def _assign_classes(
     Crée la classe si elle n'existe pas encore.
     Ignore les élèves sans classe renseignée.
     """
-    # Regrouper les élèves par classe pour minimiser les requêtes
     classes_map: dict[str, Optional[SchoolClass]] = {}
 
     for student in students:
@@ -389,7 +384,6 @@ def _assign_classes(
         if row[1] and row[2] and (row[1].lower(), row[2].lower()) in target_keys
     }
 
-    # Récupérer les assignations existantes pour éviter les doublons
     all_class_ids = [c.id for c in classes_map.values() if c]
     existing_assignments = set()
     if all_class_ids:
@@ -399,7 +393,6 @@ def _assign_classes(
         ).fetchall()
         existing_assignments = {(row[0], row[1]) for row in existing_rows}
 
-    # Insérer les assignations manquantes
     assignments_to_insert = []
     for student in students:
         if not student.classe:

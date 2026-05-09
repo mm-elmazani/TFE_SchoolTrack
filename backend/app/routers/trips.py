@@ -76,7 +76,6 @@ def export_all_trips(
     Chaque voyage genere un fichier CSV individuel.
     Optionnellement protege par mot de passe AES-256.
     """
-    # Parse et validation des IDs
     raw_ids = [s.strip() for s in trip_ids.split(",") if s.strip()]
     if not raw_ids:
         raise HTTPException(status_code=400, detail="Aucun ID de voyage fourni.")
@@ -88,7 +87,6 @@ def export_all_trips(
         except ValueError:
             raise HTTPException(status_code=400, detail=f"ID invalide : {raw}")
 
-    # Generer les CSV
     csv_files: list[tuple[str, str]] = []  # (filename, csv_content)
     for tid in parsed_ids:
         try:
@@ -102,7 +100,6 @@ def export_all_trips(
         except ValueError:
             raise HTTPException(status_code=404, detail=f"Voyage introuvable : {tid}")
 
-    # Construire le ZIP
     from datetime import datetime
     zip_filename = f"export_presences_{datetime.now().strftime('%Y-%m-%d_%H-%M')}.zip"
 
