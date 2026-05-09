@@ -1,7 +1,3 @@
-/// Modèle d'une présence enregistrée localement (US 2.2).
-/// Correspond au schéma de la table SQLite `attendances`.
-library;
-
 /// Méthodes de scan supportées.
 class ScanMethod {
   static const String nfcPhysical = 'NFC_PHYSICAL';

@@ -1,7 +1,3 @@
-/// Popup affichant les données personnelles d'un élève.
-/// Accessible depuis TripSummaryScreen en cliquant sur un élève.
-library;
-
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

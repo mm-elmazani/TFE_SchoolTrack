@@ -1,12 +1,3 @@
-/// Écran principal US 2.1 — Liste des voyages avec téléchargement offline.
-///
-/// Fonctionnalités :
-///   - Affiche les voyages disponibles (depuis l'API)
-///   - Bouton "Télécharger" par voyage
-///   - Badge "✓ Prêt hors-ligne" si téléchargé et valide (< 7 jours)
-///   - Indicateur de chargement pendant le téléchargement
-library;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -59,7 +50,7 @@ class _TripListScreenState extends State<TripListScreen>
       case AppLifecycleState.inactive:
       case AppLifecycleState.detached:
       case AppLifecycleState.hidden:
-        // App en arriere-plan : pause de l'auto-refresh (economie batterie).
+        // App en arriere-plan: pause de l'auto-refresh (economie batterie).
         _provider.stopAutoRefresh();
         break;
     }
@@ -74,9 +65,6 @@ class _TripListScreenState extends State<TripListScreen>
   }
 }
 
-// ----------------------------------------------------------------
-// Corps principal
-// ----------------------------------------------------------------
 
 class _TripListBody extends StatelessWidget {
   const _TripListBody();
@@ -91,7 +79,7 @@ class _TripListBody extends StatelessWidget {
         backgroundColor: const Color(0xFF1A73E8),
         foregroundColor: Colors.white,
         actions: [
-          // Bouton sync (US 3.1)
+          // Bouton sync
           _SyncButton(),
           // Bouton rafraichir
           IconButton(
@@ -126,7 +114,7 @@ class _TripListBody extends StatelessWidget {
                 ),
               ],
             ),
-          // Banner de synchronisation (US 3.1)
+          // Banner de synchronisation
           const _SyncBanner(),
           Expanded(
             child: switch (provider.listState) {
@@ -144,9 +132,6 @@ class _TripListBody extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Liste des voyages
-// ----------------------------------------------------------------
 
 class _TripList extends StatelessWidget {
   final List<TripSummary> trips;
@@ -164,9 +149,6 @@ class _TripList extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte d'un voyage
-// ----------------------------------------------------------------
 
 class _TripCard extends StatelessWidget {
   final TripSummary trip;
@@ -274,9 +256,6 @@ class _TripCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Bouton de téléchargement
-// ----------------------------------------------------------------
 
 class _DownloadButton extends StatelessWidget {
   final TripSummary trip;
@@ -323,9 +302,6 @@ class _DownloadButton extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Widgets auxiliaires
-// ----------------------------------------------------------------
 
 /// Badge coloré affichant le statut du voyage.
 class _StatusBadge extends StatelessWidget {
@@ -439,9 +415,6 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Widgets de synchronisation (US 3.1)
-// ----------------------------------------------------------------
 
 /// Menu utilisateur avec option de deconnexion.
 class _UserMenu extends StatelessWidget {

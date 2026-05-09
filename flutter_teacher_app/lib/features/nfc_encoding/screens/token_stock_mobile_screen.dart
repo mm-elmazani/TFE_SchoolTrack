@@ -1,4 +1,4 @@
-// Ecran de consultation du stock de bracelets — Mobile (US 1.4).
+// Ecran de consultation du stock de bracelets — Mobile.
 // Lecture seule : affiche stats + liste filtrable des tokens.
 import 'package:flutter/material.dart';
 
@@ -111,9 +111,6 @@ class _TokenStockMobileScreenState extends State<TokenStockMobileScreen> {
   }
 }
 
-// ----------------------------------------------------------------
-// Statistiques
-// ----------------------------------------------------------------
 
 class _StatsSection extends StatelessWidget {
   final Map<String, dynamic>? stats;
@@ -166,9 +163,6 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Filtres
-// ----------------------------------------------------------------
 
 class _FilterChips extends StatelessWidget {
   final String? selected;
@@ -200,9 +194,6 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte token
-// ----------------------------------------------------------------
 
 class _TokenCard extends StatelessWidget {
   final Map<String, dynamic> token;
@@ -261,9 +252,6 @@ class _TokenCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Erreur
-// ----------------------------------------------------------------
 
 class _ErrorView extends StatelessWidget {
   final String message;

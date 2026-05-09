@@ -1,9 +1,3 @@
-/// Service de lecture hybride QR + NFC (US 2.2).
-///
-/// Combine le scan QR (mobile_scanner) et la lecture NFC (nfc_manager)
-/// pour résoudre un UID en élève via la table `students` SQLite locale.
-library;
-
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -54,9 +48,6 @@ class HybridIdentityReader {
 
   bool _nfcStarted = false;
 
-  // ----------------------------------------------------------------
-  // NFC
-  // ----------------------------------------------------------------
 
   /// Démarre l'écoute NFC en arrière-plan.
   /// Appelle [onResult] à chaque lecture NFC.
@@ -84,7 +75,7 @@ class HybridIdentityReader {
       onDiscovered: (NfcTag tag) async {
         debugPrint('[NFC] >>> tag detecte !');
         try {
-          // Lire le token_uid depuis le contenu NDEF (ecrit lors de l'encodage US 1.4).
+          // Lire le token_uid depuis le contenu NDEF (ecrit lors de l'encodage).
           final tokenUid = await _readNdefTokenUid(tag);
           debugPrint('[NFC] tokenUid lu = $tokenUid');
           if (tokenUid == null) {
@@ -113,7 +104,7 @@ class HybridIdentityReader {
   }
 
   /// Lit le token_uid depuis le contenu NDEF d'un tag NFC.
-  /// Le token_uid est encode comme NFC Forum Text Record lors de l'encodage (US 1.4).
+  /// Le token_uid est encode comme NFC Forum Text Record lors de l'encodage.
   Future<String?> _readNdefTokenUid(NfcTag tag) async {
     try {
       final ndef = NdefAndroid.from(tag);
@@ -154,9 +145,6 @@ class HybridIdentityReader {
     return String.fromCharCodes(payload.sublist(1 + langLength)).trim();
   }
 
-  // ----------------------------------------------------------------
-  // QR Code (appelé depuis mobile_scanner)
-  // ----------------------------------------------------------------
 
   /// Traite un QR code scanné depuis la caméra.
   /// Le [rawValue] est la valeur brute du QR (UID du token).
@@ -174,7 +162,7 @@ class HybridIdentityReader {
         ? ScanMethod.qrDigital
         : ScanMethod.qrPhysical;
 
-    // QR digital : le token_uid en SQLite INCLUT le préfixe "QRD-" (ex: "QRD-A1B2C3D4")
+    // QR digital: le token_uid en SQLite INCLUT le préfixe "QRD-" (ex: "QRD-A1B2C3D4")
     //              → ne pas stripper, chercher le token_uid complet.
     // QR physique avec préfixe "QRP-" : le token_uid en DB n'a PAS de préfixe
     //              → stripper "QRP-" avant la recherche.
@@ -184,13 +172,10 @@ class HybridIdentityReader {
     return _resolveAndRecord(normalizedUid, method);
   }
 
-  // ----------------------------------------------------------------
-  // Résolution UID → étudiant + enregistrement présence
-  // ----------------------------------------------------------------
 
   Future<ScanResult> _resolveAndRecord(String uid, String method) async {
     // 1. Résoudre l'UID en élève via SQLite.
-    // QR digital (QRD-) : uid = "QRD-XXXXXXXX" → token_uid complet en DB (préfixe inclus)
+    // QR digital (QRD): uid = "QRD-XXXXXXXX" → token_uid complet en DB (préfixe inclus)
     // NFC / QR physique  : uid = token_uid nu → token_uid exact en DB
     final student = await LocalDb.instance.resolveUid(uid, tripId);
 
@@ -233,9 +218,6 @@ class HybridIdentityReader {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Utilitaires
-  // ----------------------------------------------------------------
 
   /// Génère un UUID v4 côté client (idempotence sync backend).
   String _generateClientUuid() => _uuid.v4();

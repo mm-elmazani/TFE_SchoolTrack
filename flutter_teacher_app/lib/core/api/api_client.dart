@@ -1,6 +1,3 @@
-/// Client HTTP pour communiquer avec l'API FastAPI SchoolTrack.
-library;
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
@@ -54,9 +51,6 @@ class ApiClient {
         if (authToken != null) 'Authorization': 'Bearer $authToken',
       };
 
-  // ----------------------------------------------------------------
-  // Voyages
-  // ----------------------------------------------------------------
 
   /// Récupère la liste des voyages actifs depuis l'API.
   /// Lève [ApiException] si le réseau est indisponible ou si l'API répond avec une erreur.
@@ -90,9 +84,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Checkpoints terrain (US 2.5)
-  // ----------------------------------------------------------------
 
   /// Crée un checkpoint sur le backend (best-effort — retourne null si hors-ligne).
   ///
@@ -154,9 +145,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Bundle offline
-  // ----------------------------------------------------------------
 
   /// Télécharge le bundle de données offline pour un voyage.
   /// Endpoint : GET /api/v1/trips/{trip_id}/offline-data
@@ -193,13 +181,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Authentification (US 6.1)
-  // ----------------------------------------------------------------
-
-  // ----------------------------------------------------------------
-  // Photos élèves
-  // ----------------------------------------------------------------
 
   /// Télécharge la photo d'un élève (endpoint protégé).
   /// Retourne les bytes de l'image, ou null si aucune photo ou erreur réseau.
@@ -223,9 +204,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Ecoles (public)
-  // ----------------------------------------------------------------
 
   /// GET /api/v1/schools/public — Liste des ecoles actives (sans auth).
   Future<List<Map<String, dynamic>>> getSchoolsPublic() async {
@@ -294,9 +272,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Tokens — stock de bracelets (US 1.4)
-  // ----------------------------------------------------------------
 
   /// POST /api/v1/tokens/init — Enregistre un token dans le stock.
   Future<Map<String, dynamic>> initToken({
@@ -435,9 +410,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Synchronisation offline → online (US 3.1)
-  // ----------------------------------------------------------------
 
   /// POST /api/sync/attendances — Envoie un batch de presences au backend.
   ///
@@ -480,9 +452,6 @@ class ApiClient {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Authentification (US 6.1)
-  // ----------------------------------------------------------------
 
   /// POST /api/v1/auth/refresh
   Future<Map<String, dynamic>> refreshToken({required String refreshToken}) async {

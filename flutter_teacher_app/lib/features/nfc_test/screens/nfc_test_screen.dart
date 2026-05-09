@@ -1,9 +1,3 @@
-/// Ecran de test de lecture NFC — Admin uniquement.
-///
-/// Permet de verifier le bon fonctionnement de la lecture NFC
-/// en affichant les donnees brutes du tag (UID hardware, contenu NDEF, type).
-library;
-
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -439,9 +433,6 @@ class _NfcTestScreenState extends State<NfcTestScreen> {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte de resultat d'un tag
-// ----------------------------------------------------------------
 
 class _TagResultCard extends StatelessWidget {
   final NfcTestResult result;
@@ -602,9 +593,6 @@ class _TagResultCard extends StatelessWidget {
       '${dt.second.toString().padLeft(2, '0')}';
 }
 
-// ----------------------------------------------------------------
-// Ligne de detail
-// ----------------------------------------------------------------
 
 class _DetailRow extends StatelessWidget {
   final String label;

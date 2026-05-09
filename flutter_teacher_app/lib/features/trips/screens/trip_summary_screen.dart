@@ -1,7 +1,3 @@
-/// Écran de résumé d'un voyage avant de démarrer les checkpoints.
-/// Affiche les infos du voyage + liste des élèves inscrits (cliquables).
-library;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/database/local_db.dart';
@@ -186,9 +182,6 @@ class _TripSummaryScreenState extends State<TripSummaryScreen> {
   }
 }
 
-// ----------------------------------------------------------------
-// Widgets internes
-// ----------------------------------------------------------------
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;

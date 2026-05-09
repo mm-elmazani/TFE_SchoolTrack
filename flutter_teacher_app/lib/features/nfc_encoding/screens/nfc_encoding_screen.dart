@@ -1,13 +1,3 @@
-/// Ecran d'encodage NFC des bracelets — Mode Admin (US 1.4).
-///
-/// Permet a la Direction de :
-///   - Configurer le prefixe et le numero de serie de depart
-///   - Ecrire l'UID NDEF sur un bracelet NTAG213
-///   - Optionnellement verrouiller le tag (makeReadOnly)
-///   - Visualiser l'historique des tokens encodes
-///   - Consulter les stats du stock
-library;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -71,9 +61,6 @@ class _NfcEncodingBody extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Statistiques du stock
-// ----------------------------------------------------------------
 
 class _StatsCard extends StatelessWidget {
   const _StatsCard();
@@ -194,9 +181,6 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Configuration (prefixe, sequence, verrouillage)
-// ----------------------------------------------------------------
 
 class _ConfigCard extends StatelessWidget {
   const _ConfigCard();
@@ -310,9 +294,6 @@ class _ConfigCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Zone d'encodage (bouton + feedback)
-// ----------------------------------------------------------------
 
 class _EncodingCard extends StatelessWidget {
   const _EncodingCard();
@@ -487,9 +468,6 @@ class _NfcUnavailableWarning extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Historique des encodages de la session
-// ----------------------------------------------------------------
 
 class _HistoryCard extends StatelessWidget {
   const _HistoryCard();

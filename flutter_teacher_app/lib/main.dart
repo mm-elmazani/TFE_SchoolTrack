@@ -1,7 +1,3 @@
-/// Point d'entree de l'application SchoolTrack — Enseignants.
-/// Architecture offline-first (US 2.x, US 3.x).
-library;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -45,9 +41,6 @@ void main() async {
   runApp(SchoolTrackApp(authProvider: authProvider, syncProvider: syncProvider));
 }
 
-// ----------------------------------------------------------------
-// Router
-// ----------------------------------------------------------------
 
 GoRouter _buildRouter(AuthProvider auth) {
   return GoRouter(
@@ -103,13 +96,13 @@ GoRouter _buildRouter(AuthProvider auth) {
 
       // Routes hors du shell (plein ecran)
 
-      // US 1.4 : encodage NFC (Mode Admin)
+      //  : encodage NFC (Mode Admin)
       GoRoute(
         path: '/nfc-encoding',
         builder: (context, state) => const NfcEncodingScreen(),
       ),
 
-      // US 1.4 : consultation stock bracelets (Mode Admin)
+      //  : consultation stock bracelets (Mode Admin)
       GoRoute(
         path: '/token-stock',
         builder: (context, state) => const TokenStockMobileScreen(),
@@ -121,7 +114,7 @@ GoRouter _buildRouter(AuthProvider auth) {
         builder: (context, state) => const NfcTestScreen(),
       ),
 
-      // US 3.1 : historique des synchronisations (standalone avec AppBar)
+      //  : historique des synchronisations (standalone avec AppBar)
       GoRoute(
         path: '/sync-history',
         builder: (context, state) => const SyncHistoryScreen(),
@@ -139,7 +132,7 @@ GoRouter _buildRouter(AuthProvider auth) {
         },
       ),
 
-      // US 2.2 : selection checkpoint puis scan
+      //  : selection checkpoint puis scan
       GoRoute(
         path: '/checkpoints',
         builder: (context, state) {
@@ -163,7 +156,7 @@ GoRouter _buildRouter(AuthProvider auth) {
         },
       ),
 
-      // US 2.3 : suivi temps reel presents/manquants
+      //  : suivi temps reel presents/manquants
       GoRoute(
         path: '/attendance',
         builder: (context, state) {
@@ -179,9 +172,6 @@ GoRouter _buildRouter(AuthProvider auth) {
   );
 }
 
-// ----------------------------------------------------------------
-// Application
-// ----------------------------------------------------------------
 
 class SchoolTrackApp extends StatelessWidget {
   final AuthProvider authProvider;

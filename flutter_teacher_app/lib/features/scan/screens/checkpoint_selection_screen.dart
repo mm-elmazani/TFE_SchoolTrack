@@ -1,10 +1,3 @@
-/// Écran de sélection d'un checkpoint avant de démarrer le scan (US 2.2 + US 2.5).
-///
-/// L'enseignant sélectionne un checkpoint existant ou en crée un nouveau (bouton +).
-/// Le checkpoint créé est d'abord sauvegardé localement en SQLite (DRAFT),
-/// puis une tentative de création sur le backend est faite en best-effort.
-library;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/api/api_client.dart';
@@ -49,7 +42,7 @@ class _CheckpointSelectionScreenState
     }
   }
 
-  /// Ouvre le dialog de création d'un checkpoint (US 2.5).
+  /// Ouvre le dialog de création d'un checkpoint.
   Future<void> _showCreateDialog() async {
     final result = await showDialog<_CheckpointFormResult>(
       context: context,
@@ -67,7 +60,7 @@ class _CheckpointSelectionScreenState
       description: description,
     );
 
-    // 2. Tenter la création sur le backend (best-effort) avec UUID client (US 3.3)
+    // 2. Tenter la création sur le backend (best-effort) avec UUID client
     _apiClient
         .createCheckpoint(
           widget.tripId,
@@ -258,9 +251,6 @@ class _CheckpointSelectionScreenState
   }
 }
 
-// ----------------------------------------------------------------
-// En-tête de section
-// ----------------------------------------------------------------
 
 class _SectionHeader extends StatelessWidget {
   final String label;
@@ -316,9 +306,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte checkpoint
-// ----------------------------------------------------------------
 
 class _CheckpointCard extends StatelessWidget {
   final OfflineCheckpoint checkpoint;
@@ -359,7 +346,7 @@ class _CheckpointCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              // Nom + description (US 2.5) + badge statut
+              // Nom + description + badge statut
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,7 +375,7 @@ class _CheckpointCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Bouton info (US 2.5) : affiche la description complete
+              // Bouton info: affiche la description complete
               if (checkpoint.description != null &&
                   checkpoint.description!.isNotEmpty)
                 IconButton(
@@ -411,7 +398,7 @@ class _CheckpointCard extends StatelessWidget {
   }
 }
 
-/// Affiche un dialog avec la description complete du checkpoint (US 2.5).
+/// Affiche un dialog avec la description complete du checkpoint.
 void _showDescriptionDialog(BuildContext context, OfflineCheckpoint cp) {
   showDialog<void>(
     context: context,
@@ -430,9 +417,6 @@ void _showDescriptionDialog(BuildContext context, OfflineCheckpoint cp) {
   );
 }
 
-// ----------------------------------------------------------------
-// Badge statut checkpoint
-// ----------------------------------------------------------------
 
 class _StatusBadge extends StatelessWidget {
   final String status;
@@ -468,9 +452,6 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Vue vide
-// ----------------------------------------------------------------
 
 class _EmptyCheckpoints extends StatelessWidget {
   const _EmptyCheckpoints();
@@ -502,9 +483,6 @@ class _EmptyCheckpoints extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Dialog de création d'un checkpoint (US 2.5)
-// ----------------------------------------------------------------
 
 /// Resultat retourne par `_CreateCheckpointDialog`.
 class _CheckpointFormResult {

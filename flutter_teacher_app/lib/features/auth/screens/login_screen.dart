@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/api_client.dart';
 import '../providers/auth_provider.dart';
 
-/// Ecran de connexion de l'app enseignants (US 6.1).
+/// Ecran de connexion de l'app enseignants.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 

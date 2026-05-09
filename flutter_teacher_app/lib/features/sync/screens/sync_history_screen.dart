@@ -1,9 +1,3 @@
-/// Ecran d'historique des synchronisations (US 3.1 — critere #6).
-///
-/// Affiche la liste des synchronisations passees avec date, nombre de
-/// presences envoyees/acceptees/echouees et statut.
-library;
-
 import 'package:flutter/material.dart';
 import '../../../core/database/local_db.dart';
 
@@ -86,9 +80,6 @@ class _SyncHistoryScreenState extends State<SyncHistoryScreen> {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte d'une entree d'historique
-// ----------------------------------------------------------------
 
 class _SyncHistoryCard extends StatelessWidget {
   final SyncHistoryEntry entry;
@@ -183,9 +174,6 @@ class _SyncHistoryCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Chip de statistique
-// ----------------------------------------------------------------
 
 class _StatChip extends StatelessWidget {
   final String label;

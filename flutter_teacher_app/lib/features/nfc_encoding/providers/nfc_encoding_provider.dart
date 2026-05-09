@@ -1,12 +1,3 @@
-/// Provider pour l'encodage NFC des bracelets (US 1.4).
-///
-/// Gere le workflow :
-/// 1. Generation de l'UID en serie (ST-001, ST-002, ...)
-/// 2. Ecriture NDEF sur le bracelet via nfc_manager
-/// 3. Enregistrement du token dans le backend via POST /tokens/init
-/// 4. Feedback visuel + sonore
-library;
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -118,7 +109,7 @@ class NfcEncodingProvider extends ChangeNotifier {
     try {
       _nextSequence = await _api.getNextSequence(prefix: _prefix);
     } catch (_) {
-      // Fallback : garde la valeur actuelle (1 par defaut)
+      // Fallback: garde la valeur actuelle (1 par defaut)
     }
   }
 
@@ -244,7 +235,7 @@ class NfcEncodingProvider extends ChangeNotifier {
     final languageBytes = Uint8List.fromList(languageCode.codeUnits);
     final textBytes = Uint8List.fromList(text.codeUnits);
 
-    // Payload : [status byte (longueur du code langue)] + [langue] + [texte]
+    // Payload: [status byte (longueur du code langue)] + [langue] + [texte]
     final payload = Uint8List(1 + languageBytes.length + textBytes.length);
     payload[0] = languageBytes.length; // Status byte (UTF-8, pas de BOM)
     payload.setRange(1, 1 + languageBytes.length, languageBytes);

@@ -1,10 +1,3 @@
-/// Provider de synchronisation (US 3.1).
-///
-/// Gere l'etat de sync (idle/syncing/synced/error), le compteur de presences
-/// en attente, et declenche la sync automatiquement au retour du reseau
-/// ou periodiquement quand des presences sont en attente.
-library;
-
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';

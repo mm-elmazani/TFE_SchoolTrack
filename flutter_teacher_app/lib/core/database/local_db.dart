@@ -1,16 +1,3 @@
-/// Base de données locale SQLite chiffree SQLCipher pour le mode offline
-/// (US 2.1 + US 2.2 + US 2.5 + US 6.3).
-///
-/// Schéma :
-///   trips        — informations du voyage + timestamp de téléchargement
-///   students     — élèves avec leur assignation bracelet/QR
-///   checkpoints  — points de contrôle du voyage (créés offline, US 2.5)
-///   attendances  — présences enregistrées localement (US 2.2), en attente de sync
-///
-/// Chiffrement : AES-256 via SQLCipher. La cle est stockee dans Android Keystore
-/// via flutter_secure_storage (US 6.3).
-library;
-
 import 'dart:convert';
 import 'dart:math';
 
@@ -41,16 +28,13 @@ class LocalDb {
   @visibleForTesting
   static String? testDatabasePath;
 
-  /// Ferme et réinitialise la BDD — à appeler dans tearDown() des tests uniquement.
+  /// Ferme et réinitialise la BDD — à appeler dans tearDown des tests uniquement.
   @visibleForTesting
   Future<void> closeForTest() async {
     await _db?.close();
     _db = null;
     testDatabasePath = null;
   }
-  // ----------------------------------------------------------------
-  // Initialisation
-  // ----------------------------------------------------------------
 
   Future<Database> get database async {
     if (_db == null || !_db!.isOpen) {
@@ -66,7 +50,7 @@ class LocalDb {
     final path = testDatabasePath ??
         join(await sqflite_std.getDatabasesPath(), 'schooltrack.db');
 
-    // Mode test : sqflite standard (FFI, pas de chiffrement)
+    // Mode test: sqflite standard (FFI, pas de chiffrement)
     if (testDatabasePath != null) {
       return sqflite_std.openDatabase(
         path,
@@ -76,7 +60,7 @@ class LocalDb {
       );
     }
 
-    // Production : sqflite_sqlcipher — chiffrement AES-256 (US 6.3)
+    // Production: sqflite_sqlcipher — chiffrement AES-256
     final password = await _getOrCreateDbKey();
     try {
       return await sqlcipher.openDatabase(
@@ -159,7 +143,7 @@ class LocalDb {
       )
     ''');
 
-    /// Table des présences enregistrées localement (US 2.2).
+    /// Table des présences enregistrées localement.
     /// Les enregistrements sont conservés jusqu'à synchronisation avec le backend.
     await db.execute('''
       CREATE TABLE attendances (
@@ -185,7 +169,7 @@ class LocalDb {
       'CREATE INDEX idx_att_synced ON attendances(synced_at)',
     );
 
-    /// Table d'historique des synchronisations (US 3.1 — critere #6).
+    /// Table d'historique des synchronisations (critere #6).
     await db.execute('''
       CREATE TABLE sync_history (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -215,7 +199,7 @@ class LocalDb {
 
   /// Migrations incrementales.
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // v1 → v2 : ajout de la table attendances (US 2.2)
+    // v1 → v2: ajout de la table attendances
     if (oldVersion < 2) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS attendances (
@@ -239,7 +223,7 @@ class LocalDb {
         'CREATE INDEX IF NOT EXISTS idx_att_synced ON attendances(synced_at)',
       );
     }
-    // v3 → v4 : ajout de la table sync_history (US 3.1)
+    // v3 → v4: ajout de la table sync_history
     if (oldVersion < 4) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS sync_history (
@@ -253,7 +237,7 @@ class LocalDb {
         )
       ''');
     }
-    // v4 → v5 : table student_assignments (support double assignation physique + QR digital)
+    // v4 → v5: table student_assignments (support double assignation physique + QR digital)
     if (oldVersion < 5) {
 
       await db.execute('''
@@ -278,21 +262,18 @@ class LocalDb {
       await db.execute('ALTER TABLE trips ADD COLUMN classes TEXT');
       await db.execute('ALTER TABLE trips ADD COLUMN student_count INTEGER NOT NULL DEFAULT 0');
     }
-    // v6 → v7 : ajout synced_at sur checkpoints (US 3.3 — sync offline checkpoints)
+    // v6 → v7: ajout synced_at sur checkpoints (sync offline checkpoints)
     if (oldVersion < 7) {
       await db.execute('ALTER TABLE checkpoints ADD COLUMN synced_at INTEGER');
       // Les checkpoints existants (venus du bundle) sont deja sur le serveur
       await db.execute('UPDATE checkpoints SET synced_at = ${DateTime.now().millisecondsSinceEpoch}');
     }
-    // v7 → v8 : ajout description sur checkpoints (US 2.5 — instructions enseignant)
+    // v7 → v8: ajout description sur checkpoints (instructions enseignant)
     if (oldVersion < 8) {
       await db.execute('ALTER TABLE checkpoints ADD COLUMN description TEXT');
     }
   }
 
-  // ----------------------------------------------------------------
-  // Écriture — bundles offline
-  // ----------------------------------------------------------------
 
   /// Sauvegarde un bundle offline complet dans SQLite.
   /// Supprime d'abord les données existantes pour ce voyage (re-téléchargement propre).
@@ -378,9 +359,6 @@ class LocalDb {
     });
   }
 
-  // ----------------------------------------------------------------
-  // Écriture — présences (US 2.2)
-  // ----------------------------------------------------------------
 
   /// Enregistre une présence dans SQLite.
   /// Retourne le numéro de séquence (1 = premier scan, 2 = deuxième scan du même élève, etc.).
@@ -481,9 +459,6 @@ class LocalDb {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Lecture — voyages
-  // ----------------------------------------------------------------
 
   /// Retourne les voyages stockés localement (fallback offline).
   /// Utilisé quand le réseau est indisponible au démarrage.
@@ -552,9 +527,6 @@ class LocalDb {
     return DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
-  // ----------------------------------------------------------------
-  // Lecture — élèves
-  // ----------------------------------------------------------------
 
   /// Récupère les élèves d'un voyage depuis la DB locale.
   Future<List<OfflineStudent>> getStudents(String tripId) async {
@@ -569,7 +541,7 @@ class LocalDb {
   }
 
   /// Résout un UUID d'élève en OfflineStudent pour un voyage donné.
-  /// Utilisé par HybridIdentityReader pour les QR codes digitaux (préfixe QRD-).
+  /// Utilisé par HybridIdentityReader pour les QR codes digitaux (préfixe QRD).
   Future<OfflineStudent?> resolveStudentById(
       String studentId, String tripId) async {
     final db = await database;
@@ -622,7 +594,7 @@ class LocalDb {
       }
     }
 
-    // Fallback : ancienne colonne token_uid dans students (rétro-compat)
+    // Fallback: ancienne colonne token_uid dans students (rétro-compat)
     final rows = await db.query(
       'students',
       where: 'token_uid = ? AND trip_id = ?',
@@ -650,9 +622,6 @@ class LocalDb {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Lecture — checkpoints
-  // ----------------------------------------------------------------
 
   /// Récupère les checkpoints d'un voyage depuis la DB locale.
   Future<List<OfflineCheckpoint>> getCheckpoints(String tripId) async {
@@ -679,17 +648,14 @@ class LocalDb {
     return _rowToCheckpoint(rows.first);
   }
 
-  // ----------------------------------------------------------------
-  // Écriture — checkpoints terrain (US 2.5)
-  // ----------------------------------------------------------------
 
   /// Crée un nouveau checkpoint en SQLite local avec statut DRAFT.
   ///
   /// Génère un UUID client, calcule le prochain sequence_order,
   /// et retourne l'objet créé. Offline-first : la synchronisation
-  /// avec le backend se fera via US 3.1.
+  /// avec le backend se fera via.
   ///
-  /// [description] est optionnelle (US 2.5 — instructions enseignant).
+  /// [description] est optionnelle (instructions enseignant).
   Future<OfflineCheckpoint> createCheckpoint({
     required String tripId,
     required String name,
@@ -735,8 +701,8 @@ class LocalDb {
 
   /// Passe le statut d'un checkpoint de DRAFT à ACTIVE dans SQLite local.
   ///
-  /// Appelé au premier scan réussi (US 2.5). La mise à jour sera
-  /// synchronisée avec le backend lors de la synchronisation (US 3.1).
+  /// Appelé au premier scan réussi. La mise à jour sera
+  /// synchronisée avec le backend lors de la synchronisation.
   Future<void> activateCheckpoint(String checkpointId) async {
     final db = await database;
     await db.update(
@@ -747,7 +713,7 @@ class LocalDb {
     );
   }
 
-  /// Passe le statut d'un checkpoint ACTIVE à CLOSED dans SQLite local (US 2.7).
+  /// Passe le statut d'un checkpoint ACTIVE à CLOSED dans SQLite local.
   ///
   /// Un checkpoint CLOSED est en lecture seule : aucun nouveau scan n'est possible.
   /// La mise à jour sera propagée au backend via le call best-effort de l'ApiClient.
@@ -761,7 +727,7 @@ class LocalDb {
     );
   }
 
-  /// Marque un checkpoint comme synchronisé avec le backend (US 3.3).
+  /// Marque un checkpoint comme synchronisé avec le backend.
   Future<void> markCheckpointSynced(String checkpointId) async {
     final db = await database;
     await db.update(
@@ -772,7 +738,7 @@ class LocalDb {
     );
   }
 
-  /// Retourne les checkpoints créés localement mais pas encore synchronisés (US 3.3).
+  /// Retourne les checkpoints créés localement mais pas encore synchronisés.
   Future<List<Map<String, dynamic>>> getPendingCheckpoints() async {
     final db = await database;
     return db.query(
@@ -782,9 +748,6 @@ class LocalDb {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Historique de synchronisation (US 3.1)
-  // ----------------------------------------------------------------
 
   /// Enregistre une entree dans l'historique de synchronisation.
   Future<void> insertSyncHistory({
@@ -835,7 +798,7 @@ class LocalDb {
   }
 }
 
-/// Entree dans l'historique de synchronisation (US 3.1).
+/// Entree dans l'historique de synchronisation.
 class SyncHistoryEntry {
   final int id;
   final DateTime syncedAt;

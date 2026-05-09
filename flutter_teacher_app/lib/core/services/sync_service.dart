@@ -1,9 +1,3 @@
-/// Service de synchronisation SQLite → backend (US 3.1).
-///
-/// Lit les presences en attente (synced_at IS NULL), les envoie au backend
-/// par batch de 500 max, et marque les acceptees + doublons comme synchronisees.
-library;
-
 import '../api/api_client.dart';
 import '../database/local_db.dart';
 import '../../features/scan/models/attendance_record.dart';
@@ -42,10 +36,10 @@ class SyncService {
 
   /// Synchronise les checkpoints crees offline puis les presences en attente.
   ///
-  /// Ordre : checkpoints d'abord (pour que le backend connaisse les UUIDs),
+  /// Ordre: checkpoints d'abord (pour que le backend connaisse les UUIDs)
   /// puis presences par batch de [_maxBatchSize].
   Future<SyncReport> syncPendingAttendances({required String deviceId}) async {
-    // US 3.3 — Sync des checkpoints crees offline AVANT les attendances
+    // Sync des checkpoints crees offline AVANT les attendances
     await _syncPendingCheckpoints();
 
     final pending = await _db.getPendingAttendances();
@@ -116,7 +110,7 @@ class SyncService {
       hadNetworkError: hadNetworkError,
     );
 
-    // Enregistrer dans l'historique de synchronisation (US 3.1 critere #6)
+    // Enregistrer dans l'historique de synchronisation ( critere #6)
     if (!report.nothingToSync) {
       final status = report.isFullSuccess
           ? 'SUCCESS'
@@ -135,7 +129,7 @@ class SyncService {
     return report;
   }
 
-  /// Synchronise les checkpoints crees offline avec le backend (US 3.3).
+  /// Synchronise les checkpoints crees offline avec le backend.
   ///
   /// Pour chaque checkpoint pending, envoie une requete POST avec l'UUID client.
   /// Le backend accepte l'UUID et cree le checkpoint (ou le retourne s'il existe deja).

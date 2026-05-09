@@ -1,6 +1,3 @@
-/// Provider gérant l'état de la session de scan (US 2.2 + US 2.3 + US 2.4).
-library;
-
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +17,7 @@ enum ScanState { idle, scanning, success, duplicate, error }
 /// Mode de scan actif (QR camera OU NFC, jamais les deux).
 enum ScanMode { qr, nfc }
 
-/// Informations du dernier scan réussi d'un élève (US 2.3 — liste temps réel).
+/// Informations du dernier scan réussi d'un élève (liste temps réel).
 class StudentScanInfo {
   final String scanMethod;
   final DateTime scannedAt;
@@ -52,7 +49,7 @@ class ScanProvider extends ChangeNotifier {
   final HybridIdentityReader _reader;
 
   // Trois players dédiés avec sources pré-chargées : sans cela, des scans
-  // rapides en série voient leur play() avalé pendant que le decoder MP3
+  // rapides en série voient leur play avalé pendant que le decoder MP3
   // charge encore l'asset précédent (bug rapporté en voyage réel).
   // null = mode silencieux (tests unitaires).
   final AudioPlayer? _successPlayer;
@@ -61,7 +58,7 @@ class ScanProvider extends ChangeNotifier {
   bool _audioReady = false;
 
   /// [audioPlayer] peut être injecté pour les tests (null = mode silencieux).
-  /// En production, passer explicitement [AudioPlayer()] : deux players
+  /// En production, passer explicitement [AudioPlayer]: deux players
   /// supplémentaires sont alors créés en interne pour les sons warning/error.
   ScanProvider({
     required this.tripId,
@@ -89,16 +86,13 @@ class ScanProvider extends ChangeNotifier {
   int _presentCount = 0;
   int _totalStudents = 0;
 
-  // US 2.3 — suivi temps réel par élève
+  // suivi temps réel par élève
   List<OfflineStudent> _students = [];
   final Map<String, StudentScanInfo> _presentMap = {};
 
-  // US 2.5 — statut du checkpoint courant (DRAFT→ACTIVE au 1er scan)
+  // statut du checkpoint courant (DRAFT→ACTIVE au 1er scan)
   String _checkpointStatus = 'ACTIVE'; // défaut sécurisé
 
-  // ----------------------------------------------------------------
-  // Getters
-  // ----------------------------------------------------------------
 
   ScanState get state => _state;
   ScannedStudentInfo? get lastResult => _lastResult;
@@ -113,7 +107,7 @@ class ScanProvider extends ChangeNotifier {
   String get checkpointStatus => _checkpointStatus;
   bool get isClosed => _checkpointStatus == 'CLOSED';
 
-  // US 2.3 — listes temps réel
+  // listes temps réel
   /// Élèves déjà scannés, triés par heure de scan DESC (plus récent en premier).
   List<OfflineStudent> get presentStudents {
     final list = _students.where((s) => _presentMap.containsKey(s.id)).toList();
@@ -144,9 +138,6 @@ class ScanProvider extends ChangeNotifier {
     if (!_disposed) super.notifyListeners();
   }
 
-  // ----------------------------------------------------------------
-  // Initialisation de la session
-  // ----------------------------------------------------------------
 
   /// Démarre la session de scan : chargement des compteurs.
   /// Le NFC est démarré séparément via [startNfc] pour éviter
@@ -160,7 +151,7 @@ class ScanProvider extends ChangeNotifier {
     final saved = prefs.getString(_kScanModeKey);
     if (saved == 'nfc') _scanMode = ScanMode.nfc;
 
-    // Charger le statut du checkpoint pour la transition DRAFT→ACTIVE (US 2.5)
+    // Charger le statut du checkpoint pour la transition DRAFT→ACTIVE
     final checkpoint = await LocalDb.instance.getCheckpointById(checkpointId);
     if (checkpoint != null) _checkpointStatus = checkpoint.status;
 
@@ -252,9 +243,6 @@ class ScanProvider extends ChangeNotifier {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Traitement des résultats de scan
-  // ----------------------------------------------------------------
 
   /// Appelé depuis MobileScanner (QR) quand un code est détecté.
   Future<void> onQrDetected(String rawValue) async {
@@ -289,7 +277,7 @@ class ScanProvider extends ChangeNotifier {
         scannedAt: DateTime.now(),
       );
 
-      // Transition DRAFT→ACTIVE au premier scan réussi (US 2.5)
+      // Transition DRAFT→ACTIVE au premier scan réussi
       if (_checkpointStatus == 'DRAFT') {
         _checkpointStatus = 'ACTIVE';
         LocalDb.instance.activateCheckpoint(checkpointId);
@@ -321,13 +309,6 @@ class ScanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ----------------------------------------------------------------
-  // Remise à l'état idle (après affichage du résultat)
-  // ----------------------------------------------------------------
-
-  // ----------------------------------------------------------------
-  // Marquage manuel (US 2.4)
-  // ----------------------------------------------------------------
 
   /// Codes de justification pour un marquage manuel.
   static const List<(String, String)> justificationOptions = [
@@ -338,7 +319,7 @@ class ScanProvider extends ChangeNotifier {
     ('OTHER', 'Autre'),
   ];
 
-  /// Marque manuellement un élève comme présent avec une justification (US 2.4).
+  /// Marque manuellement un élève comme présent avec une justification.
   ///
   /// Enregistre la présence en SQLite (is_manual=1, scan_method='MANUAL')
   /// et met à jour la liste temps réel. Si l'élève est déjà présent,
@@ -373,7 +354,7 @@ class ScanProvider extends ChangeNotifier {
         scannedAt: now,
       );
 
-      // Transition DRAFT→ACTIVE au premier marquage (US 2.5)
+      // Transition DRAFT→ACTIVE au premier marquage
       if (_checkpointStatus == 'DRAFT') {
         _checkpointStatus = 'ACTIVE';
         LocalDb.instance.activateCheckpoint(checkpointId);
@@ -383,9 +364,6 @@ class ScanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ----------------------------------------------------------------
-  // Clôture checkpoint (US 2.7)
-  // ----------------------------------------------------------------
 
   /// Clôture le checkpoint courant : ACTIVE → CLOSED.
   ///
@@ -413,9 +391,6 @@ class ScanProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ----------------------------------------------------------------
-  // Sons
-  // ----------------------------------------------------------------
 
   Future<void> _playSuccessSound(bool isDuplicate) async {
     if (!_audioReady) return;
@@ -428,7 +403,7 @@ class ScanProvider extends ChangeNotifier {
     await _restart(_errorPlayer!);
   }
 
-  /// Replay rapide d'un son pré-chargé : seek(0) + resume().
+  /// Replay rapide d'un son pré-chargé: seek(0) + resume.
   /// Évite le décodage à chaque appel et permet aux scans rapides en série
   /// de toujours déclencher un bip audible (bug rapporté en voyage réel).
   Future<void> _restart(AudioPlayer player) async {

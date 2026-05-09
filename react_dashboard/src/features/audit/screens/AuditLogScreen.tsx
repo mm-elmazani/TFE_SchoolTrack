@@ -18,9 +18,6 @@ import {
   Loader2, Globe, Download, FilterX, X,
 } from 'lucide-react';
 
-// ----------------------------------------------------------------
-// Traduction des actions backend → libellés français
-// ----------------------------------------------------------------
 const ACTION_LABELS: Record<string, string> = {
   // Authentification
   LOGIN_SUCCESS:             'Connexion réussie',
@@ -79,9 +76,6 @@ const ACTION_LABELS: Record<string, string> = {
   AUDIT_LOGS_EXPORTED:       'Logs d\'audit exportés',
 };
 
-// ----------------------------------------------------------------
-// Badge coloré : catégorie + libellé de l'action
-// ----------------------------------------------------------------
 function getActionBadge(action: string) {
   const label = ACTION_LABELS[action] ?? action;
   const a = action.toLowerCase();
@@ -144,9 +138,6 @@ function getActionBadge(action: string) {
   );
 }
 
-// ----------------------------------------------------------------
-// Modal détails
-// ----------------------------------------------------------------
 function DetailsModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
   const label = ACTION_LABELS[log.action] ?? log.action;
 
@@ -229,9 +220,6 @@ function DetailsModal({ log, onClose }: { log: AuditLog; onClose: () => void }) 
   );
 }
 
-// ----------------------------------------------------------------
-// Écran principal
-// ----------------------------------------------------------------
 export default function AuditLogScreen() {
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState('');

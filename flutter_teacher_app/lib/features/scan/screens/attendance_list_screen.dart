@@ -1,10 +1,3 @@
-/// Écran de suivi temps réel des présences (US 2.3 + US 2.4).
-///
-/// Affiche deux sections : élèves présents et élèves manquants.
-/// Se met à jour en temps réel via Consumer de ScanProvider à chaque scan.
-/// Appui long sur un élève manquant → dialog de marquage manuel (US 2.4).
-library;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/scan_provider.dart';
@@ -23,7 +16,7 @@ class AttendanceListScreen extends StatelessWidget {
     required this.tripDestination,
   });
 
-  /// Ouvre le dialog de marquage manuel pour [student] (US 2.4).
+  /// Ouvre le dialog de marquage manuel pour [student].
   void _showManualMarkDialog(
     BuildContext context,
     ScanProvider provider,
@@ -88,9 +81,6 @@ class AttendanceListScreen extends StatelessWidget {
             ),
             body: CustomScrollView(
               slivers: [
-                // ------------------------------------------------
-                // Section Manquants (en premier pour action rapide)
-                // ------------------------------------------------
                 _SectionHeader(
                   label: 'Manquants',
                   count: missing.length,
@@ -122,9 +112,6 @@ class AttendanceListScreen extends StatelessWidget {
                     ),
                   ),
 
-                // ------------------------------------------------
-                // Section Présents (en bas)
-                // ------------------------------------------------
                 _SectionHeader(
                   label: 'Présents',
                   count: present.length,
@@ -159,9 +146,6 @@ class AttendanceListScreen extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// En-tête de section
-// ----------------------------------------------------------------
 
 class _SectionHeader extends StatelessWidget {
   final String label;
@@ -200,9 +184,6 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Ligne — élève présent
-// ----------------------------------------------------------------
 
 class _PresentTile extends StatelessWidget {
   final OfflineStudent student;
@@ -241,9 +222,6 @@ class _PresentTile extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Ligne — élève manquant (US 2.3 + US 2.4 : appui long)
-// ----------------------------------------------------------------
 
 class _MissingTile extends StatelessWidget {
   final OfflineStudent student;
@@ -278,9 +256,6 @@ class _MissingTile extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Badge méthode de scan
-// ----------------------------------------------------------------
 
 class _ScanBadge extends StatelessWidget {
   final String method;
@@ -307,9 +282,6 @@ class _ScanBadge extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Message section vide
-// ----------------------------------------------------------------
 
 class _EmptyHint extends StatelessWidget {
   final String message;
@@ -331,9 +303,6 @@ class _EmptyHint extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Dialog de marquage manuel (US 2.4)
-// ----------------------------------------------------------------
 
 class _ManualMarkDialog extends StatefulWidget {
   final OfflineStudent student;

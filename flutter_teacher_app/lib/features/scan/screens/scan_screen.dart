@@ -1,10 +1,3 @@
-/// Écran principal de scan hybride QR + NFC (US 2.2).
-///
-/// Affiche la caméra pour lire les QR codes (physique et digital),
-/// écoute en parallèle les tags NFC.
-/// Montre un feedback visuel (Lottie) et sonore (audioplayers) après chaque scan.
-library;
-
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -115,7 +108,7 @@ class _ScanScreenState extends State<ScanScreen> {
     if (mounted) setState(() {});
   }
 
-  /// Affiche le dialog de confirmation de clôture du checkpoint (US 2.7).
+  /// Affiche le dialog de confirmation de clôture du checkpoint.
   Future<void> _showCloseDialog(BuildContext context) async {
     // Capturer le navigator avant tout await pour éviter l'accès async au context.
     final nav = Navigator.of(context);
@@ -206,9 +199,6 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // ----------------------------------------------------------------
-  // AppBar
-  // ----------------------------------------------------------------
 
   AppBar _buildAppBar(BuildContext context, ScanProvider provider) {
     return AppBar(
@@ -230,7 +220,7 @@ class _ScanScreenState extends State<ScanScreen> {
       backgroundColor: Theme.of(context).colorScheme.primary,
       foregroundColor: Theme.of(context).colorScheme.onPrimary,
       actions: [
-        // Bouton suivi présences (US 2.3)
+        // Bouton suivi présences
         IconButton(
           icon: const Icon(Icons.people),
           tooltip: 'Voir les présences',
@@ -240,7 +230,7 @@ class _ScanScreenState extends State<ScanScreen> {
             'tripDestination': widget.tripDestination,
           }),
         ),
-        // Bouton clôturer checkpoint (US 2.7) — visible uniquement sur ACTIVE
+        // Bouton clôturer checkpoint — visible uniquement sur ACTIVE
         if (provider.checkpointStatus == 'ACTIVE')
           TextButton(
             onPressed: () => _showCloseDialog(context),
@@ -254,9 +244,6 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Caméra
-  // ----------------------------------------------------------------
 
   Widget _buildCamera(ScanProvider provider) {
     if (_cameraController == null) return const SizedBox.expand();
@@ -266,9 +253,6 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Vue NFC dediee (remplace la camera en mode NFC)
-  // ----------------------------------------------------------------
 
   Widget _buildNfcView(BuildContext context, ScanProvider provider) {
     final cs = Theme.of(context).colorScheme;
@@ -321,9 +305,6 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Toggle QR / NFC
-  // ----------------------------------------------------------------
 
   Widget _buildModeToggle(BuildContext context, ScanProvider provider) {
     // Ne pas afficher le toggle par-dessus un panneau de resultat
@@ -358,9 +339,6 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Overlay scan (cadre de visée + instructions)
-  // ----------------------------------------------------------------
 
   Widget _buildScanOverlay(BuildContext context, ScanProvider provider) {
     return Positioned.fill(
@@ -418,9 +396,6 @@ class _ScanScreenState extends State<ScanScreen> {
         _ => Colors.white,
       };
 
-  // ----------------------------------------------------------------
-  // Panneau résultat (glisse depuis le bas)
-  // ----------------------------------------------------------------
 
   Widget _buildResultPanel(BuildContext context, ScanProvider provider) {
     return Container(
@@ -444,9 +419,6 @@ class _ScanScreenState extends State<ScanScreen> {
     );
   }
 
-  // ----------------------------------------------------------------
-  // Compteur présents/manquants
-  // ----------------------------------------------------------------
 
   Widget _buildCounter(BuildContext context, ScanProvider provider) {
     return Positioned(
@@ -478,9 +450,6 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte succès
-// ----------------------------------------------------------------
 
 class _SuccessCard extends StatelessWidget {
   final ScannedStudentInfo result;
@@ -535,9 +504,6 @@ class _SuccessCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte doublon
-// ----------------------------------------------------------------
 
 class _DuplicateCard extends StatelessWidget {
   final ScannedStudentInfo result;
@@ -591,9 +557,6 @@ class _DuplicateCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Carte erreur
-// ----------------------------------------------------------------
 
 class _ErrorCard extends StatelessWidget {
   final String message;
@@ -650,9 +613,6 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Badge méthode de scan
-// ----------------------------------------------------------------
 
 class _ScanMethodBadge extends StatelessWidget {
   final String method;
@@ -683,13 +643,6 @@ class _ScanMethodBadge extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Widget Lottie avec fallback icône
-// ----------------------------------------------------------------
-
-// ----------------------------------------------------------------
-// Bouton du toggle mode QR / NFC
-// ----------------------------------------------------------------
 
 class _ModeButton extends StatelessWidget {
   final IconData icon;
@@ -739,9 +692,6 @@ class _ModeButton extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------
-// Widget Lottie avec fallback icône
-// ----------------------------------------------------------------
 
 class _LottieOrIcon extends StatelessWidget {
   final String assetPath;

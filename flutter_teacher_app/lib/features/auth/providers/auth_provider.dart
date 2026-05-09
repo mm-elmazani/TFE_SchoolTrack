@@ -67,7 +67,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Connexion avec email + mot de passe (+ code TOTP optionnel + ecole).
+  /// Connexion avec email + mot de passe (code TOTP optionnel + ecole).
   /// Si [rememberMe] est `true`, le serveur emet un refresh token de 7 jours
   /// au lieu de 24h.
   Future<bool> login(

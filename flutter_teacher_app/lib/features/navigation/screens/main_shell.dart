@@ -1,11 +1,3 @@
-/// Shell principal avec NavigationBar Material 3 (bottom nav).
-///
-/// 3 branches :
-///   - Voyages (index 0)
-///   - Sync    (index 1)
-///   - Admin   (index 2, visible uniquement pour DIRECTION / ADMIN_TECH)
-library;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';

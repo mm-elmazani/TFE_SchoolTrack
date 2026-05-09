@@ -1,10 +1,3 @@
-/// Modèles de données pour le bundle offline (US 2.1).
-/// Correspondent aux schémas Pydantic du backend (schemas/offline.py).
-library;
-
-// ----------------------------------------------------------------
-// Résumé voyage (liste des voyages depuis GET /api/v1/trips)
-// ----------------------------------------------------------------
 
 /// Résumé d'un voyage affiché dans la liste de sélection.
 class TripSummary {
@@ -32,9 +25,6 @@ class TripSummary {
       );
 }
 
-// ----------------------------------------------------------------
-// Bundle offline (GET /api/v1/trips/{trip_id}/offline-data)
-// ----------------------------------------------------------------
 
 /// Assignation active d'un élève (bracelet NFC, QR physique ou QR digital).
 class OfflineAssignment {
@@ -104,7 +94,7 @@ class OfflineStudent {
 class OfflineCheckpoint {
   final String id;
   final String name;
-  final String? description; // US 2.5 — instructions optionnelles
+  final String? description; // instructions optionnelles
   final int sequenceOrder;
   final String status; // DRAFT, ACTIVE, CLOSED
 

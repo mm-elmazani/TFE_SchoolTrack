@@ -1,6 +1,3 @@
-/// Provider gérant la liste des voyages et le téléchargement offline (US 2.1).
-library;
-
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -43,9 +40,6 @@ class TripProvider extends ChangeNotifier {
   // Timer d'auto-refresh de la liste des voyages
   Timer? _autoRefreshTimer;
 
-  // ----------------------------------------------------------------
-  // Getters
-  // ----------------------------------------------------------------
 
   TripListState get listState => _listState;
   List<TripSummary> get trips => _trips;
@@ -80,9 +74,6 @@ class TripProvider extends ChangeNotifier {
     if (!_disposed) super.notifyListeners();
   }
 
-  // ----------------------------------------------------------------
-  // Chargement de la liste des voyages
-  // ----------------------------------------------------------------
 
   /// Charge la liste des voyages depuis l'API.
   /// En cas d'échec réseau, bascule en mode offline avec les données SQLite locales.
@@ -134,9 +125,6 @@ class TripProvider extends ChangeNotifier {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Téléchargement du bundle offline
-  // ----------------------------------------------------------------
 
   /// Télécharge et sauvegarde le bundle offline d'un voyage dans SQLite.
   Future<void> downloadBundle(String tripId) async {
@@ -161,11 +149,8 @@ class TripProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ----------------------------------------------------------------
-  // Auto-refresh periodique de la liste des voyages
-  // ----------------------------------------------------------------
 
-  /// Active l'auto-refresh : `loadTrips()` est rappele toutes les
+  /// Active l'auto-refresh: `loadTrips` est rappele toutes les
   /// [kAutoRefreshInterval]. Le tick est skip si un chargement est
   /// en cours ou si un download de bundle est actif (evite les races).
   ///
