@@ -1,5 +1,5 @@
 """
-Schemas Pydantic pour l'authentification (US 6.1).
+Schemas Pydantic pour l'authentification.
 """
 
 from datetime import datetime

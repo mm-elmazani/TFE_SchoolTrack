@@ -1,5 +1,5 @@
 """
-Schémas Pydantic pour les classes scolaires (US 1.3).
+Schémas Pydantic pour les classes scolaires.
 """
 
 import uuid

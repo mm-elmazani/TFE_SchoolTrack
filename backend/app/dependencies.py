@@ -1,8 +1,8 @@
 """
-Dependances FastAPI partagees (US 6.1 + US 6.2).
-get_current_user : extraction et validation du JWT depuis le header Authorization.
-require_role : fabrique de dependances pour restreindre un endpoint a certains roles.
-log_audit : journalise une action dans la table audit_logs (RGPD).
+Dependances FastAPI partagees.
+get_current_user: extraction et validation du JWT depuis le header Authorization.
+require_role: fabrique de dependances pour restreindre un endpoint a certains roles.
+log_audit: journalise une action dans la table audit_logs (RGPD).
 """
 
 from typing import Callable
@@ -57,7 +57,7 @@ def require_role(*allowed_roles: str) -> Callable:
     Retourne une dependance FastAPI qui verifie que l'utilisateur connecte
     possede l'un des roles autorises. Leve HTTP 403 sinon.
 
-    Usage dans un router :
+    Usage dans un router:
         current_user: User = Depends(require_role("DIRECTION", "ADMIN_TECH"))
     """
     def _role_checker(current_user: User = Depends(get_current_user)) -> User:

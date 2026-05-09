@@ -1,7 +1,7 @@
 """
-Planificateur APScheduler (US 1.6, US 6.4).
+Planificateur APScheduler.
 
-Jobs :
+Jobs:
 - QR emails 48h avant chaque voyage (toutes les heures)
 - Rotation des audit logs > 12 mois (tous les jours a 3h)
 - Transition automatique des statuts de voyages (toutes les 15 min)
@@ -23,7 +23,7 @@ scheduler = BackgroundScheduler()
 
 def _send_qr_emails_scheduled() -> None:
     """
-    Tâche planifiée : cherche les voyages dont la date est J+2 et déclenche
+    Tâche planifiée: cherche les voyages dont la date est J+2 et déclenche
     l'envoi des QR codes pour les élèves non encore notifiés.
     Import local pour éviter les imports circulaires.
     """
@@ -61,7 +61,7 @@ def _send_qr_emails_scheduled() -> None:
 
 def _purge_old_audit_logs() -> None:
     """
-    Tache planifiee (US 6.4) : supprime les logs d'audit de plus de 12 mois.
+    Tache planifiee: supprime les logs d'audit de plus de 12 mois.
     Conservation minimale de 12 mois pour conformite RGPD.
     """
     cutoff = datetime.utcnow() - timedelta(days=365)
@@ -86,11 +86,11 @@ def _purge_old_audit_logs() -> None:
 
 def _auto_update_trip_statuses() -> None:
     """
-    Tache planifiee : met a jour automatiquement le statut des voyages
+    Tache planifiee: met a jour automatiquement le statut des voyages
     en fonction de la date du jour.
-    - PLANNED + date == aujourd'hui  → ACTIVE
-    - PLANNED + date <  aujourd'hui  → COMPLETED (rattrapage)
-    - ACTIVE  → reste ACTIVE jusqu'à clôture manuelle par l'enseignant
+    - PLANNED + date == aujourd'hui → ACTIVE
+    - PLANNED + date < aujourd'hui → COMPLETED (rattrapage)
+    - ACTIVE → reste ACTIVE jusqu'à clôture manuelle par l'enseignant
       (un voyage peut durer plusieurs jours — pas de clôture automatique)
     """
     from app.services import assignment_service

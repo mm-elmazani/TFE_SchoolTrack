@@ -1,9 +1,9 @@
 """
-Service d'orchestration pour l'envoi des QR codes digitaux par email (US 1.6).
+Service d'orchestration pour l'envoi des QR codes digitaux par email.
 
-Flux :
+Flux:
   1. Vérifier que le voyage existe et n'est pas archivé
-  2. Pour chaque élève inscrit au voyage :
+  2. Pour chaque élève inscrit au voyage:
      a. Skip si pas d'email
      b. Skip si déjà une assignation active sur ce voyage (NFC, QR physique ou QR digital)
      c. Générer un token_uid unique (QRD-XXXXXXXX)
@@ -52,7 +52,7 @@ def send_qr_emails_for_trip(
     """
     Envoie les QR codes digitaux par email à tous les élèves d'un voyage.
 
-    Règles métier :
+    Règles métier:
     - Élève sans email → comptabilisé dans no_email_count, aucun envoi
     - Élève avec assignation active (NFC, QR physique ou QR digital) → already_sent_count
     - Erreur SMTP individuelle → log + ajout dans errors, pas d'assignation créée

@@ -1,8 +1,8 @@
 """
-Router pour les alertes temps reel (US 4.3).
-Creation : DIRECTION, ADMIN_TECH, TEACHER.
-Lecture : DIRECTION, ADMIN_TECH.
-Mise a jour statut : DIRECTION, ADMIN_TECH.
+Router pour les alertes temps reel.
+Creation: DIRECTION, ADMIN_TECH, TEACHER.
+Lecture: DIRECTION, ADMIN_TECH.
+Mise a jour statut: DIRECTION, ADMIN_TECH.
 """
 
 import uuid
@@ -23,7 +23,7 @@ _admin = require_role("DIRECTION", "ADMIN_TECH")
 _field = require_role("DIRECTION", "ADMIN_TECH", "TEACHER")
 
 
-@router.post("", response_model=AlertResponse, status_code=201, summary="Creer une alerte (US 4.3)")
+@router.post("", response_model=AlertResponse, status_code=201, summary="Creer une alerte")
 def create_alert(
     data: AlertCreate,
     request: Request,
@@ -109,9 +109,9 @@ def update_alert(
     db: Session = Depends(get_db),
 ):
     """
-    Met a jour le statut d'une alerte :
-    - IN_PROGRESS : alerte prise en charge
-    - RESOLVED : alerte resolue
+    Met a jour le statut d'une alerte:
+    - IN_PROGRESS: alerte prise en charge
+    - RESOLVED: alerte resolue
     """
     try:
         alert = alert_service.update_alert_status(

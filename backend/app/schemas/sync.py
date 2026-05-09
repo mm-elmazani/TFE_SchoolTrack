@@ -1,6 +1,6 @@
 """
-Schémas Pydantic pour la synchronisation offline → online (US 3.1 + US 3.2).
-Endpoint : POST /api/sync/attendances
+Schémas Pydantic pour la synchronisation offline → online.
+Endpoint: POST /api/sync/attendances
 """
 
 import uuid
@@ -21,8 +21,8 @@ class ScanItem(BaseModel):
     trip_id: uuid.UUID
     scanned_at: datetime          # Timestamp local au moment du scan (avant réseau)
     scan_method: str              # NFC_PHYSICAL, QR_PHYSICAL, QR_DIGITAL, MANUAL
-    scan_sequence: int = 1        # Numéro de scan au checkpoint (US 2.6 : 1=premier, 2+=doublon)
-    is_manual: bool = False       # True si marquage manuel (US 2.4)
+    scan_sequence: int = 1        # Numéro de scan au checkpoint (1=premier, 2+=doublon)
+    is_manual: bool = False       # True si marquage manuel
     justification: Optional[str] = None  # Raison du marquage manuel (BADGE_MISSING, etc.)
     comment: Optional[str] = None        # Commentaire libre optionnel
 
@@ -48,7 +48,7 @@ class SyncRequest(BaseModel):
 
 
 class TemporalAnomaly(BaseModel):
-    """Incohérence temporelle détectée entre deux checkpoints pour un même élève (US 3.2)."""
+    """Incohérence temporelle détectée entre deux checkpoints pour un même élève."""
 
     student_id: str
     trip_id: str
@@ -61,13 +61,13 @@ class TemporalAnomaly(BaseModel):
 
 class SyncResponse(BaseModel):
 
-    # US 3.1 — idempotence
+    # idempotence
     accepted: List[str]           # client_uuids insérés comme nouveaux canoniques
     duplicate: List[str]          # client_uuids déjà connus (idempotence)
     total_received: int
     total_inserted: int
 
-    # US 3.2 — fusion multi-enseignants
+    # fusion multi-enseignants
     merged: List[str] = []        # client_uuids dont le scan (plus ancien) a remplacé le canonique
     rejected: List[str] = []      # client_uuids rejetés (checkpoint supprimé, etc.)
     temporal_anomalies: List[TemporalAnomaly] = []  # incohérences d'ordre entre checkpoints

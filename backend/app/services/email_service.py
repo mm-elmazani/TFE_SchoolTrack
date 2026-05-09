@@ -1,5 +1,5 @@
 """
-Service d'envoi d'emails SMTP (US 1.6).
+Service d'envoi d'emails SMTP.
 Utilisé pour l'envoi des QR codes digitaux aux parents/élèves avant un voyage.
 """
 

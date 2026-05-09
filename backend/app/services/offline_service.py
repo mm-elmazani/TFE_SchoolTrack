@@ -1,9 +1,9 @@
 """
-Service de génération du bundle offline (US 2.1).
-Endpoint : GET /api/v1/trips/{trip_id}/offline-data
+Service de génération du bundle offline.
+Endpoint: GET /api/v1/trips/{trip_id}/offline-data
 
 Agrège en une seule réponse tout ce dont Flutter a besoin pour fonctionner
-sans réseau : voyage + élèves (avec assignation active, classe, contact) + checkpoints.
+sans réseau: voyage + élèves (avec assignation active, classe, contact) + checkpoints.
 """
 
 import uuid
@@ -38,7 +38,7 @@ def get_offline_data(
     """
     Génère le bundle complet de données offline pour un voyage.
 
-    Contenu :
+    Contenu:
     - Infos du voyage (destination, date, classes participantes, nb élèves)
     - Liste des élèves avec assignation active, email, téléphone, photo, classe
     - Checkpoints existants triés par sequence_order
@@ -97,7 +97,7 @@ def get_offline_data(
     ).scalars().all()
     trip_classes = list(trip_class_rows)
 
-    # Tri alphabétique en Python (colonnes chiffrées, US 6.3)
+    # Tri alphabétique en Python (colonnes chiffrées)
     students_rows = sorted(
         students_rows,
         key=lambda s: ((s.last_name or "").lower(), (s.first_name or "").lower()),

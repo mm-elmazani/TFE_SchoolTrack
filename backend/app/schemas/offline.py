@@ -1,8 +1,8 @@
 """
-Schémas Pydantic pour le bundle de données offline (US 2.1).
-Endpoint : GET /api/v1/trips/{trip_id}/offline-data
+Schémas Pydantic pour le bundle de données offline.
+Endpoint: GET /api/v1/trips/{trip_id}/offline-data
 
-Ce bundle contient tout ce dont l'app Flutter a besoin pour fonctionner sans réseau :
+Ce bundle contient tout ce dont l'app Flutter a besoin pour fonctionner sans réseau:
 - Les infos du voyage
 - Les élèves avec leur assignation active (bracelet/QR)
 - Les checkpoints existants

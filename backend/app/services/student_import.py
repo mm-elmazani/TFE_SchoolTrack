@@ -2,10 +2,10 @@
 Service d'import CSV/Excel pour les élèves.
 Gère le parsing, la validation, la détection de doublons et l'insertion bulk.
 
-Colonne optionnelle `classe` : si présente, l'élève est automatiquement assigné
+Colonne optionnelle `classe`: si présente, l'élève est automatiquement assigné
 à la classe correspondante (créée si elle n'existe pas encore).
 
-Formats acceptés : CSV (.csv) et Excel (.xlsx).
+Formats acceptés: CSV (.csv) et Excel (.xlsx).
 """
 
 import csv
@@ -85,7 +85,7 @@ def _get_or_create_class(
     school_id: Optional[uuid.UUID] = None,
 ) -> SchoolClass:
     """
-    Retourne la classe portant ce nom dans l'école (insensible à la casse),
+    Retourne la classe portant ce nom dans l'école (insensible à la casse)
     ou la crée si elle n'existe pas encore.
     """
     query = select(SchoolClass).where(func.lower(SchoolClass.name) == class_name.lower())
@@ -110,7 +110,7 @@ def _validate_and_insert(
 ) -> StudentImportReport:
     """
     Logique commune de validation, détection de doublons et insertion bulk.
-    `rows` : liste de dicts {colonne_normalisee: valeur} pour chaque ligne de données.
+    `rows`: liste de dicts {colonne_normalisee: valeur} pour chaque ligne de données.
     """
     has_classe_column = "classe" in normalized_fields
     has_telephone_column = "telephone" in normalized_fields

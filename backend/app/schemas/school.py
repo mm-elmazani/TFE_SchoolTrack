@@ -1,5 +1,5 @@
 """
-Schémas Pydantic pour les écoles (US 6.6 — multi-tenancy).
+Schémas Pydantic pour les écoles (multi-tenancy).
 """
 
 import uuid

@@ -1,5 +1,5 @@
 """
-Schemas Pydantic pour les logs d'audit (US 6.4).
+Schemas Pydantic pour les logs d'audit.
 """
 
 import uuid

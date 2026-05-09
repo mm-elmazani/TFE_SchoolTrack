@@ -1,5 +1,5 @@
 """
-Service metier pour les alertes temps reel (US 4.3).
+Service metier pour les alertes temps reel.
 Creation, lecture, traitement et resolution des alertes.
 """
 

@@ -1,5 +1,5 @@
 """
-Schémas Pydantic pour les checkpoints (US 2.5).
+Schémas Pydantic pour les checkpoints.
 Création sur le terrain par un enseignant via l'app mobile.
 """
 
@@ -16,7 +16,7 @@ DESCRIPTION_MAX_LENGTH = 500
 class CheckpointCreate(BaseModel):
     name: str
     description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
-    id: Optional[uuid.UUID] = None  # UUID client pour sync offline (US 3.3)
+    id: Optional[uuid.UUID] = None  # UUID client pour sync offline
 
     @field_validator("name")
     @classmethod

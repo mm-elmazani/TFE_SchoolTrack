@@ -1,5 +1,5 @@
 """
-Service métier pour les checkpoints (US 2.5 + US 2.7 + US 4.4).
+Service métier pour les checkpoints.
 Création dynamique et clôture sur le terrain par les enseignants.
 Timeline et résumé checkpoints pour la direction.
 """
@@ -32,7 +32,7 @@ def create_checkpoint(
     Crée un nouveau checkpoint en statut DRAFT pour un voyage donné.
 
     Le sequence_order est calculé automatiquement par le trigger PostgreSQL
-    (set_checkpoint_sequence_order). On insère sans le fournir : le trigger
+    (set_checkpoint_sequence_order). On insère sans le fournir: le trigger
     le calcule avant INSERT et le remplira.
 
     Lève ValueError si le voyage est introuvable ou dans un statut incompatible
@@ -46,7 +46,7 @@ def create_checkpoint(
             f"Impossible de créer un checkpoint : le voyage est en statut {trip.status}."
         )
 
-    # Si UUID client fourni (sync offline US 3.3), vérifier s'il existe déjà
+    # Si UUID client fourni (sync offline), vérifier s'il existe déjà
     if data.id:
         existing = db.query(Checkpoint).filter(Checkpoint.id == data.id).first()
         if existing:
@@ -82,7 +82,7 @@ def get_checkpoints_summary(
     """
     Construit le résumé et la timeline des checkpoints d'un voyage.
 
-    Inclut pour chaque checkpoint : nombre de scans, nombre d'élèves distincts
+    Inclut pour chaque checkpoint: nombre de scans, nombre d'élèves distincts
     scannés, durée (started_at → closed_at), nom du créateur.
     """
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
@@ -220,7 +220,7 @@ def delete_checkpoint(
 ) -> None:
     """
     Supprime un checkpoint DRAFT sans aucun scan enregistré.
-    Lève ValueError si introuvable, si le statut n'est pas DRAFT,
+    Lève ValueError si introuvable, si le statut n'est pas DRAFT
     ou si des scans existent déjà pour ce checkpoint.
     """
     checkpoint = db.query(Checkpoint).filter(Checkpoint.id == checkpoint_id).first()
@@ -249,7 +249,7 @@ def close_checkpoint(
     Clôture un checkpoint DRAFT|ACTIVE → CLOSED.
 
     Enregistre closed_at avec le timestamp UTC courant.
-    Autorise la transition depuis DRAFT (US 3.3 : checkpoint créé et
+    Autorise la transition depuis DRAFT (checkpoint créé et
     fermé offline, synchronisé plus tard).
     Lève ValueError si le checkpoint est introuvable ou déjà CLOSED.
     """

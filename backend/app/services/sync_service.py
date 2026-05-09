@@ -1,13 +1,13 @@
 """
-Service de synchronisation offline → online (US 3.1 + US 3.2).
+Service de synchronisation offline → online.
 
-Stratégie US 3.2 — Fusion multi-enseignants :
-- attendance_history : archive TOUS les scans bruts reçus (append-only par client_uuid)
-- attendances        : table canonique, UNE ligne par (student, checkpoint, trip)
+Stratégie Fusion multi-enseignants:
+- attendance_history: archive TOUS les scans bruts reçus (append-only par client_uuid)
+- attendances: table canonique, UNE ligne par (student, checkpoint, trip)
                        = le scan avec le timestamp le plus ancien (premier arrivé réel)
-- Idempotence        : client_uuid unique dans attendance_history
-- Fusion             : si nouvel arrivant a scanned_at < canonique existant → mise à jour
-- Anomalies          : détection des incohérences d'ordre entre checkpoints
+- Idempotence: client_uuid unique dans attendance_history
+- Fusion: si nouvel arrivant a scanned_at < canonique existant → mise à jour
+- Anomalies: détection des incohérences d'ordre entre checkpoints
 """
 
 import logging
@@ -40,12 +40,12 @@ def sync_attendances(
     school_id: uuid_module.UUID | None = None,
 ) -> SyncResponse:
     """
-    Reçoit un batch de scans et les fusionne intelligemment (US 3.2).
+    Reçoit un batch de scans et les fusionne intelligemment.
 
-    Pour chaque scan :
+    Pour chaque scan:
     1. Vérifie que client_uuid n'est pas un doublon (intra-batch ou déjà en history)
     2. Insère dans attendance_history (archive brute)
-    3. UPSERT dans attendances (canonique) :
+    3. UPSERT dans attendances (canonique):
        - Nouveau (student, checkpoint) → INSERT
        - Existant ET nouveau plus ancien → UPDATE (fusion)
        - Existant ET nouveau plus récent → aucun changement canonique (SUPERSEDED)
@@ -84,7 +84,7 @@ def sync_attendances(
             seen_in_batch.add(scan.client_uuid)
             continue
 
-        # 2b. Vérifier que le checkpoint existe et appartient à l'école (US 6.6)
+        # 2b. Vérifier que le checkpoint existe et appartient à l'école
         if scan.checkpoint_id not in valid_checkpoints:
             cp_query = select(Checkpoint.id).join(Trip, Trip.id == Checkpoint.trip_id).where(Checkpoint.id == scan.checkpoint_id)
             if school_id is not None:
@@ -121,7 +121,7 @@ def sync_attendances(
         db.add(history)
 
         # 4. Chercher le canonique existant pour (student, checkpoint, trip)
-        #    D'abord dans le cache intra-batch, puis en DB
+        # D'abord dans le cache intra-batch, puis en DB
         canon_key = (scan.student_id, scan.checkpoint_id, scan.trip_id)
         canonical = batch_canonicals.get(canon_key)
         if canonical is None:
@@ -259,7 +259,7 @@ def _detect_temporal_anomalies(
     """
     Détecte les incohérences temporelles entre checkpoints pour les élèves synchronisés.
 
-    Règle : pour un élève et un voyage, scanned_at(CP A) doit être < scanned_at(CP B)
+    Règle: pour un élève et un voyage, scanned_at(CP A) doit être < scanned_at(CP B)
     si sequence_order(A) < sequence_order(B).
 
     Signale mais ne bloque pas — les anomalies sont retournées dans le rapport.

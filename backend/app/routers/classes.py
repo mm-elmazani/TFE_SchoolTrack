@@ -1,7 +1,7 @@
 """
-Router pour la gestion des classes scolaires (US 1.3, US 6.2, US 6.4).
-Lecture : tous les utilisateurs authentifies.
-Ecriture : DIRECTION et ADMIN_TECH.
+Router pour la gestion des classes scolaires.
+Lecture: tous les utilisateurs authentifies.
+Ecriture: DIRECTION et ADMIN_TECH.
 Audit logging sur toutes les actions d'ecriture.
 """
 

@@ -1,5 +1,5 @@
 """
-Routers pour les checkpoints terrain (US 2.5, US 2.7, US 6.2, US 6.4).
+Routers pour les checkpoints terrain.
 Création et clôture par les enseignants / direction depuis l'app mobile.
 Audit logging sur creation et cloture.
 """
@@ -15,10 +15,10 @@ from app.models.user import User
 from app.schemas.checkpoint import CheckpointCreate, CheckpointUpdate, CheckpointResponse, CheckpointsSummary
 from app.services import checkpoint_service
 
-# POST /api/v1/trips/{trip_id}/checkpoints (US 2.5)
+# POST /api/v1/trips/{trip_id}/checkpoints
 router = APIRouter(prefix="/api/v1/trips", tags=["Checkpoints"])
 
-# POST /api/v1/checkpoints/{checkpoint_id}/close (US 2.7)
+# POST /api/v1/checkpoints/{checkpoint_id}/close
 checkpoints_router = APIRouter(prefix="/api/v1/checkpoints", tags=["Checkpoints"])
 
 _field = require_role("DIRECTION", "ADMIN_TECH", "TEACHER")
@@ -28,7 +28,7 @@ _admin = require_role("DIRECTION", "ADMIN_TECH")
 @router.get(
     "/{trip_id}/checkpoints-summary",
     response_model=CheckpointsSummary,
-    summary="Résumé et timeline des checkpoints d'un voyage (US 4.4)",
+    summary="Résumé et timeline des checkpoints d'un voyage",
 )
 def get_checkpoints_summary(
     trip_id: uuid.UUID,
@@ -49,7 +49,7 @@ def get_checkpoints_summary(
     "/{trip_id}/checkpoints",
     response_model=CheckpointResponse,
     status_code=201,
-    summary="Créer un checkpoint terrain (US 2.5)",
+    summary="Créer un checkpoint terrain",
 )
 def create_checkpoint(
     trip_id: uuid.UUID,
@@ -150,7 +150,7 @@ def delete_checkpoint(
 @checkpoints_router.post(
     "/{checkpoint_id}/close",
     response_model=CheckpointResponse,
-    summary="Clôturer un checkpoint (US 2.7)",
+    summary="Clôturer un checkpoint",
 )
 def close_checkpoint(
     checkpoint_id: uuid.UUID,
@@ -160,7 +160,7 @@ def close_checkpoint(
 ):
     """
     Clôture un checkpoint ACTIVE → CLOSED.
-    Retourne 404 si le checkpoint est introuvable,
+    Retourne 404 si le checkpoint est introuvable
     400 si le checkpoint est en statut DRAFT ou déjà CLOSED.
     """
     try:

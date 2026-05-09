@@ -1,6 +1,6 @@
 """
-Router pour le dashboard de supervision (US 4.2).
-Lecture : DIRECTION et ADMIN_TECH.
+Router pour le dashboard de supervision.
+Lecture: DIRECTION et ADMIN_TECH.
 """
 
 from typing import Optional
@@ -19,14 +19,14 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["Dashboard"])
 _admin = require_role("DIRECTION", "ADMIN_TECH")
 
 
-@router.get("/overview", response_model=DashboardOverview, summary="Vue d'ensemble (US 4.2)")
+@router.get("/overview", response_model=DashboardOverview, summary="Vue d'ensemble")
 def get_overview(
     status: Optional[str] = Query(None, description="Filtre statut (ACTIVE, PLANNED, COMPLETED, ALL)"),
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
     """
-    Retourne les statistiques aggregees pour le dashboard direction :
+    Retourne les statistiques aggregees pour le dashboard direction:
     voyages, presences, checkpoints, modes de scan.
     Auto-refresh cote client (pas de log audit pour eviter le spam).
     """

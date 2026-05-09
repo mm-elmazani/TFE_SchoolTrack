@@ -88,7 +88,7 @@ class StudentImportReport(BaseModel):
     errors: List[ImportError]
 
 
-# --- RGPD US 6.5 — Export des donnees personnelles ---
+# --- RGPD Export des donnees personnelles ---
 
 class StudentGdprExport(BaseModel):
     exported_at: str

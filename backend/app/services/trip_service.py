@@ -1,5 +1,5 @@
 """
-Service métier pour les voyages (US 1.2, US 4.1).
+Service métier pour les voyages.
 Gère la création, la lecture, la modification, l'archivage et l'export CSV des voyages.
 """
 
@@ -33,11 +33,11 @@ def create_trip(
     """
     Crée un voyage et associe automatiquement les élèves des classes sélectionnées.
 
-    Étapes :
+    Étapes:
     1. Créer l'entrée dans trips
     2. Récupérer les élèves des classes via class_students
     3. Insérer en bulk dans trip_students (dédupliqué)
-    4. TODO US 1.6 : notifier les enseignants responsables par email
+    4. TODO: notifier les enseignants responsables par email
     """
     trip = Trip(
         destination=data.destination,
@@ -70,7 +70,7 @@ def create_trip(
     db.commit()
     db.refresh(trip)
 
-    # TODO US 1.6 : envoyer une notification email aux enseignants responsables des classes
+    # TODO: envoyer une notification email aux enseignants responsables des classes
     logger.info(
         "Voyage créé : %s (%s) — %d élèves associés",
         trip.destination, trip.id, len(student_ids)

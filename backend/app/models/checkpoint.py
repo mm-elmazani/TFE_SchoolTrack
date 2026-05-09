@@ -1,6 +1,6 @@
 """
 Modèle SQLAlchemy pour les checkpoints (points de contrôle terrain).
-Créés dynamiquement par les enseignants durant le voyage (US 2.5).
+Créés dynamiquement par les enseignants durant le voyage.
 """
 
 import uuid

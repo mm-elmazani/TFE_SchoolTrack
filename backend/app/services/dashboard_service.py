@@ -1,5 +1,5 @@
 """
-Service metier pour le dashboard de supervision (US 4.2).
+Service metier pour le dashboard de supervision.
 Agrege les statistiques de voyages, presences, checkpoints et modes de scan.
 """
 

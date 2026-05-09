@@ -1,5 +1,5 @@
 """
-Schemas Pydantic pour les tokens (US 1.4) et assignations de bracelets (US 1.5).
+Schemas Pydantic pour les tokens et assignations de bracelets.
 """
 
 import uuid

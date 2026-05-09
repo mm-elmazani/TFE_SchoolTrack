@@ -1,8 +1,8 @@
 """
-Router pour les tokens (US 1.4) et assignations de bracelets (US 1.5, US 6.2, US 6.3, US 6.4).
-Ecriture (init/assign/reassign/release) : DIRECTION, ADMIN_TECH.
-Lecture (statut, liste, export, stock) : tous les utilisateurs authentifies.
-Export CSV : optionnellement protege par mot de passe ZIP AES-256 (US 6.3).
+Router pour les tokens et assignations de bracelets.
+Ecriture (init/assign/reassign/release): DIRECTION, ADMIN_TECH.
+Lecture (statut, liste, export, stock): tous les utilisateurs authentifies.
+Export CSV: optionnellement protege par mot de passe ZIP AES-256.
 Audit logging sur toutes les actions d'ecriture et exports.
 """
 
@@ -121,7 +121,7 @@ def get_next_sequence(
 ):
     """
     Retourne le prochain numero de sequence disponible pour le prefixe donne.
-    Exemple : si le dernier token est ST-042, retourne {"next_sequence": 43}.
+    Exemple: si le dernier token est ST-042, retourne {"next_sequence": 43}.
     """
     return assignment_service.get_next_sequence(db, prefix, school_id=current_user.school_id)
 
@@ -299,7 +299,7 @@ def release_assignment(
     db: Session = Depends(get_db),
 ):
     """
-    Libere une assignation individuelle (released_at = NOW()).
+    Libere une assignation individuelle (released_at = NOW).
     Remet le token physique en AVAILABLE.
     """
     try:
@@ -329,7 +329,7 @@ def export_assignments(
 ):
     """
     Exporte la liste des assignations actives d'un voyage.
-    Sans mot de passe : CSV brut. Avec mot de passe : ZIP AES-256 (US 6.3).
+    Sans mot de passe: CSV brut. Avec mot de passe: ZIP AES-256.
     """
     csv_content = assignment_service.export_assignments_csv(db, trip_id)
 

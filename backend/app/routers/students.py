@@ -1,9 +1,9 @@
 """
-Router pour les élèves (US 1.1, US 1.3, US 6.2, US 6.4, US 6.5).
-Lecture : tous les utilisateurs authentifies.
-Ecriture (create/update/delete/import) : DIRECTION et ADMIN_TECH uniquement.
+Router pour les élèves.
+Lecture: tous les utilisateurs authentifies.
+Ecriture (create/update/delete/import): DIRECTION et ADMIN_TECH uniquement.
 Audit logging sur toutes les actions d'ecriture.
-Suppression logique (soft delete) pour conformite RGPD (US 6.5).
+Suppression logique (soft delete) pour conformite RGPD.
 """
 
 import uuid
@@ -304,7 +304,7 @@ def export_student_data(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """RGPD droit d'acces (art. 15) : exporte toutes les donnees personnelles
+    """RGPD droit d'acces (art. 15): exporte toutes les donnees personnelles
     d'un eleve sous forme JSON structuree."""
     student = db.execute(
         select(Student).where(
@@ -467,8 +467,8 @@ async def upload_students(
     """
     Importe une liste d'élèves depuis un fichier CSV ou Excel (.xlsx).
 
-    Colonnes obligatoires : `nom`, `prenom` (ou alias : Prénom, Nom, etc.)
-    Colonnes optionnelles : `email`/`mail`, `classe`, `telephone`/`GSM Élève`
+    Colonnes obligatoires: `nom`, `prenom` (ou alias: Prénom, Nom, etc.)
+    Colonnes optionnelles: `email`/`mail`, `classe`, `telephone`/`GSM Élève`
     Les colonnes non reconnues sont ignorées.
     """
     filename = file.filename or ""

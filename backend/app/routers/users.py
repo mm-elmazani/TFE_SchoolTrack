@@ -1,5 +1,5 @@
 """
-Router de gestion des utilisateurs (US 6.1 + US 6.2).
+Router de gestion des utilisateurs.
 La Direction / Admin Tech peut lister, creer et supprimer des comptes.
 Audit log sur creation et suppression.
 """

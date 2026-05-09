@@ -1,5 +1,5 @@
 """
-Schemas Pydantic pour le dashboard de supervision (US 4.2).
+Schemas Pydantic pour le dashboard de supervision.
 """
 
 import uuid

@@ -1,5 +1,5 @@
 """
-Schemas Pydantic pour les alertes temps reel (US 4.3).
+Schemas Pydantic pour les alertes temps reel.
 """
 
 import uuid

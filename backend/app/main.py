@@ -76,7 +76,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     """
     Intercepte toutes les exceptions non gérées pour garantir que la réponse 500
     passe bien par CORSMiddleware (qui injecte les headers CORS).
-    Sans ce handler, ServerErrorMiddleware renvoie une réponse brute sans headers CORS,
+    Sans ce handler, ServerErrorMiddleware renvoie une réponse brute sans headers CORS
     ce qui provoque une erreur "Failed to fetch" côté navigateur.
     """
     logger.error("Exception non gérée : %s", exc, exc_info=True)

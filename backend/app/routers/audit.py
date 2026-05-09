@@ -1,7 +1,7 @@
 """
-Router pour la consultation et l'export des logs d'audit (US 6.4).
+Router pour la consultation et l'export des logs d'audit.
 Acces reserve a DIRECTION et ADMIN_TECH.
-Filtres : utilisateur, action, date, type de ressource.
+Filtres: utilisateur, action, date, type de ressource.
 Pagination incluse. Export JSON pour audit externe.
 """
 
@@ -36,7 +36,7 @@ def _build_where(
     current_user: Optional[User] = None,
 ) -> tuple[str, dict]:
     """Retourne (where_sql, params) a partir des filtres optionnels.
-    Isolation multi-tenant US 6.6 : tous les roles (y compris ADMIN_TECH)
+    Isolation multi-tenant: tous les roles (y compris ADMIN_TECH)
     sont scope a l'ecole de leur JWT. Acces global uniquement via SSH+psql."""
     clauses: list[str] = []
     params: dict = {}

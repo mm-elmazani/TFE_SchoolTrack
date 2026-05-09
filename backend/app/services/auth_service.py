@@ -1,5 +1,5 @@
 """
-Service d'authentification (US 6.1).
+Service d'authentification.
 Hachage bcrypt, JWT access/refresh, verrouillage de compte, TOTP 2FA, Email OTP.
 """
 
@@ -85,7 +85,7 @@ def authenticate_user(
     totp_code: str | None = None,
 ) -> User:
     """
-    Authentifie un utilisateur par email + mot de passe (+ TOTP optionnel).
+    Authentifie un utilisateur par email + mot de passe (TOTP optionnel).
     Gere le verrouillage apres 5 tentatives echouees pendant 15 minutes.
     """
     user = db.query(User).filter(User.email == email).first()

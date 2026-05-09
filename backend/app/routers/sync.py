@@ -1,5 +1,5 @@
 """
-Router pour la synchronisation offline → online (US 3.1, US 6.2, US 6.4).
+Router pour la synchronisation offline → online.
 Reçoit les scans de présence depuis l'app Flutter et les insère avec idempotence.
 Acces reserve aux enseignants et direction.
 Audit logging sur chaque synchronisation.

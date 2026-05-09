@@ -1,5 +1,5 @@
 """
-Schémas Pydantic pour l'envoi des QR codes par email (US 1.6).
+Schémas Pydantic pour l'envoi des QR codes par email.
 """
 
 import uuid

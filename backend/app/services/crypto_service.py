@@ -1,5 +1,5 @@
 """
-Service de chiffrement des donnees sensibles (US 6.3).
+Service de chiffrement des donnees sensibles.
 AES-256-GCM pour le chiffrement au repos des colonnes PII (noms, prenoms, emails).
 """
 
@@ -35,7 +35,7 @@ def decrypt_field(value: str) -> str:
 class EncryptedString(TypeDecorator):
     """
     Type SQLAlchemy qui chiffre/dechiffre de maniere transparente via AES-256-GCM.
-    Stockage : TEXT chiffre en base64.  Acces Python : valeur en clair.
+    Stockage: TEXT chiffre en base64. Acces Python: valeur en clair.
     Pendant la migration, les donnees non chiffrees sont retournees telles quelles.
     """
     impl = Text

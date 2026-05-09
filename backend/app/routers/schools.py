@@ -1,6 +1,6 @@
 """
-Router pour les écoles (US 6.6 — multi-tenancy).
-GET /api/v1/schools  — liste (DIRECTION uniquement)
+Router pour les écoles (multi-tenancy).
+GET /api/v1/schools — liste (DIRECTION uniquement)
 POST /api/v1/schools — créer une école (ADMIN_TECH uniquement)
 """
 

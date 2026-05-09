@@ -1,9 +1,9 @@
 """
-Router pour les voyages (US 1.2, US 1.6, US 2.1, US 4.1, US 6.2, US 6.4).
-Lecture : tous les utilisateurs authentifies.
-Ecriture : DIRECTION et ADMIN_TECH.
-Offline data : DIRECTION, ADMIN_TECH, TEACHER.
-Export presences : DIRECTION et ADMIN_TECH.
+Router pour les voyages.
+Lecture: tous les utilisateurs authentifies.
+Ecriture: DIRECTION et ADMIN_TECH.
+Offline data: DIRECTION, ADMIN_TECH, TEACHER.
+Export presences: DIRECTION et ADMIN_TECH.
 Audit logging sur toutes les actions d'ecriture.
 """
 
@@ -63,7 +63,7 @@ def list_trips(
     return trip_service.get_trips(db, school_id=current_user.school_id)
 
 
-@router.get("/export-all", summary="Export ZIP multi-voyages (US 4.1)")
+@router.get("/export-all", summary="Export ZIP multi-voyages")
 def export_all_trips(
     request: Request,
     trip_ids: str = Query(..., description="IDs voyages, separes par virgules"),
@@ -198,7 +198,7 @@ def archive_trip(
     )
 
 
-@router.get("/{trip_id}/export", summary="Export CSV presences (US 4.1)")
+@router.get("/{trip_id}/export", summary="Export CSV presences")
 def export_trip_attendances(
     trip_id: uuid.UUID,
     request: Request,
@@ -208,7 +208,7 @@ def export_trip_attendances(
 ):
     """
     Exporte les presences d'un voyage en CSV.
-    Sans mot de passe : CSV brut. Avec mot de passe : ZIP AES-256.
+    Sans mot de passe: CSV brut. Avec mot de passe: ZIP AES-256.
     """
     try:
         csv_content, trip_obj = trip_service.export_attendance_csv(
@@ -254,7 +254,7 @@ def export_trip_attendances(
 @router.get(
     "/{trip_id}/offline-data",
     response_model=OfflineDataBundle,
-    summary="Télécharger le bundle offline d'un voyage (US 2.1)",
+    summary="Télécharger le bundle offline d'un voyage",
 )
 def get_offline_data(
     trip_id: uuid.UUID,
@@ -273,7 +273,7 @@ def get_offline_data(
 @router.post(
     "/{trip_id}/send-qr-emails",
     response_model=QrEmailSendResult,
-    summary="Envoyer les QR codes digitaux par email (US 1.6)",
+    summary="Envoyer les QR codes digitaux par email",
 )
 def send_qr_emails(
     trip_id: uuid.UUID,

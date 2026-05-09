@@ -1,7 +1,7 @@
 """
 Modele SQLAlchemy pour les utilisateurs.
-Champs PII chiffres AES-256-GCM au repos (US 6.3).
-Email non chiffre : identifiant de connexion + contrainte UNIQUE.
+Champs PII chiffres AES-256-GCM au repos.
+Email non chiffre: identifiant de connexion + contrainte UNIQUE.
 """
 
 import uuid

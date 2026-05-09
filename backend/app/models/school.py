@@ -1,5 +1,5 @@
 """
-Modèle SQLAlchemy pour les écoles (US 6.6 — multi-tenancy).
+Modèle SQLAlchemy pour les écoles (multi-tenancy).
 Chaque école isole ses données via school_id sur les tables parentes.
 """
 

@@ -1,6 +1,6 @@
 """
-Modele SQLAlchemy pour les alertes temps reel (US 4.3).
-Table alerts : signalement eleve manquant, retard checkpoint, echec sync.
+Modele SQLAlchemy pour les alertes temps reel.
+Table alerts: signalement eleve manquant, retard checkpoint, echec sync.
 """
 
 import uuid

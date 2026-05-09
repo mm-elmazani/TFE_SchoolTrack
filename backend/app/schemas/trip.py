@@ -1,7 +1,7 @@
 """
 Schémas Pydantic pour les voyages.
 
-Note : on importe datetime en tant que module (dt) pour éviter le conflit de nommage
+Note: on importe datetime en tant que module (dt) pour éviter le conflit de nommage
 entre le champ `date` et le type `datetime.date` dans Pydantic v2.
 """
 

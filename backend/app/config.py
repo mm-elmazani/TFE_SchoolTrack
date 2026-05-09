@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Base de données
     DATABASE_URL: str = "postgresql://schooltrack:schooltrack_dev@localhost:5432/schooltrack"
 
-    # Chiffrement AES-256 des donnees sensibles (US 6.3)
+    # Chiffrement AES-256 des donnees sensibles
     ENCRYPTION_KEY: str = "dev-only-change-in-production-32chars!"
 
     # JWT
@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     EXTENDED_REFRESH_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 jours (case "rester connecte")
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 10
 
-    # SMTP — envoi des QR codes par email (US 1.6)
+    # SMTP — envoi des QR codes par email
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""

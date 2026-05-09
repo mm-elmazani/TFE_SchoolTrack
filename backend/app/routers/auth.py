@@ -1,6 +1,6 @@
 """
-Router d'authentification (US 6.1 + US 6.2 + US 6.4).
-Endpoints : login, register, refresh, 2FA, me, change-password.
+Router d'authentification.
+Endpoints: login, register, refresh, 2FA, me, change-password.
 Audit logging sur toutes les actions sensibles.
 """
 
@@ -117,7 +117,7 @@ def register(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Cree un nouvel utilisateur. Reserve a la Direction / Admin Tech (US 6.2)."""
+    """Cree un nouvel utilisateur. Reserve a la Direction / Admin Tech."""
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:
         raise HTTPException(
@@ -139,7 +139,7 @@ def register(
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     """Renouvelle les tokens a partir d'un refresh token valide.
-    Le flag `extended` est propage : un utilisateur ayant coche "rester
+    Le flag `extended` est propage: un utilisateur ayant coche "rester
     connecte" conserve sa session longue a chaque renouvellement."""
     try:
         user, extended = refresh_access_token(db, body.refresh_token)

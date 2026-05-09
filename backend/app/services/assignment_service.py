@@ -1,5 +1,5 @@
 """
-Service metier pour les tokens (US 1.4) et l'assignation des bracelets (US 1.5).
+Service metier pour les tokens et l'assignation des bracelets.
 """
 
 import csv
@@ -46,7 +46,7 @@ def assign_token(
     """
     Assigne un bracelet à un élève pour un voyage.
 
-    Validations :
+    Validations:
     1. L'élève est bien inscrit au voyage (trip_students)
     2. Le token n'est pas déjà activement assigné sur ce voyage
     3. L'élève n'a pas déjà un token actif sur ce voyage
@@ -90,7 +90,7 @@ def assign_token(
             raise ValueError(f"Le bracelet '{data.token_uid}' est deja assigne sur ce voyage.")
 
     # 3. Verifier que l'eleve n'a pas deja un bracelet de la MEME categorie sur ce voyage
-    #    (physique OU digital — permet d'avoir 1 physique + 1 digital simultanément)
+    # (physique OU digital — permet d'avoir 1 physique + 1 digital simultanément)
     new_is_physical = _is_physical(data.assignment_type)
     student_assignments = db.execute(
         select(Assignment)
@@ -131,7 +131,7 @@ def reassign_token(
     assigned_by: Optional[uuid.UUID] = None,
 ) -> AssignmentResponse:
     """
-    Réassigne un bracelet : libère toutes les assignations actives liées
+    Réassigne un bracelet: libère toutes les assignations actives liées
     à ce token OU à cet élève sur ce voyage, puis crée une nouvelle assignation.
     """
     # Libérer l'assignation active du token sur ce voyage (si elle existe)
@@ -166,7 +166,7 @@ def reassign_token(
             _update_token_status(db, old_assign.token_uid, "AVAILABLE")
 
     # Forcer l'envoi des UPDATEs à PostgreSQL AVANT l'INSERT.
-    # Sans flush(), SQLAlchemy peut envoyer l'INSERT avant les UPDATEs,
+    # Sans flush, SQLAlchemy peut envoyer l'INSERT avant les UPDATEs
     # ce qui viole le partial unique index (student_id, trip_id) WHERE released_at IS NULL
     # car l'ancienne ligne a encore released_at=NULL au moment de la vérification.
     db.flush()
@@ -193,7 +193,7 @@ def reassign_token(
 
 def get_trip_assignment_status(db: Session, trip_id: uuid.UUID) -> TripAssignmentStatus:
     """
-    Retourne le statut complet des assignations pour un voyage :
+    Retourne le statut complet des assignations pour un voyage:
     total élèves, élèves assignés, élèves non assignés, liste des assignations.
     """
     total_students = db.execute(
@@ -255,7 +255,7 @@ def get_trip_students_with_assignments(
     """
     Retourne la liste des eleves inscrits a un voyage avec leurs assignations
     (primaire physique + secondaire digitale).
-    Utilise par le dashboard web pour l'ecran d'assignation (US 1.5).
+    Utilise par le dashboard web pour l'ecran d'assignation.
     """
     # 1. Tous les eleves du voyage
     students_rows = db.execute(
@@ -279,7 +279,7 @@ def get_trip_students_with_assignments(
         key = "primary" if _is_physical(a.assignment_type) else "secondary"
         assignment_map.setdefault(a.student_id, {})[key] = a
 
-    # 4. Tri alphabetique en Python (colonnes chiffrees, US 6.3)
+    # 4. Tri alphabetique en Python (colonnes chiffrees)
     students_rows = sorted(
         students_rows,
         key=lambda s: ((s.last_name or "").lower(), (s.first_name or "").lower()),
@@ -332,9 +332,9 @@ def get_trip_students_with_assignments(
 
 def release_trip_tokens(db: Session, trip_id: uuid.UUID) -> int:
     """
-    Libère toutes les assignations actives d'un voyage en settant released_at = NOW().
+    Libère toutes les assignations actives d'un voyage en settant released_at = NOW.
 
-    Appelé automatiquement quand un voyage passe à COMPLETED ou ARCHIVED,
+    Appelé automatiquement quand un voyage passe à COMPLETED ou ARCHIVED
     ou manuellement via POST /api/v1/trips/{id}/release-tokens.
 
     Retourne le nombre d'assignations libérées (0 si aucune active).
@@ -364,7 +364,7 @@ def release_trip_tokens(db: Session, trip_id: uuid.UUID) -> int:
 
 def release_assignment(db: Session, assignment_id: int) -> dict:
     """
-    Libere une assignation individuelle en settant released_at = NOW().
+    Libere une assignation individuelle en settant released_at = NOW.
     Remet le token physique en AVAILABLE.
     Retourne les details de l'assignation liberee (student, token, trip).
     Leve ValueError si l'assignation est introuvable ou deja liberee.
@@ -548,7 +548,7 @@ def get_token_stats(db: Session, school_id: uuid.UUID) -> TokenStatsResponse:
 
 def get_next_sequence(db: Session, prefix: str, school_id: uuid.UUID) -> dict:
     """
-    Retourne le prochain numero de sequence disponible pour un prefixe donne,
+    Retourne le prochain numero de sequence disponible pour un prefixe donne
     dans le stock de l'école donnée.
     Scanne les token_uid existants au format PREFIX-NNN et retourne max + 1.
     """
@@ -620,7 +620,7 @@ def delete_token(db: Session, token_id: int, school_id: uuid.UUID) -> None:
 def update_token_status_by_id(db: Session, token_id: int, status: str, school_id: uuid.UUID) -> TokenResponse:
     """
     Met a jour le statut d'un token par son id.
-    Si le token etait ASSIGNED et passe a un autre statut,
+    Si le token etait ASSIGNED et passe a un autre statut
     l'assignment actif est automatiquement libere.
     Leve ValueError si le token n'appartient pas a l'ecole.
     """

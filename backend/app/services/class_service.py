@@ -1,5 +1,5 @@
 """
-Service métier pour la gestion des classes scolaires (US 1.3).
+Service métier pour la gestion des classes scolaires.
 """
 
 import uuid
@@ -146,7 +146,7 @@ def _sync_trip_students_for_class(
     """Ajoute les eleves dans `trip_students` pour les voyages PLANNED/ACTIVE
     lies a cette classe via `trip_classes`.
 
-    Idempotent : ignore les liens existants. Ne touche pas aux voyages
+    Idempotent: ignore les liens existants. Ne touche pas aux voyages
     COMPLETED/ARCHIVED (preserve l'historique des presences).
     """
     if not student_ids_added:
@@ -226,11 +226,11 @@ def assign_students(
 ) -> ClassResponse:
     """
     Assigne des élèves à une classe.
-    Un élève ne peut appartenir qu'à une seule classe : s'il est déjà dans
+    Un élève ne peut appartenir qu'à une seule classe: s'il est déjà dans
     une autre classe, il en est retiré automatiquement avant d'être ajouté.
     Les élèves déjà dans cette classe sont ignorés (pas de doublon).
 
-    Effet de bord : les eleves ajoutes sont aussi inseres dans `trip_students`
+    Effet de bord: les eleves ajoutes sont aussi inseres dans `trip_students`
     pour tous les voyages PLANNED/ACTIVE lies a cette classe (les voyages
     COMPLETED/ARCHIVED ne sont pas modifies — historique preserve).
     """
@@ -276,7 +276,7 @@ def remove_student(
 ) -> bool:
     """Retire un élève d'une classe. Retourne True si retiré, False si lien inexistant.
 
-    Effet de bord : l'eleve est aussi retire des voyages PLANNED/ACTIVE lies
+    Effet de bord: l'eleve est aussi retire des voyages PLANNED/ACTIVE lies
     a cette classe (les voyages COMPLETED/ARCHIVED ne sont pas modifies —
     historique preserve).
     """
