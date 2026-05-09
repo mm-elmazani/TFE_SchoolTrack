@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 
 class QrEmailSendResult(BaseModel):
-    """Rapport d'envoi des QR codes digitaux pour un voyage."""
 
     trip_id: uuid.UUID
     sent_count: int

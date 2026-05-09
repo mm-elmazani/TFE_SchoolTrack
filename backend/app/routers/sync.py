@@ -43,9 +43,6 @@ def sync_attendances(
     current_user: User = Depends(_field),
     db: Session = Depends(get_db),
 ):
-    """
-    Reçoit un batch de scans générés hors-ligne par l'app Flutter et les insère en base.
-    """
     try:
         result = sync_service.sync_attendances(
             db, data.scans, data.device_id, scanned_by=current_user.id,
@@ -80,7 +77,6 @@ def get_sync_logs(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne les sync_logs paginés, du plus récent au plus ancien, scopés par école."""
     query = select(SyncLog).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
 
     if status:
@@ -152,7 +148,6 @@ def get_sync_stats(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne les compteurs globaux des synchronisations, scopés par école."""
     school_filter = select(SyncLog.id).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
     base = select(SyncLog).join(Trip, Trip.id == SyncLog.trip_id).where(Trip.school_id == current_user.school_id)
 

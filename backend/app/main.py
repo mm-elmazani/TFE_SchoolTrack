@@ -29,7 +29,6 @@ Path(settings.MEDIA_DIR, "students").mkdir(exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Cycle de vie de l'application : démarre et arrête le scheduler APScheduler."""
     start_scheduler()
     yield
     stop_scheduler()
@@ -89,7 +88,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 @app.api_route("/api/health", methods=["GET", "HEAD"], tags=["Santé"])
 def health_check(db: Session = Depends(get_db)):
-    """Vérifie que l'API et la connexion PostgreSQL sont opérationnelles."""
     try:
         db.execute(text("SELECT 1"))
         db_status = "connected"

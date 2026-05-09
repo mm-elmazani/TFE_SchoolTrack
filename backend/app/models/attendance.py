@@ -16,7 +16,6 @@ from app.database import Base
 
 
 class Attendance(Base):
-    """Présence canonique — 1 ligne par (student, checkpoint, trip), timestamp le plus ancien."""
     __tablename__ = "attendances"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

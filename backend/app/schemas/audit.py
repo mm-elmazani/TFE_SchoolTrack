@@ -10,7 +10,6 @@ from pydantic import BaseModel
 
 
 class AuditLogResponse(BaseModel):
-    """Representation d'une entree dans audit_logs."""
 
     id: int
     user_id: Optional[uuid.UUID] = None
@@ -25,7 +24,6 @@ class AuditLogResponse(BaseModel):
 
 
 class AuditLogPage(BaseModel):
-    """Reponse paginee pour la consultation des logs."""
 
     items: list[AuditLogResponse]
     total: int

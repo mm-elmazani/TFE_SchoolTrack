@@ -23,7 +23,6 @@ class SchoolClass(Base):
 
 
 class ClassStudent(Base):
-    """Association classe ↔ élèves (3FN, v4.2)."""
     __tablename__ = "class_students"
 
     class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), primary_key=True)
@@ -32,7 +31,6 @@ class ClassStudent(Base):
 
 
 class ClassTeacher(Base):
-    """Association classe ↔ enseignants responsables."""
     __tablename__ = "class_teachers"
 
     class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), primary_key=True)

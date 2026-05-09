@@ -80,7 +80,6 @@ def create_trip(
 
 
 def get_trips(db: Session, school_id: Optional[uuid.UUID] = None) -> list[TripResponse]:
-    """Retourne tous les voyages non archivés de l'école, du plus proche au plus loin."""
     query = select(Trip).where(Trip.status != "ARCHIVED")
     if school_id is not None:
         query = query.where(Trip.school_id == school_id)
@@ -103,7 +102,6 @@ def get_trip(
     trip_id: uuid.UUID,
     school_id: Optional[uuid.UUID] = None,
 ) -> Optional[TripResponse]:
-    """Retourne un voyage par son ID, ou None s'il n'existe pas."""
     trip = _get_owned_trip(db, trip_id, school_id)
     if trip is None:
         return None
@@ -193,7 +191,6 @@ def archive_trip(
 
 
 def _to_response(db: Session, trip: Trip) -> TripResponse:
-    """Construit le schéma de réponse avec le total d'élèves et les classes représentées."""
     total = db.execute(
         select(func.count())
         .select_from(TripStudent)
@@ -354,7 +351,6 @@ def export_attendance_csv(
 
 
 def _generate_export_filename(destination: str, trip_date) -> str:
-    """Genere un nom de fichier securise pour l'export CSV."""
     safe = destination.replace(" ", "_").replace("/", "-")
     now = datetime.now()
     return f"voyage_{safe}_{trip_date.strftime('%Y-%m-%d')}_{now.strftime('%H-%M')}"

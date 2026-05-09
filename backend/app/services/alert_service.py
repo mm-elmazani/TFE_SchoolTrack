@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 def create_alert(
     db: Session, data: AlertCreate, created_by: Optional[uuid.UUID] = None
 ) -> AlertResponse:
-    """Cree une nouvelle alerte et retourne la reponse enrichie."""
     # Verifier que le voyage existe
     trip = db.get(Trip, data.trip_id)
     if trip is None:
@@ -58,7 +57,6 @@ def get_alerts(
     trip_id: Optional[uuid.UUID] = None,
     status_filter: Optional[str] = None,
 ) -> list[AlertResponse]:
-    """Retourne les alertes avec filtres optionnels, triees par date desc."""
     query = select(Alert).order_by(Alert.created_at.desc())
 
     if trip_id:
@@ -72,7 +70,6 @@ def get_alerts(
 
 
 def get_active_alerts(db: Session, trip_id: Optional[uuid.UUID] = None) -> list[AlertResponse]:
-    """Retourne uniquement les alertes ACTIVE et IN_PROGRESS."""
     query = (
         select(Alert)
         .where(Alert.status.in_(["ACTIVE", "IN_PROGRESS"]))
@@ -91,7 +88,6 @@ def update_alert_status(
     data: AlertUpdate,
     resolved_by: Optional[uuid.UUID] = None,
 ) -> AlertResponse:
-    """Met a jour le statut d'une alerte (IN_PROGRESS ou RESOLVED)."""
     alert = db.get(Alert, alert_id)
     if alert is None:
         raise ValueError("Alerte introuvable.")
@@ -109,7 +105,6 @@ def update_alert_status(
 
 
 def get_alert_stats(db: Session, trip_id: Optional[uuid.UUID] = None) -> AlertStats:
-    """Retourne les compteurs d'alertes."""
     base = select(func.count()).select_from(Alert)
     if trip_id:
         base = base.where(Alert.trip_id == trip_id)
@@ -130,7 +125,6 @@ def get_alert_stats(db: Session, trip_id: Optional[uuid.UUID] = None) -> AlertSt
 
 
 def _to_response(db: Session, alert: Alert) -> AlertResponse:
-    """Enrichit une alerte avec les noms d'eleve, voyage et checkpoint."""
     student_name = None
     student = db.get(Student, alert.student_id)
     if student:

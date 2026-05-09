@@ -29,7 +29,6 @@ class StudentCreate(BaseModel):
 
 
 class StudentUpdate(BaseModel):
-    """Schéma de mise à jour d'un élève (PUT /students/{id})."""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -44,7 +43,6 @@ class StudentUpdate(BaseModel):
 
 
 class StudentResponse(BaseModel):
-    """Schéma de réponse pour un élève (GET /students)."""
     id: uuid.UUID
     school_id: uuid.UUID
     first_name: str
@@ -60,7 +58,6 @@ class StudentResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def default_is_deleted(cls, data):
-        """Garantit is_deleted=False si None (mock tests / anciens enregistrements)."""
         if hasattr(data, "is_deleted") and data.is_deleted is None:
             data.is_deleted = False
         elif isinstance(data, dict) and data.get("is_deleted") is None:
@@ -69,7 +66,6 @@ class StudentResponse(BaseModel):
 
 
 class StudentImportRow(BaseModel):
-    """Représente une ligne valide du CSV après parsing."""
     first_name: str
     last_name: str
     email: Optional[str] = None
@@ -78,14 +74,12 @@ class StudentImportRow(BaseModel):
 
 
 class ImportError(BaseModel):
-    """Détail d'une ligne rejetée lors de l'import."""
     row: int
     content: str
     reason: str
 
 
 class StudentImportReport(BaseModel):
-    """Rapport retourné après un import CSV."""
     total_rows: int
     inserted: int
     rejected: int
@@ -97,7 +91,6 @@ class StudentImportReport(BaseModel):
 # --- RGPD US 6.5 — Export des donnees personnelles ---
 
 class StudentGdprExport(BaseModel):
-    """Export complet des donnees personnelles d'un eleve (RGPD droit d'acces)."""
     exported_at: str
     student: dict
     classes: List[dict]

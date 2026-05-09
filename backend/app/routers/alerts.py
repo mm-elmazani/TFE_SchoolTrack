@@ -30,10 +30,6 @@ def create_alert(
     current_user: User = Depends(_field),
     db: Session = Depends(get_db),
 ):
-    """
-    Cree une alerte (eleve manquant, retard, etc.).
-    Accessible aux enseignants et a la direction.
-    """
     try:
         alert = alert_service.create_alert(db, data, created_by=current_user.id)
     except ValueError as e:
@@ -62,7 +58,6 @@ def list_alerts(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne les alertes avec filtres optionnels."""
     tid = None
     if trip_id:
         try:
@@ -79,7 +74,6 @@ def get_active_alerts(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne uniquement les alertes ACTIVE et IN_PROGRESS (pour polling dashboard)."""
     tid = None
     if trip_id:
         try:
@@ -96,7 +90,6 @@ def get_alert_stats(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retourne les compteurs d'alertes (total, active, en cours, resolues, critiques)."""
     tid = None
     if trip_id:
         try:

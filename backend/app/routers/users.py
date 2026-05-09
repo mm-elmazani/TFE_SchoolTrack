@@ -23,7 +23,6 @@ def list_users(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Liste les utilisateurs de l'école. Reserve a la Direction / Admin Tech."""
     users = db.query(User).filter(User.school_id == current_user.school_id).all()
     users = sorted(users, key=lambda u: ((u.last_name or "").lower(), (u.first_name or "").lower()))
     return [UserInfo.model_validate(u) for u in users]
@@ -36,7 +35,6 @@ def create_user(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Cree un nouvel utilisateur. Reserve a la Direction / Admin Tech."""
     existing = db.query(User).filter(User.email == body.email).first()
     if existing:
         raise HTTPException(status_code=409, detail="Un utilisateur avec cet email existe deja")
@@ -72,7 +70,6 @@ def delete_user(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Supprime un utilisateur. Reserve a la Direction / Admin Tech. Ne peut pas se supprimer soi-meme."""
     if str(current_user.id) == user_id:
         raise HTTPException(status_code=400, detail="Impossible de supprimer votre propre compte")
 

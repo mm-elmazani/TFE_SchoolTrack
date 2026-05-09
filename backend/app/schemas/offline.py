@@ -16,7 +16,6 @@ from pydantic import BaseModel
 
 
 class OfflineTripInfo(BaseModel):
-    """Informations essentielles du voyage pour le mode offline."""
     id: uuid.UUID
     destination: str
     date: date
@@ -27,13 +26,11 @@ class OfflineTripInfo(BaseModel):
 
 
 class OfflineAssignment(BaseModel):
-    """Assignation active de l'élève (bracelet NFC, QR physique ou QR digital)."""
     token_uid: str
     assignment_type: str  # NFC_PHYSICAL, QR_PHYSICAL, QR_DIGITAL
 
 
 class OfflineStudent(BaseModel):
-    """Élève avec ses assignations de bracelet/QR et ses données personnelles."""
     id: uuid.UUID
     first_name: str
     last_name: str
@@ -46,7 +43,6 @@ class OfflineStudent(BaseModel):
 
 
 class OfflineCheckpoint(BaseModel):
-    """Point de contrôle existant sur le voyage."""
     id: uuid.UUID
     name: str
     sequence_order: int

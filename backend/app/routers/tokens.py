@@ -100,9 +100,6 @@ def list_tokens(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retourne la liste des tokens du stock avec filtres optionnels.
-    """
     return assignment_service.list_tokens(db, school_id=current_user.school_id, status=status, token_type=token_type)
 
 
@@ -112,9 +109,6 @@ def get_token_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retourne les compteurs du stock : total, disponibles, assignes, endommages, perdus.
-    """
     return assignment_service.get_token_stats(db, school_id=current_user.school_id)
 
 
@@ -139,10 +133,6 @@ def get_token_assignment_info(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retourne les details de l'assignation active (eleve + voyage) si le token est assigne.
-    Retourne null si pas d'assignation active.
-    """
     info = assignment_service.get_token_assignment_info(db, token_id, school_id=current_user.school_id)
     return info or {"assignment_id": None}
 
@@ -182,9 +172,6 @@ def update_token_status(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Met a jour le statut d'un token (ex: DAMAGED, LOST, AVAILABLE).
-    """
     try:
         result = assignment_service.update_token_status_by_id(db, token_id, data.status, school_id=current_user.school_id)
     except ValueError as e:
@@ -209,9 +196,6 @@ def assign_token(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Assigne un bracelet NFC ou QR physique à un élève pour un voyage spécifique.
-    """
     try:
         result = assignment_service.assign_token(db, data)
     except ValueError as e:
@@ -263,9 +247,6 @@ def get_trip_assignments(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retourne le statut des assignations pour un voyage.
-    """
     return assignment_service.get_trip_assignment_status(db, trip_id)
 
 
@@ -279,9 +260,6 @@ def get_trip_students(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Retourne la liste des élèves inscrits au voyage avec leur bracelet actif (si assigné).
-    """
     return assignment_service.get_trip_students_with_assignments(db, trip_id)
 
 
@@ -296,9 +274,6 @@ def release_trip_tokens(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Libère toutes les assignations actives d'un voyage (released_at = NOW()).
-    """
     count = assignment_service.release_trip_tokens(db, trip_id)
 
     log_audit(

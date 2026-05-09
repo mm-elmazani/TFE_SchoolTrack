@@ -52,7 +52,6 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentification"])
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    """Authentifie un utilisateur et retourne un couple access/refresh token."""
     _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
@@ -156,7 +155,6 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserInfo)
 def me(current_user: User = Depends(get_current_user)):
-    """Retourne les informations de l'utilisateur connecte."""
     return UserInfo.model_validate(current_user)
 
 
@@ -166,7 +164,6 @@ def enable_two_factor(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Genere un secret TOTP et retourne le QR code URI pour l'app authenticator."""
     if current_user.is_2fa_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -191,7 +188,6 @@ def verify_two_factor(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Verifie le code TOTP et active definitivement le 2FA."""
     success = verify_and_activate_2fa(db, current_user, body.totp_code)
     if not success:
         raise HTTPException(
@@ -215,7 +211,6 @@ def disable_two_factor(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Desactive le 2FA pour l'utilisateur connecte."""
     if not current_user.is_2fa_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -239,7 +234,6 @@ def enable_two_factor_email(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Initie l'activation de la 2FA par email : envoie un code de verification."""
     if current_user.is_2fa_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -270,7 +264,6 @@ def verify_two_factor_email(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Verifie le code email OTP et active definitivement la 2FA par email."""
     try:
         success = verify_and_activate_2fa_email(db, current_user, body.totp_code)
     except AuthError as e:
@@ -301,7 +294,6 @@ def resend_two_factor_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Renvoie un nouveau code OTP par email (pour configuration ou login)."""
     try:
         send_email_otp(db, current_user)
     except Exception as e:
@@ -319,7 +311,6 @@ def change_user_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Change le mot de passe de l'utilisateur connecte."""
     _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
@@ -342,7 +333,6 @@ def change_user_password(
 
 @router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
-    """Envoie un email de reinitialisation si le compte existe (public)."""
     _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 
@@ -371,7 +361,6 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
 
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
-    """Reinitialise le mot de passe avec un token valide (public)."""
     _ip = get_client_ip(request)
     _ua = request.headers.get("user-agent")
 

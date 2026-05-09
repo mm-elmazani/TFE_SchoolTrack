@@ -45,7 +45,6 @@ def create_class(
 
 
 def get_classes(db: Session, school_id: Optional[uuid.UUID] = None) -> list[ClassResponse]:
-    """Retourne toutes les classes de l'école, triées par nom."""
     query = select(SchoolClass)
     if school_id is not None:
         query = query.where(SchoolClass.school_id == school_id)
@@ -58,7 +57,6 @@ def _get_owned_class(
     class_id: uuid.UUID,
     school_id: Optional[uuid.UUID],
 ) -> Optional[SchoolClass]:
-    """Retourne une classe uniquement si elle appartient à l'école demandée."""
     if school_id is None:
         return db.get(SchoolClass, class_id)
     return db.execute(
@@ -74,7 +72,6 @@ def get_class(
     class_id: uuid.UUID,
     school_id: Optional[uuid.UUID] = None,
 ) -> Optional[ClassResponse]:
-    """Retourne une classe par son ID, ou None si inexistante."""
     school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         return None
@@ -87,7 +84,6 @@ def update_class(
     data: ClassUpdate,
     school_id: Optional[uuid.UUID] = None,
 ) -> Optional[ClassResponse]:
-    """Met à jour les champs fournis d'une classe."""
     school_class = _get_owned_class(db, class_id, school_id)
     if school_class is None:
         return None
@@ -335,7 +331,6 @@ def remove_teacher(
     teacher_id: uuid.UUID,
     school_id: Optional[uuid.UUID] = None,
 ) -> bool:
-    """Retire un enseignant d'une classe. Retourne True si retiré, False si lien inexistant."""
     if _get_owned_class(db, class_id, school_id) is None:
         return False
     link = db.get(ClassTeacher, (class_id, teacher_id))
@@ -347,7 +342,6 @@ def remove_teacher(
 
 
 def _to_response(db: Session, school_class: SchoolClass) -> ClassResponse:
-    """Construit le schéma de réponse avec les compteurs élèves et enseignants."""
     nb_students = db.execute(
         select(func.count())
         .select_from(ClassStudent)

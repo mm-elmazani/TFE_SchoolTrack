@@ -18,7 +18,6 @@ Base = declarative_base()
 
 
 def get_db():
-    """Dépendance FastAPI — fournit une session BDD et la ferme après usage."""
     db = SessionLocal()
     try:
         yield db

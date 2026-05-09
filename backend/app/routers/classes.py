@@ -35,7 +35,6 @@ def create_class(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Crée une nouvelle classe scolaire avec un nom unique."""
     try:
         result = class_service.create_class(db, data, school_id=current_user.school_id)
     except ValueError as e:
@@ -57,7 +56,6 @@ def list_classes(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retourne toutes les classes avec leur nombre d'élèves et d'enseignants."""
     return class_service.get_classes(db, school_id=current_user.school_id)
 
 
@@ -133,7 +131,6 @@ def list_class_students(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retourne les IDs des élèves assignés à une classe (même école, hors élèves supprimés)."""
     from sqlalchemy import select
     from app.models.school_class import ClassStudent
     from app.models.student import Student
@@ -155,7 +152,6 @@ def assign_students(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Assigne un ou plusieurs élèves à une classe. Les doublons sont ignorés."""
     try:
         result = class_service.assign_students(db, class_id, data, school_id=current_user.school_id)
     except ValueError as e:
@@ -180,7 +176,6 @@ def remove_student(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retire un élève d'une classe."""
     success = class_service.remove_student(db, class_id, student_id, school_id=current_user.school_id)
     if not success:
         raise HTTPException(status_code=404, detail="Lien classe-élève introuvable.")
@@ -204,7 +199,6 @@ def assign_teachers(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Assigne un ou plusieurs enseignants à une classe. Les doublons sont ignorés."""
     try:
         result = class_service.assign_teachers(db, class_id, data, school_id=current_user.school_id)
     except ValueError as e:
@@ -229,7 +223,6 @@ def remove_teacher(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Retire un enseignant d'une classe."""
     success = class_service.remove_teacher(db, class_id, teacher_id, school_id=current_user.school_id)
     if not success:
         raise HTTPException(status_code=404, detail="Lien classe-enseignant introuvable.")

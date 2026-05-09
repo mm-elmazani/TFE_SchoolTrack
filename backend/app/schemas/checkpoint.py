@@ -14,7 +14,6 @@ DESCRIPTION_MAX_LENGTH = 500
 
 
 class CheckpointCreate(BaseModel):
-    """Données nécessaires pour créer un checkpoint sur le terrain."""
     name: str
     description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
     id: Optional[uuid.UUID] = None  # UUID client pour sync offline (US 3.3)
@@ -28,7 +27,6 @@ class CheckpointCreate(BaseModel):
 
 
 class CheckpointUpdate(BaseModel):
-    """Modification d'un checkpoint depuis le dashboard web (DRAFT uniquement)."""
     name: str
     description: Optional[str] = Field(default=None, max_length=DESCRIPTION_MAX_LENGTH)
 
@@ -41,7 +39,6 @@ class CheckpointUpdate(BaseModel):
 
 
 class CheckpointResponse(BaseModel):
-    """Réponse renvoyée après création ou lecture d'un checkpoint."""
     id: uuid.UUID
     trip_id: uuid.UUID
     name: str
@@ -54,7 +51,6 @@ class CheckpointResponse(BaseModel):
 
 
 class CheckpointTimelineEntry(BaseModel):
-    """Un checkpoint dans la timeline avec ses statistiques de scan."""
     id: uuid.UUID
     name: str
     description: Optional[str] = None
@@ -70,7 +66,6 @@ class CheckpointTimelineEntry(BaseModel):
 
 
 class CheckpointsSummary(BaseModel):
-    """Resume des checkpoints d'un voyage pour la direction."""
     trip_id: uuid.UUID
     trip_destination: str
     total_checkpoints: int

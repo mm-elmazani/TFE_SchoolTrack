@@ -150,7 +150,6 @@ def _auto_update_trip_statuses() -> None:
 
 
 def start_scheduler() -> None:
-    """Démarre le planificateur en arrière-plan (appelé au démarrage de l'API)."""
     scheduler.add_job(
         _send_qr_emails_scheduled,
         trigger="interval",
@@ -178,7 +177,6 @@ def start_scheduler() -> None:
 
 
 def stop_scheduler() -> None:
-    """Arrête le planificateur proprement (appelé à l'arrêt de l'API)."""
     if scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("Scheduler arrêté.")

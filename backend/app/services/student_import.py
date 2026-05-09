@@ -53,12 +53,10 @@ COLUMN_ALIASES = {
 
 
 def _clean_phone(raw: str) -> str:
-    """Nettoie un numéro de téléphone : supprime les points, espaces et tirets."""
     return raw.replace(".", "").replace(" ", "").replace("-", "")
 
 
 def _strip_accents(s: str) -> str:
-    """Supprime les accents d'une chaîne."""
     return "".join(
         c for c in unicodedata.normalize("NFD", s)
         if unicodedata.category(c) != "Mn"
@@ -66,7 +64,6 @@ def _strip_accents(s: str) -> str:
 
 
 def _normalize_header(raw: str) -> str:
-    """Normalise un nom de colonne via la table d'alias (insensible casse/accents)."""
     cleaned = raw.strip().lower()
     if cleaned in COLUMN_ALIASES:
         return COLUMN_ALIASES[cleaned]
@@ -77,7 +74,6 @@ def _normalize_header(raw: str) -> str:
 
 
 def _detect_separator(sample: str) -> str:
-    """Détecte le séparateur CSV (virgule ou point-virgule)."""
     if sample.count(";") >= sample.count(","):
         return ";"
     return ","
@@ -243,9 +239,6 @@ def parse_and_import_csv(
     db: Session,
     school_id: Optional[uuid.UUID] = None,
 ) -> StudentImportReport:
-    """
-    Parse un fichier CSV et importe les élèves.
-    """
     try:
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:

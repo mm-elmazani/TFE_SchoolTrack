@@ -244,7 +244,6 @@ def sync_attendances(
 
 
 def _is_strictly_older(new_dt: datetime, existing_dt: datetime) -> bool:
-    """Retourne True si new_dt est strictement antérieur à existing_dt."""
     # Normaliser naive/aware pour éviter TypeError
     if new_dt.tzinfo is not None and existing_dt.tzinfo is None:
         new_dt = new_dt.replace(tzinfo=None)

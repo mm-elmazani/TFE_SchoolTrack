@@ -75,7 +75,6 @@ def create_refresh_token(user: User, extended: bool = False) -> str:
 
 
 def decode_token(token: str) -> dict:
-    """Decode un JWT et retourne le payload. Leve JWTError si invalide/expire."""
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
 
@@ -145,7 +144,6 @@ def register_user(
     role: str,
     school_id=None,
 ) -> User:
-    """Cree un nouvel utilisateur en base."""
     user = User(
         email=email,
         password_hash=password_hash,
@@ -185,7 +183,6 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[User, bool]:
 
 
 def generate_totp_secret(user: User) -> tuple[str, str]:
-    """Genere un secret TOTP et retourne (secret, provisioning_uri)."""
     secret = pyotp.random_base32()
     totp = pyotp.TOTP(secret)
     uri = totp.provisioning_uri(name=user.email, issuer_name="SchoolTrack")
@@ -193,7 +190,6 @@ def generate_totp_secret(user: User) -> tuple[str, str]:
 
 
 def enable_2fa(db: Session, user: User) -> tuple[str, str]:
-    """Active le 2FA (methode APP) pour un utilisateur. Retourne (secret, provisioning_uri)."""
     secret, uri = generate_totp_secret(user)
     user.totp_secret = secret
     user.two_fa_method = "APP"
@@ -203,7 +199,6 @@ def enable_2fa(db: Session, user: User) -> tuple[str, str]:
 
 
 def verify_and_activate_2fa(db: Session, user: User, totp_code: str) -> bool:
-    """Verifie le code TOTP et active definitivement le 2FA (methode APP)."""
     if not user.totp_secret:
         raise AuthError("2FA non initialisee. Appelez d'abord enable-2fa.")
     totp = pyotp.TOTP(user.totp_secret)
@@ -216,7 +211,6 @@ def verify_and_activate_2fa(db: Session, user: User, totp_code: str) -> bool:
 
 
 def disable_2fa(db: Session, user: User) -> None:
-    """Desactive le 2FA pour un utilisateur."""
     user.totp_secret = None
     user.is_2fa_enabled = False
     user.two_fa_method = None
@@ -226,12 +220,10 @@ def disable_2fa(db: Session, user: User) -> None:
 
 
 def _generate_otp_code() -> str:
-    """Genere un code OTP a 6 chiffres."""
     return f"{secrets.randbelow(1_000_000):06d}"
 
 
 def _send_otp_email(to_email: str, code: str) -> None:
-    """Envoie un email contenant le code OTP 2FA."""
     msg = MIMEMultipart("alternative")
     msg["From"] = settings.SMTP_FROM
     msg["To"] = to_email
@@ -271,7 +263,6 @@ def _send_otp_email(to_email: str, code: str) -> None:
 
 
 def send_email_otp(db: Session, user: User) -> None:
-    """Genere un code OTP, le stocke en base et l'envoie par email."""
     code = _generate_otp_code()
     user.email_otp_code = code
     user.email_otp_expires = datetime.utcnow() + timedelta(minutes=EMAIL_OTP_EXPIRY_MINUTES)
@@ -280,14 +271,12 @@ def send_email_otp(db: Session, user: User) -> None:
 
 
 def enable_2fa_email(db: Session, user: User) -> None:
-    """Initie l'activation de la 2FA par email : envoie un code de verification."""
     user.two_fa_method = "EMAIL"
     db.commit()
     send_email_otp(db, user)
 
 
 def verify_and_activate_2fa_email(db: Session, user: User, code: str) -> bool:
-    """Verifie le code email OTP et active definitivement la 2FA (methode EMAIL)."""
     if not user.email_otp_code or not user.email_otp_expires:
         raise AuthError("Aucun code OTP en attente. Appelez d'abord enable-2fa-email.")
     if datetime.utcnow() > user.email_otp_expires:
@@ -306,7 +295,6 @@ def verify_and_activate_2fa_email(db: Session, user: User, code: str) -> bool:
 
 
 def verify_email_otp(db: Session, user: User, code: str) -> bool:
-    """Verifie un code email OTP (utilise au login). Retourne True si valide."""
     if not user.email_otp_code or not user.email_otp_expires:
         return False
     if datetime.utcnow() > user.email_otp_expires:
@@ -324,7 +312,6 @@ def verify_email_otp(db: Session, user: User, code: str) -> bool:
 
 
 def change_password(db: Session, user: User, current_password: str, new_password_hash: str) -> None:
-    """Change le mot de passe apres verification de l'ancien."""
     if not verify_password(current_password, user.password_hash):
         raise AuthError("Mot de passe actuel incorrect")
     user.password_hash = new_password_hash
@@ -334,12 +321,10 @@ def change_password(db: Session, user: User, current_password: str, new_password
 
 
 def _generate_reset_token() -> str:
-    """Genere un token de reset aleatoire URL-safe."""
     return secrets.token_urlsafe(32)
 
 
 def _send_password_reset_email(to_email: str, reset_url: str) -> None:
-    """Envoie un email avec le lien de reinitialisation du mot de passe."""
     msg = MIMEMultipart("alternative")
     msg["From"] = settings.SMTP_FROM
     msg["To"] = to_email
@@ -411,7 +396,6 @@ def request_password_reset(db: Session, email: str, base_url: str, school_slug: 
 
 
 def reset_password_with_token(db: Session, token: str, email: str, new_password_hash: str) -> User:
-    """Reinitialise le mot de passe avec un token valide. Retourne l'utilisateur pour le logging."""
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise AuthError("Lien de reinitialisation invalide")
@@ -435,15 +419,12 @@ def reset_password_with_token(db: Session, token: str, email: str, new_password_
 
 
 class AuthError(Exception):
-    """Erreur d'authentification generique."""
     pass
 
 
 class AccountLockedError(Exception):
-    """Compte verrouille apres trop de tentatives."""
     pass
 
 
 class TwoFactorRequiredError(Exception):
-    """Le 2FA est active mais aucun code TOTP n'a ete fourni."""
     pass

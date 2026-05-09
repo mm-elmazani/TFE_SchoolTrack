@@ -10,7 +10,6 @@ from app.database import Base
 
 
 class Token(Base):
-    """Stock de supports physiques (bracelets NFC, QR physiques)."""
     __tablename__ = "tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -24,7 +23,6 @@ class Token(Base):
 
 
 class Assignment(Base):
-    """Liaison dynamique token ↔ élève ↔ voyage."""
     __tablename__ = "assignments"
 
     id = Column(Integer, primary_key=True, autoincrement=True)

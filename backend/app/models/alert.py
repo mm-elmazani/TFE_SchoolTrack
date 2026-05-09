@@ -11,7 +11,6 @@ from app.database import Base
 
 
 class Alert(Base):
-    """Alerte temps reel pour la direction."""
     __tablename__ = "alerts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

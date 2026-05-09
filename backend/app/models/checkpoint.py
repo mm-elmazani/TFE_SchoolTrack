@@ -11,7 +11,6 @@ from app.database import Base
 
 
 class Checkpoint(Base):
-    """Point de contrôle créé dynamiquement sur le terrain par un enseignant."""
     __tablename__ = "checkpoints"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

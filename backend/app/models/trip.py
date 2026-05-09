@@ -24,7 +24,6 @@ class Trip(Base):
 
 
 class TripStudent(Base):
-    """Association voyage ↔ élèves participants."""
     __tablename__ = "trip_students"
 
     trip_id = Column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), primary_key=True)
@@ -33,7 +32,6 @@ class TripStudent(Base):
 
 
 class TripClass(Base):
-    """Association voyage ↔ classes sélectionnées explicitement."""
     __tablename__ = "trip_classes"
 
     trip_id = Column(UUID(as_uuid=True), ForeignKey("trips.id", ondelete="CASCADE"), primary_key=True)

@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 def generate_qr_image(token_uid: str) -> bytes:
-    """Génère une image PNG du QR code encodant le token_uid donné."""
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(token_uid)
     qr.make(fit=True)
@@ -42,7 +41,6 @@ def generate_qr_image(token_uid: str) -> bytes:
 
 
 def _generate_token_uid() -> str:
-    """Génère un identifiant unique pour un QR code digital (format : QRD-XXXXXXXX)."""
     return "QRD-" + uuid.uuid4().hex[:8].upper()
 
 

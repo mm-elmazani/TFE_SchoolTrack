@@ -60,7 +60,6 @@ def list_trips(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retourne tous les voyages actifs (hors archivés), du plus récent au plus ancien."""
     return trip_service.get_trips(db, school_id=current_user.school_id)
 
 
@@ -147,7 +146,6 @@ def get_trip(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retourne le détail d'un voyage par son ID."""
     trip = trip_service.get_trip(db, trip_id, school_id=current_user.school_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Voyage introuvable.")
@@ -162,10 +160,6 @@ def update_trip(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Met à jour les informations d'un voyage.
-    Seuls les champs fournis sont modifiés.
-    """
     trip = trip_service.update_trip(db, trip_id, data, school_id=current_user.school_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Voyage introuvable.")
@@ -267,9 +261,6 @@ def get_offline_data(
     current_user: User = Depends(_field),
     db: Session = Depends(get_db),
 ):
-    """
-    Retourne le bundle complet de données nécessaire au mode offline de l'app Flutter.
-    """
     try:
         return offline_service.get_offline_data(db, trip_id, school_id=current_user.school_id)
     except ValueError as e:
@@ -290,9 +281,6 @@ def send_qr_emails(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """
-    Envoie les QR codes digitaux par email à tous les élèves inscrits au voyage.
-    """
     try:
         result = qr_email_service.send_qr_emails_for_trip(
             db, trip_id, school_id=current_user.school_id

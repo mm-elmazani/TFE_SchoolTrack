@@ -120,7 +120,6 @@ def update_student(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Met à jour les champs fournis d'un élève. Les champs absents ne sont pas modifiés."""
     student = db.execute(
         select(Student).where(
             Student.id == student_id,
@@ -158,7 +157,6 @@ async def upload_student_photo(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Upload ou remplace la photo d'un élève. Formats acceptés : JPEG, PNG, WebP. Max 5 Mo."""
     student = db.execute(
         select(Student).where(
             Student.id == student_id,
@@ -206,7 +204,6 @@ def get_student_photo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Sert la photo d'un élève. Requiert un JWT valide (tous les rôles authentifiés)."""
     student = db.execute(
         select(Student).where(
             Student.id == student_id,
@@ -230,7 +227,6 @@ def bulk_delete_students(
     current_user: User = Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Suppression logique en lot. Retourne le nombre d'élèves effectivement supprimés."""
     students = db.execute(
         select(Student).where(
             Student.id.in_(student_ids),
@@ -454,7 +450,6 @@ MAX_FILE_SIZE_MB = 5
 
 
 def _is_excel_file(file: UploadFile) -> bool:
-    """Détermine si le fichier uploadé est un Excel (.xlsx)."""
     if file.filename and file.filename.lower().endswith(".xlsx"):
         return True
     if file.content_type in ALLOWED_EXCEL_TYPES:

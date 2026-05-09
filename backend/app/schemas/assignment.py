@@ -14,7 +14,6 @@ VALID_TOKEN_STATUSES = {"AVAILABLE", "ASSIGNED", "DAMAGED", "LOST"}
 
 
 class TokenCreate(BaseModel):
-    """Enregistrer un token unique dans le stock."""
     token_uid: str
     token_type: str  # NFC_PHYSICAL, QR_PHYSICAL
     hardware_uid: Optional[str] = None  # UID hardware NFC (hex) lu lors de l'encodage
@@ -35,7 +34,6 @@ class TokenCreate(BaseModel):
 
 
 class TokenBatchCreate(BaseModel):
-    """Enregistrer un lot de tokens en une seule requete."""
     tokens: List[TokenCreate]
 
     @field_validator("tokens")
@@ -47,7 +45,6 @@ class TokenBatchCreate(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """Reponse pour un token du stock."""
     id: int
     token_uid: str
     token_type: str
@@ -63,7 +60,6 @@ class TokenResponse(BaseModel):
 
 
 class TokenStatsResponse(BaseModel):
-    """Statistiques du stock de tokens."""
     total: int
     available: int
     assigned: int
@@ -72,7 +68,6 @@ class TokenStatsResponse(BaseModel):
 
 
 class TokenStatusUpdate(BaseModel):
-    """Mise a jour du statut d'un token."""
     status: str
 
     @field_validator("status")
@@ -84,7 +79,6 @@ class TokenStatusUpdate(BaseModel):
 
 
 class AssignmentCreate(BaseModel):
-    """Corps de requête pour assigner un bracelet à un élève."""
     token_uid: str
     student_id: uuid.UUID
     trip_id: uuid.UUID
@@ -106,7 +100,6 @@ class AssignmentCreate(BaseModel):
 
 
 class AssignmentReassign(BaseModel):
-    """Corps de requête pour réassigner un bracelet (libère l'ancien)."""
     token_uid: str
     student_id: uuid.UUID
     trip_id: uuid.UUID
@@ -136,7 +129,6 @@ class AssignmentReassign(BaseModel):
 
 
 class AssignmentResponse(BaseModel):
-    """Réponse après assignation."""
     id: int
     token_uid: str
     student_id: uuid.UUID
@@ -149,7 +141,6 @@ class AssignmentResponse(BaseModel):
 
 
 class TripAssignmentStatus(BaseModel):
-    """Statut global des assignations pour un voyage."""
     trip_id: uuid.UUID
     total_students: int
     assigned_students: int
@@ -158,7 +149,6 @@ class TripAssignmentStatus(BaseModel):
 
 
 class TripStudentWithAssignment(BaseModel):
-    """Eleve inscrit a un voyage avec ses assignations (primaire physique + secondaire digitale)."""
     id: uuid.UUID
     first_name: str
     last_name: str
@@ -178,7 +168,6 @@ class TripStudentWithAssignment(BaseModel):
 
 
 class TripStudentsResponse(BaseModel):
-    """Liste complete des eleves d'un voyage avec leur statut d'assignation."""
     trip_id: uuid.UUID
     total: int
     assigned: int

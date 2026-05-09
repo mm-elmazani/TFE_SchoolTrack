@@ -23,7 +23,6 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
-    """Dependance FastAPI : extrait l'utilisateur courant depuis le JWT Bearer."""
     token = credentials.credentials
     try:
         payload = decode_token(token)
@@ -72,7 +71,6 @@ def require_role(*allowed_roles: str) -> Callable:
 
 
 def get_client_ip(request: Request) -> str | None:
-    """Extrait l'IP reelle du client depuis X-Forwarded-For (proxy Traefik) ou request.client."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -90,7 +88,6 @@ def log_audit(
     user_agent: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """Insere une ligne dans audit_logs (table deja existante dans init.sql)."""
     from sqlalchemy import text
 
     db.execute(

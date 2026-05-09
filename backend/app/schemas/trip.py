@@ -14,7 +14,6 @@ from pydantic import BaseModel, field_validator
 
 
 class ClassSummary(BaseModel):
-    """Résumé d'une classe dans un voyage (id, nom, année, nb élèves inscrits)."""
     id: uuid.UUID
     name: str
     year: Optional[str] = None

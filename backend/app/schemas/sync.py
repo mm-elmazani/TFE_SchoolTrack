@@ -14,7 +14,6 @@ MAX_BATCH_SIZE = 500
 
 
 class ScanItem(BaseModel):
-    """Un scan de présence généré côté client (Flutter) en mode offline."""
 
     client_uuid: uuid.UUID        # UUID généré par Flutter (package uuid) — clé d'idempotence
     student_id: uuid.UUID
@@ -36,7 +35,6 @@ class ScanItem(BaseModel):
 
 
 class SyncRequest(BaseModel):
-    """Corps de la requête batch de synchronisation."""
 
     scans: List[ScanItem]
     device_id: str = ""           # Identifiant de l'appareil Flutter (pour sync_logs)
@@ -62,7 +60,6 @@ class TemporalAnomaly(BaseModel):
 
 
 class SyncResponse(BaseModel):
-    """Rapport de synchronisation retourné par le serveur (US 3.1 + US 3.2)."""
 
     # US 3.1 — idempotence
     accepted: List[str]           # client_uuids insérés comme nouveaux canoniques
@@ -78,7 +75,6 @@ class SyncResponse(BaseModel):
 
 
 class SyncLogOut(BaseModel):
-    """Une entrée du journal de synchronisation."""
 
     id: int
     user_id: Optional[str] = None
@@ -96,7 +92,6 @@ class SyncLogOut(BaseModel):
 
 
 class SyncLogPage(BaseModel):
-    """Page paginée de sync_logs."""
 
     items: List[SyncLogOut]
     total: int
@@ -106,7 +101,6 @@ class SyncLogPage(BaseModel):
 
 
 class SyncStats(BaseModel):
-    """Statistiques globales de synchronisation."""
 
     total_syncs: int = 0
     total_records_synced: int = 0

@@ -37,7 +37,6 @@ def school_exists(
     slug: str,
     db: Session = Depends(get_db),
 ):
-    """Verifie si un slug d'ecole existe et est actif. Endpoint public (pas d'auth)."""
     school = db.execute(
         select(School).where(School.slug == slug, School.is_active == True)
     ).scalar_one_or_none()
@@ -51,7 +50,6 @@ def list_schools(
     _=Depends(_direction),
     db: Session = Depends(get_db),
 ):
-    """Retourne toutes les écoles actives."""
     schools = db.execute(
         select(School).where(School.is_active == True).order_by(School.name)
     ).scalars().all()
@@ -64,7 +62,6 @@ def create_school(
     _=Depends(_admin),
     db: Session = Depends(get_db),
 ):
-    """Crée une nouvelle école. Slug doit être unique."""
     school = School(name=data.name, slug=data.slug)
     db.add(school)
     try:

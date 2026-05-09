@@ -47,7 +47,6 @@ class ClassResponse(BaseModel):
 
 
 class ClassStudentsAssign(BaseModel):
-    """Corps de requête pour assigner des élèves à une classe."""
     student_ids: List[uuid.UUID]
 
     @field_validator("student_ids")
@@ -59,7 +58,6 @@ class ClassStudentsAssign(BaseModel):
 
 
 class ClassTeachersAssign(BaseModel):
-    """Corps de requête pour assigner des enseignants à une classe."""
     teacher_ids: List[uuid.UUID]
 
     @field_validator("teacher_ids")
