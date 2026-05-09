@@ -75,11 +75,6 @@ def create_checkpoint(
     return CheckpointResponse.model_validate(checkpoint)
 
 
-# ---------------------------------------------------------------------------
-# US 4.4 — Timeline et résumé checkpoints
-# ---------------------------------------------------------------------------
-
-
 def get_checkpoints_summary(
     db: Session,
     trip_id: uuid.UUID,

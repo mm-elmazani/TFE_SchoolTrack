@@ -53,11 +53,6 @@ class CheckpointResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ---------------------------------------------------------------------------
-# US 4.4 — Timeline et resume checkpoints
-# ---------------------------------------------------------------------------
-
-
 class CheckpointTimelineEntry(BaseModel):
     """Un checkpoint dans la timeline avec ses statistiques de scan."""
     id: uuid.UUID

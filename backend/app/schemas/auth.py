@@ -10,10 +10,6 @@ from pydantic import BaseModel, EmailStr, field_validator
 import re
 
 
-# ---------------------------------------------------------------------------
-# Requetes
-# ---------------------------------------------------------------------------
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
@@ -100,10 +96,6 @@ class ResetPasswordRequest(BaseModel):
             raise ValueError("Le mot de passe doit contenir au moins un caractere special")
         return v
 
-
-# ---------------------------------------------------------------------------
-# Reponses
-# ---------------------------------------------------------------------------
 
 class UserInfo(BaseModel):
     id: UUID

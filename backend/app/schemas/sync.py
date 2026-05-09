@@ -77,10 +77,6 @@ class SyncResponse(BaseModel):
     total_merged: int = 0
 
 
-# ----------------------------------------------------------------
-# Réponses pour l'écran de suivi des synchronisations
-# ----------------------------------------------------------------
-
 class SyncLogOut(BaseModel):
     """Une entrée du journal de synchronisation."""
 

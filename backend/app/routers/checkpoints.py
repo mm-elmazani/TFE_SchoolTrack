@@ -25,11 +25,6 @@ _field = require_role("DIRECTION", "ADMIN_TECH", "TEACHER")
 _admin = require_role("DIRECTION", "ADMIN_TECH")
 
 
-# ---------------------------------------------------------------------------
-# US 4.4 — Timeline / résumé checkpoints (direction uniquement)
-# ---------------------------------------------------------------------------
-
-
 @router.get(
     "/{trip_id}/checkpoints-summary",
     response_model=CheckpointsSummary,

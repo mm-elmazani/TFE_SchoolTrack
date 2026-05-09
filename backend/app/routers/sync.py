@@ -67,10 +67,6 @@ def sync_attendances(
     return result
 
 
-# ----------------------------------------------------------------
-# Endpoints de consultation (direction/admin)
-# ----------------------------------------------------------------
-
 @router.get(
     "/logs",
     response_model=SyncLogPage,

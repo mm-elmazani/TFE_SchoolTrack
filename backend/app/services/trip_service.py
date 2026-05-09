@@ -233,11 +233,6 @@ def _to_response(db: Session, trip: Trip) -> TripResponse:
     )
 
 
-# ---------------------------------------------------------------------------
-# US 4.1 — Export CSV presences
-# ---------------------------------------------------------------------------
-
-
 def export_attendance_csv(
     db: Session,
     trip_id: uuid.UUID,

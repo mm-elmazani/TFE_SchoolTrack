@@ -28,10 +28,6 @@ MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
 
 
-# ---------------------------------------------------------------------------
-# Hachage — bcrypt direct (cout 12, critere US 6.1)
-# ---------------------------------------------------------------------------
-
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt(rounds=12)
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
@@ -43,10 +39,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         hashed_password.encode("utf-8"),
     )
 
-
-# ---------------------------------------------------------------------------
-# JWT
-# ---------------------------------------------------------------------------
 
 def create_access_token(user: User) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -86,10 +78,6 @@ def decode_token(token: str) -> dict:
     """Decode un JWT et retourne le payload. Leve JWTError si invalide/expire."""
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
 
-
-# ---------------------------------------------------------------------------
-# Authentification
-# ---------------------------------------------------------------------------
 
 def authenticate_user(
     db: Session,
@@ -196,10 +184,6 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[User, bool]:
     return user, extended
 
 
-# ---------------------------------------------------------------------------
-# 2FA TOTP
-# ---------------------------------------------------------------------------
-
 def generate_totp_secret(user: User) -> tuple[str, str]:
     """Genere un secret TOTP et retourne (secret, provisioning_uri)."""
     secret = pyotp.random_base32()
@@ -240,10 +224,6 @@ def disable_2fa(db: Session, user: User) -> None:
     user.email_otp_expires = None
     db.commit()
 
-
-# ---------------------------------------------------------------------------
-# 2FA Email OTP
-# ---------------------------------------------------------------------------
 
 def _generate_otp_code() -> str:
     """Genere un code OTP a 6 chiffres."""
@@ -343,10 +323,6 @@ def verify_email_otp(db: Session, user: User, code: str) -> bool:
     return True
 
 
-# ---------------------------------------------------------------------------
-# Changement de mot de passe
-# ---------------------------------------------------------------------------
-
 def change_password(db: Session, user: User, current_password: str, new_password_hash: str) -> None:
     """Change le mot de passe apres verification de l'ancien."""
     if not verify_password(current_password, user.password_hash):
@@ -356,10 +332,6 @@ def change_password(db: Session, user: User, current_password: str, new_password
     user.locked_until = None
     db.commit()
 
-
-# ---------------------------------------------------------------------------
-# Mot de passe oublie (US 6.1 — complement)
-# ---------------------------------------------------------------------------
 
 def _generate_reset_token() -> str:
     """Genere un token de reset aleatoire URL-safe."""
@@ -461,10 +433,6 @@ def reset_password_with_token(db: Session, token: str, email: str, new_password_
     db.commit()
     return user
 
-
-# ---------------------------------------------------------------------------
-# Exceptions
-# ---------------------------------------------------------------------------
 
 class AuthError(Exception):
     """Erreur d'authentification generique."""

@@ -13,11 +13,6 @@ VALID_TOKEN_TYPES = {"NFC_PHYSICAL", "QR_PHYSICAL"}
 VALID_TOKEN_STATUSES = {"AVAILABLE", "ASSIGNED", "DAMAGED", "LOST"}
 
 
-# ----------------------------------------------------------------
-# Schemas US 1.4 — Initialisation du stock de bracelets
-# ----------------------------------------------------------------
-
-
 class TokenCreate(BaseModel):
     """Enregistrer un token unique dans le stock."""
     token_uid: str

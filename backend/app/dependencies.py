@@ -53,10 +53,6 @@ def get_current_user(
     return user
 
 
-# ---------------------------------------------------------------------------
-# US 6.2 — Fabrique de dependance role
-# ---------------------------------------------------------------------------
-
 def require_role(*allowed_roles: str) -> Callable:
     """
     Retourne une dependance FastAPI qui verifie que l'utilisateur connecte
@@ -75,10 +71,6 @@ def require_role(*allowed_roles: str) -> Callable:
     return _role_checker
 
 
-# ---------------------------------------------------------------------------
-# US 6.2 — IP source reelle (derriere Traefik)
-# ---------------------------------------------------------------------------
-
 def get_client_ip(request: Request) -> str | None:
     """Extrait l'IP reelle du client depuis X-Forwarded-For (proxy Traefik) ou request.client."""
     forwarded = request.headers.get("x-forwarded-for")
@@ -86,10 +78,6 @@ def get_client_ip(request: Request) -> str | None:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else None
 
-
-# ---------------------------------------------------------------------------
-# US 6.2 — Audit log
-# ---------------------------------------------------------------------------
 
 def log_audit(
     db: Session,

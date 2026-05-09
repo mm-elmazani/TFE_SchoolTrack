@@ -50,9 +50,6 @@ _admin = require_role("DIRECTION", "ADMIN_TECH")
 router = APIRouter(prefix="/api/v1/auth", tags=["Authentification"])
 
 
-# ---------------------------------------------------------------------------
-# POST /login
-# ---------------------------------------------------------------------------
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """Authentifie un utilisateur et retourne un couple access/refresh token."""
@@ -115,9 +112,6 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     )
 
 
-# ---------------------------------------------------------------------------
-# POST /register
-# ---------------------------------------------------------------------------
 @router.post("/register", response_model=UserInfo, status_code=status.HTTP_201_CREATED)
 def register(
     body: RegisterRequest,
@@ -143,9 +137,6 @@ def register(
     return UserInfo.model_validate(user)
 
 
-# ---------------------------------------------------------------------------
-# POST /refresh
-# ---------------------------------------------------------------------------
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     """Renouvelle les tokens a partir d'un refresh token valide.
@@ -163,18 +154,12 @@ def refresh(body: RefreshRequest, db: Session = Depends(get_db)):
     )
 
 
-# ---------------------------------------------------------------------------
-# GET /me
-# ---------------------------------------------------------------------------
 @router.get("/me", response_model=UserInfo)
 def me(current_user: User = Depends(get_current_user)):
     """Retourne les informations de l'utilisateur connecte."""
     return UserInfo.model_validate(current_user)
 
 
-# ---------------------------------------------------------------------------
-# POST /enable-2fa
-# ---------------------------------------------------------------------------
 @router.post("/enable-2fa", response_model=Enable2FAResponse)
 def enable_two_factor(
     request: Request,
@@ -199,9 +184,6 @@ def enable_two_factor(
     return Enable2FAResponse(secret=secret, provisioning_uri=uri)
 
 
-# ---------------------------------------------------------------------------
-# POST /verify-2fa
-# ---------------------------------------------------------------------------
 @router.post("/verify-2fa", response_model=MessageResponse)
 def verify_two_factor(
     body: Verify2FARequest,
@@ -227,9 +209,6 @@ def verify_two_factor(
     return MessageResponse(message="2FA active avec succes")
 
 
-# ---------------------------------------------------------------------------
-# POST /disable-2fa
-# ---------------------------------------------------------------------------
 @router.post("/disable-2fa", response_model=MessageResponse)
 def disable_two_factor(
     request: Request,
@@ -254,9 +233,6 @@ def disable_two_factor(
     return MessageResponse(message="2FA desactive")
 
 
-# ---------------------------------------------------------------------------
-# POST /enable-2fa-email
-# ---------------------------------------------------------------------------
 @router.post("/enable-2fa-email", response_model=MessageResponse)
 def enable_two_factor_email(
     request: Request,
@@ -287,9 +263,6 @@ def enable_two_factor_email(
     return MessageResponse(message="Code de verification envoye par email")
 
 
-# ---------------------------------------------------------------------------
-# POST /verify-2fa-email
-# ---------------------------------------------------------------------------
 @router.post("/verify-2fa-email", response_model=MessageResponse)
 def verify_two_factor_email(
     body: Verify2FARequest,
@@ -322,9 +295,6 @@ def verify_two_factor_email(
     return MessageResponse(message="2FA par email activee avec succes")
 
 
-# ---------------------------------------------------------------------------
-# POST /resend-2fa-code
-# ---------------------------------------------------------------------------
 @router.post("/resend-2fa-code", response_model=MessageResponse)
 def resend_two_factor_code(
     request: Request,
@@ -342,9 +312,6 @@ def resend_two_factor_code(
     return MessageResponse(message="Nouveau code envoye")
 
 
-# ---------------------------------------------------------------------------
-# POST /change-password
-# ---------------------------------------------------------------------------
 @router.post("/change-password", response_model=MessageResponse)
 def change_user_password(
     body: ChangePasswordRequest,
@@ -373,9 +340,6 @@ def change_user_password(
     return MessageResponse(message="Mot de passe modifie avec succes")
 
 
-# ---------------------------------------------------------------------------
-# POST /forgot-password
-# ---------------------------------------------------------------------------
 @router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Envoie un email de reinitialisation si le compte existe (public)."""
@@ -405,9 +369,6 @@ def forgot_password(body: ForgotPasswordRequest, request: Request, db: Session =
     )
 
 
-# ---------------------------------------------------------------------------
-# POST /reset-password
-# ---------------------------------------------------------------------------
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(body: ResetPasswordRequest, request: Request, db: Session = Depends(get_db)):
     """Reinitialise le mot de passe avec un token valide (public)."""

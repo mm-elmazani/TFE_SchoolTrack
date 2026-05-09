@@ -36,11 +36,6 @@ router = APIRouter(prefix="/api/v1", tags=["Tokens & Assignations"])
 _admin = require_role("DIRECTION", "ADMIN_TECH")
 
 
-# ----------------------------------------------------------------
-# US 1.4 — Initialisation du stock de bracelets
-# ----------------------------------------------------------------
-
-
 @router.post("/tokens/init", response_model=TokenResponse, status_code=201,
              summary="Enregistrer un token dans le stock")
 def init_token(
@@ -204,11 +199,6 @@ def update_token_status(
     )
 
     return result
-
-
-# ----------------------------------------------------------------
-# US 1.5 — Assignation des bracelets
-# ----------------------------------------------------------------
 
 
 @router.post("/tokens/assign", response_model=AssignmentResponse, status_code=201,

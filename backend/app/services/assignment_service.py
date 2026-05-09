@@ -420,11 +420,6 @@ def _update_token_status(db: Session, token_uid: str, status: str) -> None:
         token.last_assigned_at = datetime.now()
 
 
-# ----------------------------------------------------------------
-# US 1.4 — Initialisation du stock de bracelets
-# ----------------------------------------------------------------
-
-
 def init_token(db: Session, data: TokenCreate, school_id: uuid.UUID) -> TokenResponse:
     """
     Enregistre un token unique dans le stock.
