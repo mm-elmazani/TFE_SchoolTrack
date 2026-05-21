@@ -1,244 +1,294 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Politique de confidentialite — SchoolTrack</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.7;
-      color: #1a1a1a;
-      background: #f8f9fa;
-      padding: 0 16px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 40px 48px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-      margin-top: 32px;
-      margin-bottom: 48px;
-    }
-    h1 {
-      color: #1A73E8;
-      font-size: 28px;
-      margin-bottom: 4px;
-    }
-    .version {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 32px;
-    }
-    h2 {
-      color: #1A73E8;
-      font-size: 20px;
-      margin-top: 32px;
-      margin-bottom: 12px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid #e8f0fe;
-    }
-    h3 {
-      font-size: 16px;
-      margin-top: 20px;
-      margin-bottom: 8px;
-      color: #333;
-    }
-    p, li { font-size: 15px; color: #333; }
-    p { margin-bottom: 12px; }
-    ul { padding-left: 24px; margin-bottom: 12px; }
-    li { margin-bottom: 4px; }
-    strong { color: #1a1a1a; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0 20px;
-      font-size: 14px;
-    }
-    th {
-      background: #e8f0fe;
-      color: #1A73E8;
-      text-align: left;
-      padding: 10px 12px;
-      font-weight: 600;
-    }
-    td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #eee;
-    }
-    tr:last-child td { border-bottom: none; }
-    .highlight {
-      background: #e8f0fe;
-      padding: 16px 20px;
-      border-radius: 8px;
-      margin: 16px 0;
-      font-size: 14px;
-    }
-    .footer {
-      text-align: center;
-      color: #999;
-      font-size: 13px;
-      margin-top: 32px;
-      padding-top: 20px;
-      border-top: 1px solid #eee;
-    }
-    @media (max-width: 600px) {
-      .container { padding: 24px 20px; }
-      h1 { font-size: 22px; }
-      table { font-size: 13px; }
-      th, td { padding: 8px; }
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Politique de confidentialité — SchoolTrack</title>
+<meta name="description" content="Politique de confidentialité SchoolTrack — conforme RGPD UE 2016/679. Hébergement UE, chiffrement AES-256, traçabilité complète." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/privacy.css" />
 </head>
 <body>
-  <div class="container">
-    <h1>Politique de confidentialite</h1>
-    <p class="version">Version 1.0 — Mars 2026 | SchoolTrack</p>
 
-    <div class="highlight">
-      <strong>Responsable du traitement :</strong> Etablissement scolaire utilisant SchoolTrack<br>
-      <strong>Contact DPO :</strong> A definir par l'etablissement
+<!-- ─── NAV ─────────────────────────────────────────── -->
+<header class="nav-wrap">
+  <div class="wrap nav">
+    <a href="index.html" class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span>SchoolTrack</span>
+    </a>
+    <a href="index.html" class="back-link">
+      <span class="arrow">←</span> Retour à la landing
+    </a>
+  </div>
+</header>
+
+<!-- ─── DOC HEADER ──────────────────────────────────── -->
+<div class="doc-header">
+  <span class="eyebrow"><span class="dot"></span> Document RGPD</span>
+  <h1 class="doc-title">Politique de confidentialité</h1>
+  <div class="meta">Version 1.0<span>·</span>Mars 2026<span>·</span>Conforme UE 2016/679</div>
+  <dl class="responsible">
+    <dt>Établissement scolaire</dt>
+    <dd>utilisant SchoolTrack pour ses sorties</dd>
+    <dt>Contact DPO</dt>
+    <dd>à définir par l'établissement</dd>
+  </dl>
+</div>
+
+<!-- ─── DOC CONTENT ─────────────────────────────────── -->
+<main class="doc">
+
+  <section id="s01" data-toc="Introduction">
+    <h2><span class="num">01</span> Introduction</h2>
+    <p>SchoolTrack est une application de gestion des présences pour sorties scolaires, développée dans le cadre d'un travail de fin d'études (TFE Bachelier IT, EPHEC). Elle permet aux établissements scolaires belges de suivre la présence de leurs élèves lors d'activités hors de l'école — visites, voyages, activités sportives.</p>
+    <p>La présente politique décrit les données traitées, les finalités, les durées de conservation, les mesures de protection mises en place et les droits dont disposent les personnes concernées. Elle est rédigée en application du <strong>Règlement (UE) 2016/679</strong> (RGPD) et de la loi belge du 30 juillet 2018 relative à la protection des personnes physiques à l'égard des traitements de données à caractère personnel.</p>
+    <p>Le responsable du traitement est l'<strong>établissement scolaire</strong> qui utilise la plateforme. SchoolTrack agit en qualité de sous-traitant technique.</p>
+  </section>
+
+  <section id="s02" data-toc="Données collectées">
+    <h2><span class="num">02</span> Données collectées</h2>
+    <p>Trois catégories de données sont traitées par la plateforme. Aucune donnée sensible (santé, opinions, origine) n'est collectée.</p>
+
+    <h3>2.1 Données relatives aux élèves</h3>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Donnée</th><th>Finalité</th><th>Base légale</th></tr></thead>
+        <tbody>
+          <tr><td>Nom, prénom</td><td>Identification de l'élève dans la liste de classe</td><td>Mission d'intérêt public</td></tr>
+          <tr><td>Classe, école</td><td>Affectation au voyage et aux checkpoints</td><td>Mission d'intérêt public</td></tr>
+          <tr><td>Identifiant NFC / QR</td><td>Scan de présence sur le terrain</td><td>Mission d'intérêt public</td></tr>
+          <tr><td>Email parent (optionnel)</td><td>Envoi du QR code de l'élève</td><td>Consentement</td></tr>
+          <tr><td>Horodatages des scans</td><td>Suivi en temps réel et journal post-sortie</td><td>Mission d'intérêt public</td></tr>
+        </tbody>
+      </table>
     </div>
 
-    <h2>1. Introduction</h2>
-    <p>
-      SchoolTrack est une application de gestion des presences pour les sorties scolaires.
-      Cette politique de confidentialite decrit les donnees personnelles collectees,
-      les finalites du traitement, les mesures de protection et les droits des personnes
-      concernees conformement au <strong>Reglement General sur la Protection des Donnees (RGPD)</strong>
-      — Reglement (UE) 2016/679.
-    </p>
+    <h3>2.2 Données relatives au personnel scolaire</h3>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Donnée</th><th>Finalité</th><th>Base légale</th></tr></thead>
+        <tbody>
+          <tr><td>Nom, prénom, email pro</td><td>Authentification et notifications</td><td>Contrat / mission d'intérêt public</td></tr>
+          <tr><td>Rôle (direction, enseignant, secrétariat)</td><td>Contrôle d'accès</td><td>Contrat / mission d'intérêt public</td></tr>
+          <tr><td>Mot de passe (haché bcrypt)</td><td>Authentification</td><td>Contrat</td></tr>
+          <tr><td>Secret 2FA TOTP</td><td>Sécurité du compte direction</td><td>Intérêt légitime (sécurité)</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-    <h2>2. Donnees collectees</h2>
+    <h3>2.3 Données techniques</h3>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Donnée</th><th>Finalité</th><th>Durée</th></tr></thead>
+        <tbody>
+          <tr><td>Adresse IP du dashboard</td><td>Détection d'intrusion, journal d'audit</td><td>12 mois</td></tr>
+          <tr><td>User-agent navigateur</td><td>Diagnostic technique, journal d'audit</td><td>12 mois</td></tr>
+          <tr><td>Identifiant de session JWT</td><td>Authentification du dashboard</td><td>30 minutes</td></tr>
+          <tr><td>Logs serveur (erreurs)</td><td>Maintenance technique</td><td>30 jours</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-    <h3>2.1 Donnees des eleves</h3>
-    <table>
-      <tr><th>Donnee</th><th>Finalite</th><th>Base legale</th></tr>
-      <tr><td>Nom, prenom</td><td>Identification lors des sorties</td><td>Interet legitime (securite des eleves)</td></tr>
-      <tr><td>Email</td><td>Communication des QR codes digitaux</td><td>Consentement</td></tr>
-      <tr><td>Telephone</td><td>Contact d'urgence</td><td>Interet legitime (securite)</td></tr>
-      <tr><td>Photo (optionnel)</td><td>Identification visuelle</td><td>Consentement parental</td></tr>
-      <tr><td>Consentement parental</td><td>Preuve du consentement RGPD</td><td>Obligation legale</td></tr>
-      <tr><td>Presences (scans)</td><td>Suivi de la securite en sortie</td><td>Interet legitime</td></tr>
-      <tr><td>Classe</td><td>Organisation scolaire</td><td>Interet legitime</td></tr>
-    </table>
-
-    <h3>2.2 Donnees des utilisateurs (personnel)</h3>
-    <table>
-      <tr><th>Donnee</th><th>Finalite</th><th>Base legale</th></tr>
-      <tr><td>Nom, prenom</td><td>Identification dans le systeme</td><td>Execution du contrat de travail</td></tr>
-      <tr><td>Email</td><td>Authentification + notifications</td><td>Execution du contrat de travail</td></tr>
-      <tr><td>Mot de passe (hache)</td><td>Securite d'acces</td><td>Interet legitime</td></tr>
-      <tr><td>Secret 2FA (chiffre)</td><td>Authentification renforcee</td><td>Interet legitime</td></tr>
-      <tr><td>Adresse IP, user-agent</td><td>Journalisation de securite</td><td>Interet legitime</td></tr>
-    </table>
-
-    <h3>2.3 Donnees techniques</h3>
-    <table>
-      <tr><th>Donnee</th><th>Finalite</th><th>Base legale</th></tr>
-      <tr><td>Logs d'audit</td><td>Tracabilite et conformite RGPD</td><td>Obligation legale</td></tr>
-      <tr><td>Identifiants de bracelets (token_uid)</td><td>Suivi anonyme des presences</td><td>Interet legitime</td></tr>
-    </table>
-
-    <h2>3. Principes de traitement</h2>
-    <p>SchoolTrack respecte les principes fondamentaux du RGPD :</p>
+  <section id="s03" data-toc="Principes de traitement">
+    <h2><span class="num">03</span> Principes de traitement</h2>
+    <p>Le traitement des données respecte les principes de l'article 5 du RGPD :</p>
     <ul>
-      <li><strong>Minimisation :</strong> seules les donnees strictement necessaires sont collectees</li>
-      <li><strong>Limitation de finalite :</strong> les donnees sont utilisees uniquement pour la gestion des presences lors des sorties scolaires</li>
-      <li><strong>Exactitude :</strong> les utilisateurs autorises peuvent corriger les donnees (droit de rectification)</li>
-      <li><strong>Limitation de conservation :</strong> les donnees sont conservees selon les durees definies (section 6)</li>
-      <li><strong>Integrite et confidentialite :</strong> les donnees sont protegees par chiffrement (section 4)</li>
-      <li><strong>Licite :</strong> chaque traitement repose sur une base legale identifiee</li>
+      <li><strong>Licéité, loyauté, transparence :</strong> les données sont collectées sur des bases légales définies et expliquées aux personnes concernées.</li>
+      <li><strong>Limitation des finalités :</strong> les données ne sont utilisées que pour la gestion de la sortie scolaire concernée.</li>
+      <li><strong>Minimisation :</strong> seules les données strictement nécessaires sont collectées. Pas de date de naissance, pas d'adresse, pas de numéro de téléphone élève.</li>
+      <li><strong>Exactitude :</strong> l'établissement maintient les listes à jour ; les corrections sont possibles à tout moment via le dashboard.</li>
+      <li><strong>Limitation de conservation :</strong> les données sont supprimées selon les durées définies à la section 6.</li>
+      <li><strong>Intégrité et confidentialité :</strong> chiffrement de bout en bout, contrôle d'accès, traçabilité (cf. section 4).</li>
     </ul>
+  </section>
 
-    <h2>4. Mesures de protection</h2>
+  <section id="s04" data-toc="Mesures de protection">
+    <h2><span class="num">04</span> Mesures de protection</h2>
 
     <h3>4.1 Chiffrement</h3>
-    <table>
-      <tr><th>Couche</th><th>Technologie</th><th>Donnees protegees</th></tr>
-      <tr><td>En transit</td><td>TLS 1.3 (HTTPS obligatoire)</td><td>Toutes les communications</td></tr>
-      <tr><td>Au repos (serveur)</td><td>AES-256-GCM par colonne</td><td>Noms, prenoms, emails, secrets 2FA</td></tr>
-      <tr><td>Au repos (mobile)</td><td>SQLCipher AES-256</td><td>Base de donnees locale entiere</td></tr>
-    </table>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Couche</th><th>Standard</th><th>Portée</th></tr></thead>
+        <tbody>
+          <tr><td>Transport</td><td>TLS 1.3</td><td>Mobile ↔ serveur, dashboard ↔ serveur</td></tr>
+          <tr><td>Base mobile</td><td>SQLCipher AES-256</td><td>Données en cache hors-ligne sur l'appareil</td></tr>
+          <tr><td>Base serveur</td><td>AES-256 (chiffrement disque)</td><td>Données persistantes côté infrastructure</td></tr>
+          <tr><td>Mots de passe</td><td>bcrypt (cost 12)</td><td>Hachage à sens unique, jamais en clair</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-    <h3>4.2 Controle d'acces</h3>
+    <h3>4.2 Contrôle d'accès</h3>
+    <p>L'accès est restreint par rôles : <strong>direction</strong> (toutes les classes de l'école), <strong>enseignant</strong> (uniquement ses sorties), <strong>secrétariat</strong> (gestion des listes), <strong>super-admin</strong> (maintenance technique, journal d'audit). Le compte direction exige obligatoirement un second facteur (TOTP via application d'authentification).</p>
+
+    <h3>4.3 Traçabilité</h3>
+    <p>Toute consultation et toute modification de données personnelles sont enregistrées dans un journal d'audit immuable. Ce journal contient l'identifiant de l'utilisateur, l'action, la date et l'adresse IP. Il est conservé 12 mois et peut être communiqué à l'autorité de protection des données sur demande motivée.</p>
+  </section>
+
+  <section id="s05" data-toc="Droits des personnes">
+    <h2><span class="num">05</span> Droits des personnes</h2>
+    <p>Conformément aux articles 15 à 22 du RGPD, les élèves, leurs représentants légaux et les membres du personnel disposent des droits suivants. Ces droits s'exercent auprès du DPO de l'établissement.</p>
+
+    <h3>5.1 Droit d'accès <span style="color: var(--muted); font-size: 13px; font-family: var(--fs-mono); font-weight: 500;">— art. 15</span></h3>
+    <p>Obtenir la confirmation que des données vous concernant sont traitées, et en recevoir une copie.</p>
+
+    <h3>5.2 Droit de rectification <span style="color: var(--muted); font-size: 13px; font-family: var(--fs-mono); font-weight: 500;">— art. 16</span></h3>
+    <p>Faire corriger des données inexactes ou incomplètes (orthographe d'un nom, classe erronée, etc.).</p>
+
+    <h3>5.3 Droit à l'effacement <span style="color: var(--muted); font-size: 13px; font-family: var(--fs-mono); font-weight: 500;">— art. 17</span></h3>
+    <p>Demander la suppression des données lorsqu'elles ne sont plus nécessaires, sous réserve des obligations légales de conservation.</p>
+
+    <h3>5.4 Droit à la limitation <span style="color: var(--muted); font-size: 13px; font-family: var(--fs-mono); font-weight: 500;">— art. 18</span></h3>
+    <p>Demander le gel temporaire du traitement, par exemple pendant la vérification d'une demande de rectification.</p>
+
+    <h3>5.5 Droit d'opposition <span style="color: var(--muted); font-size: 13px; font-family: var(--fs-mono); font-weight: 500;">— art. 21</span></h3>
+    <p>S'opposer au traitement pour des motifs tenant à votre situation particulière. L'établissement réévaluera alors la nécessité du traitement.</p>
+  </section>
+
+  <section id="s06" data-toc="Durées de conservation">
+    <h2><span class="num">06</span> Durées de conservation</h2>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Catégorie</th><th>Durée</th><th>Point de départ</th></tr></thead>
+        <tbody>
+          <tr><td>Liste de classe et identifiants NFC/QR</td><td>Année scolaire en cours</td><td>Création</td></tr>
+          <tr><td>Horodatages des scans d'une sortie</td><td>3 mois</td><td>Fin de la sortie</td></tr>
+          <tr><td>Compte personnel (enseignant, direction)</td><td>Tant que la personne exerce</td><td>Création du compte</td></tr>
+          <tr><td>Journal d'audit</td><td>12 mois</td><td>Date de l'événement</td></tr>
+          <tr><td>Logs techniques (erreurs, IP)</td><td>30 jours</td><td>Date du log</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s07" data-toc="Sous-traitants">
+    <h2><span class="num">07</span> Sous-traitants</h2>
+    <p>Trois sous-traitants techniques interviennent dans la chaîne de traitement. Chacun est lié par un contrat conforme à l'article 28 du RGPD et localisé en Union européenne.</p>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Sous-traitant</th><th>Finalité</th><th>Localisation</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td>Brevo (Sendinblue)</td><td>Envoi d'emails transactionnels (QR codes, réinitialisation de mot de passe)</td><td>Union européenne</td></tr>
+          <tr><td>One.com</td><td>Hébergement du serveur applicatif</td><td>Union européenne (Danemark)</td></tr>
+          <tr><td>Let's Encrypt</td><td>Émission des certificats TLS</td><td>Union européenne / international (autorité de certification)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-info">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div>Aucun transfert hors EEE. L'ensemble du traitement, du stockage et de la sauvegarde est réalisé sur des infrastructures situées dans l'Union européenne. Aucun sous-traitant américain (CLOUD Act) n'est utilisé.</div>
+    </div>
+  </section>
+
+  <section id="s08" data-toc="Cookies et stockage local" data-new="true">
+    <h2><span class="num">08</span> Cookies et stockage local <span class="badge-new">NEW</span></h2>
+    <p>SchoolTrack n'utilise <strong>aucun cookie tiers</strong>, <strong>aucun pixel publicitaire</strong> et <strong>aucun outil d'analyse comportementale</strong> (pas de Google Analytics, pas de Meta Pixel, pas de Hotjar, etc.). Aucun bandeau de consentement n'est requis : la plateforme ne dépose pas de cookie traceur.</p>
+
+    <h3>8.1 Stockage local du dashboard</h3>
+    <p>Pour permettre la session authentifiée, le dashboard utilise le <strong>localStorage</strong> du navigateur — strictement limité aux jetons techniques :</p>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Élément</th><th>Finalité</th><th>Durée</th></tr></thead>
+        <tbody>
+          <tr><td>Token JWT d'accès</td><td>Authentification des requêtes API</td><td>30 minutes</td></tr>
+          <tr><td>Token JWT de rafraîchissement</td><td>Renouvellement de session sans re-login</td><td>24 heures</td></tr>
+          <tr><td>Préférences d'affichage</td><td>Tri par défaut, colonnes affichées</td><td>Jusqu'à effacement manuel</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-warn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>Pas de cookie de session. Aucune donnée personnelle d'élève n'est jamais stockée dans le navigateur — uniquement les jetons d'authentification.</div>
+    </div>
+
+    <h3>8.2 Stockage local de l'application mobile</h3>
+    <p>L'appli mobile utilise une base SQLite chiffrée par <strong>SQLCipher (AES-256)</strong> pour mettre en cache la liste de classe pendant la sortie. Cette base permet le mode hors-ligne. Elle est <strong>purgée automatiquement à la déconnexion</strong> et au plus tard 7 jours après la fin du voyage.</p>
+
+    <h3>8.3 Comment effacer les données stockées</h3>
+    <p>Sur le dashboard : se déconnecter purge le localStorage. Pour un effacement manuel, utiliser les paramètres de votre navigateur (« Données du site » ou « localStorage » pour le domaine du dashboard).</p>
+    <p>Sur le mobile : se déconnecter dans l'application purge la base chiffrée. La désinstallation purge également l'intégralité du stockage applicatif.</p>
+  </section>
+
+  <section id="s09" data-toc="Violation de données">
+    <h2><span class="num">09</span> Violation de données</h2>
+    <p>En cas de violation susceptible d'engendrer un risque pour les droits et libertés des personnes concernées, l'établissement notifie l'<strong>Autorité de protection des données belge (APD)</strong> dans les 72 heures, conformément à l'article 33 du RGPD. Si le risque est élevé, les personnes concernées sont également informées dans les meilleurs délais (article 34).</p>
+    <p>SchoolTrack, en qualité de sous-traitant, s'engage à signaler toute violation à l'établissement responsable du traitement <strong>dans les 24 heures</strong> suivant sa découverte, avec un compte rendu détaillé (nature, volumétrie, mesures prises).</p>
+  </section>
+
+  <section id="s10" data-toc="Contact">
+    <h2><span class="num">10</span> Contact</h2>
+    <p>Pour exercer vos droits ou obtenir des informations complémentaires, adressez-vous au <strong>Délégué à la protection des données (DPO)</strong> de l'établissement scolaire. Les coordonnées du DPO sont communiquées par l'école.</p>
+    <p>En cas de désaccord persistant, vous pouvez introduire une réclamation auprès de l'Autorité de protection des données :</p>
     <ul>
-      <li>Authentification par mot de passe (bcrypt) + 2FA optionnel (TOTP)</li>
-      <li>Quatre roles avec permissions differenciees (principe du moindre privilege)</li>
-      <li>Verrouillage de compte apres 5 tentatives echouees</li>
-      <li>Sessions JWT avec expiration (30 min access / 24h refresh)</li>
+      <li><strong>Autorité de protection des données</strong> — Rue de la Presse 35, 1000 Bruxelles</li>
+      <li>Site web : <a href="https://www.autoriteprotectiondonnees.be" target="_blank" rel="noopener">autoriteprotectiondonnees.be</a></li>
+      <li>Email : <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="82e1edecf6e3e1f6c2e3f2e6afe5e0e3ace0e7">[email&#160;protected]</a></li>
     </ul>
+  </section>
 
-    <h3>4.3 Tracabilite</h3>
-    <ul>
-      <li>Journal d'audit enregistrant toutes les actions sensibles</li>
-      <li>Conservation des logs pendant 12 mois minimum</li>
-      <li>Protection en lecture seule (acces restreint a la Direction et Admin Technique)</li>
-    </ul>
+  <section id="s11" data-toc="Modifications">
+    <h2><span class="num">11</span> Modifications</h2>
+    <p>La présente politique peut être mise à jour pour refléter des évolutions techniques, réglementaires ou contractuelles. La date de la dernière révision figure en tête du document. En cas de modification substantielle, les utilisateurs du dashboard sont informés par email et un encart d'information apparaît à la connexion suivante.</p>
+    <p>L'historique des versions est conservé à des fins d'audit. La version courante prévaut sur toute version antérieure.</p>
+  </section>
 
-    <h2>5. Droits des personnes concernees</h2>
-    <p>Conformement aux articles 15 a 21 du RGPD, les personnes concernees (ou leurs representants legaux pour les mineurs) disposent des droits suivants :</p>
+</main>
 
-    <h3>5.1 Droit d'acces (art. 15)</h3>
-    <p>Les donnees personnelles d'un eleve peuvent etre exportees au format JSON. L'export inclut : donnees personnelles, classes, sorties, presences, assignations de bracelets et alertes.</p>
-    <p><strong>Procedure :</strong> demande aupres de la Direction via le formulaire de l'etablissement.</p>
+<!-- ─── FAB ─────────────────────────────────────────── -->
+<button class="fab" id="fab" aria-haspopup="dialog" aria-controls="toc-panel" aria-expanded="false">
+  <span class="ham" aria-hidden="true"><span></span><span></span><span></span></span>
+  <span>Sommaire</span>
+  <span class="count">11</span>
+</button>
 
-    <h3>5.2 Droit de rectification (art. 16)</h3>
-    <p>Les donnees d'un eleve (nom, prenom, email) peuvent etre corrigees via l'interface d'edition du tableau de bord.</p>
-    <p><strong>Procedure :</strong> demande aupres de la Direction. Correction effectuee dans le systeme avec journalisation de la modification.</p>
+<div class="toc-overlay" id="toc-overlay"></div>
 
-    <h3>5.3 Droit a l'effacement (art. 17)</h3>
-    <p>SchoolTrack implemente une <strong>suppression logique</strong> (soft delete) : l'eleve est marque comme supprime, ses donnees sont conservees pour l'historique et la tracabilite, il est exclu de toutes les listes et operations courantes.</p>
-    <p>La conservation de l'historique est necessaire pour garantir la tracabilite des presences lors des sorties scolaires (obligation de securite).</p>
-
-    <h3>5.4 Droit a la portabilite (art. 20)</h3>
-    <p>L'export JSON structure permet la portabilite des donnees vers un autre systeme.</p>
-
-    <h3>5.5 Droit d'opposition (art. 21)</h3>
-    <p>Pour exercer un droit d'opposition au traitement, contacter le DPO de l'etablissement scolaire.</p>
-
-    <h2>6. Durees de conservation</h2>
-    <table>
-      <tr><th>Donnee</th><th>Duree</th><th>Justification</th></tr>
-      <tr><td>Donnees des eleves actifs</td><td>Duree de scolarite</td><td>Necessite du traitement</td></tr>
-      <tr><td>Donnees des eleves supprimes</td><td>5 ans apres suppression</td><td>Tracabilite et obligations legales</td></tr>
-      <tr><td>Logs d'audit</td><td>12 mois</td><td>Conformite RGPD (art. 30)</td></tr>
-      <tr><td>Presences (scans)</td><td>5 ans</td><td>Historique de securite</td></tr>
-      <tr><td>Comptes utilisateurs</td><td>Duree du contrat de travail</td><td>Necessite du traitement</td></tr>
-    </table>
-
-    <h2>7. Sous-traitants et transferts</h2>
-    <table>
-      <tr><th>Sous-traitant</th><th>Finalite</th><th>Localisation</th></tr>
-      <tr><td>Hebergeur VPS (One.com)</td><td>Hebergement serveur et BDD</td><td>Union europeenne</td></tr>
-      <tr><td>Let's Encrypt</td><td>Certificats TLS</td><td>International (non-profit)</td></tr>
-    </table>
-    <p>Aucun transfert de donnees personnelles hors de l'Espace Economique Europeen (EEE).</p>
-
-    <h2>8. Violation de donnees</h2>
-    <p>En cas de violation de donnees personnelles :</p>
-    <ul>
-      <li>Le responsable du traitement est notifie immediatement</li>
-      <li>L'autorite de controle (APD en Belgique) est informee dans les 72 heures</li>
-      <li>Les personnes concernees sont notifiees si le risque est eleve</li>
-      <li>L'incident est documente dans le journal d'audit</li>
-    </ul>
-
-    <h2>9. Contact</h2>
-    <p>Pour exercer vos droits ou pour toute question relative a la protection de vos donnees personnelles, contactez :</p>
-    <ul>
-      <li><strong>DPO de l'etablissement :</strong> a definir par l'etablissement</li>
-      <li><strong>Direction de l'etablissement :</strong> via le formulaire de contact officiel</li>
-    </ul>
-
-    <h2>10. Modifications</h2>
-    <p>Cette politique peut etre mise a jour. La version en vigueur est toujours accessible a cette adresse.</p>
-    <p>Derniere mise a jour : mars 2026.</p>
-
-    <div class="footer">SchoolTrack — Gestion des presences pour sorties scolaires</div>
+<aside class="toc-panel" id="toc-panel" role="dialog" aria-label="Sommaire" aria-hidden="true">
+  <div class="toc-head">
+    <span class="label">Table des matières</span>
+    <button class="toc-close" id="toc-close" aria-label="Fermer le sommaire">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
   </div>
+  <ul class="toc-list" id="toc-list">
+    <li><a href="#s01" data-target="s01"><span class="n">01</span><span>Introduction</span><span></span></a></li>
+    <li><a href="#s02" data-target="s02"><span class="n">02</span><span>Données collectées</span><span></span></a></li>
+    <li><a href="#s03" data-target="s03"><span class="n">03</span><span>Principes de traitement</span><span></span></a></li>
+    <li><a href="#s04" data-target="s04"><span class="n">04</span><span>Mesures de protection</span><span></span></a></li>
+    <li><a href="#s05" data-target="s05"><span class="n">05</span><span>Droits des personnes</span><span></span></a></li>
+    <li><a href="#s06" data-target="s06"><span class="n">06</span><span>Durées de conservation</span><span></span></a></li>
+    <li><a href="#s07" data-target="s07"><span class="n">07</span><span>Sous-traitants</span><span></span></a></li>
+    <li><a href="#s08" data-target="s08"><span class="n">08</span><span>Cookies &amp; stockage</span><span class="new-mini">NEW</span></a></li>
+    <li><a href="#s09" data-target="s09"><span class="n">09</span><span>Violation de données</span><span></span></a></li>
+    <li><a href="#s10" data-target="s10"><span class="n">10</span><span>Contact</span><span></span></a></li>
+    <li><a href="#s11" data-target="s11"><span class="n">11</span><span>Modifications</span><span></span></a></li>
+  </ul>
+  <div class="toc-foot">
+    <span>Cliquez pour naviguer</span>
+    <span><kbd>Esc</kbd> pour fermer</span>
+  </div>
+</aside>
+
+<!-- ─── FOOTER ──────────────────────────────────────── -->
+<footer>
+  <div class="wrap foot">
+    <div class="brand-mini">
+      <span class="mark-mini" aria-hidden="true"></span>
+      <span>SchoolTrack — TFE Bachelier IT EPHEC · © 2026 Mohamed El Mazani</span>
+    </div>
+    <div class="foot-links">
+      <a href="privacy.html">Politique de confidentialité</a>
+      <a href="https://dashboard.schooltrack.yourschool.be">Dashboard</a>
+      <a href="/cdn-cgi/l/email-protection#97f4f8f9e3f6f4e3d7e4f4fff8f8fbe3e5f6f4fcb9f5f2">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+<script src="js/privacy.js"></script>
 </body>
 </html>
