@@ -3,7 +3,6 @@ Tests des permissions par role (US 6.2).
 Verifie que chaque endpoint respecte la matrice de permissions :
 - DIRECTION / ADMIN_TECH : acces complet
 - TEACHER : lecture + checkpoints + sync
-- OBSERVER : lecture seule
 """
 
 import uuid
@@ -49,7 +48,6 @@ def cleanup():
 DIRECTION = make_user("DIRECTION")
 ADMIN_TECH = make_user("ADMIN_TECH")
 TEACHER = make_user("TEACHER")
-OBSERVER = make_user("OBSERVER")
 
 
 # ============================================================
@@ -66,22 +64,8 @@ class TestStudentPermissions:
         # 200 = autorise (meme si mock DB retourne vide)
         assert resp.status_code == 200
 
-    def test_list_students_as_observer(self, client):
-        override_auth(OBSERVER)
-        resp = client.get("/api/v1/students")
-        cleanup()
-        assert resp.status_code == 200
-
     def test_create_student_as_teacher_forbidden(self, client):
         override_auth(TEACHER)
-        resp = client.post("/api/v1/students", json={
-            "first_name": "A", "last_name": "B"
-        })
-        cleanup()
-        assert resp.status_code == 403
-
-    def test_create_student_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
         resp = client.post("/api/v1/students", json={
             "first_name": "A", "last_name": "B"
         })
@@ -102,8 +86,8 @@ class TestStudentPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_upload_csv_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_upload_csv_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.post(
             "/api/v1/students/upload",
             files={"file": ("test.csv", b"nom;prenom\nA;B", "text/csv")},
@@ -149,22 +133,14 @@ class TestStudentPermissions:
 # ============================================================
 
 class TestTripPermissions:
-    def test_list_trips_as_observer(self, client):
-        override_auth(OBSERVER)
+    def test_list_trips_as_teacher(self, client):
+        override_auth(TEACHER)
         resp = client.get("/api/v1/trips")
         cleanup()
         assert resp.status_code == 200
 
     def test_create_trip_as_teacher_forbidden(self, client):
         override_auth(TEACHER)
-        resp = client.post("/api/v1/trips", json={
-            "destination": "Paris", "date": "2026-06-01", "class_ids": []
-        })
-        cleanup()
-        assert resp.status_code == 403
-
-    def test_create_trip_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
         resp = client.post("/api/v1/trips", json={
             "destination": "Paris", "date": "2026-06-01", "class_ids": []
         })
@@ -179,8 +155,8 @@ class TestTripPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_archive_trip_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_archive_trip_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.delete(f"/api/v1/trips/{uuid.uuid4()}")
         cleanup()
         assert resp.status_code == 403
@@ -191,12 +167,6 @@ class TestTripPermissions:
         cleanup()
         # Not 403 — teacher is allowed (might be 404/500 due to mock)
         assert resp.status_code != 403
-
-    def test_offline_data_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
-        resp = client.get(f"/api/v1/trips/{uuid.uuid4()}/offline-data")
-        cleanup()
-        assert resp.status_code == 403
 
     def test_send_qr_emails_as_teacher_forbidden(self, client):
         override_auth(TEACHER)
@@ -210,8 +180,8 @@ class TestTripPermissions:
 # ============================================================
 
 class TestClassPermissions:
-    def test_list_classes_as_observer(self, client):
-        override_auth(OBSERVER)
+    def test_list_classes_as_teacher(self, client):
+        override_auth(TEACHER)
         resp = client.get("/api/v1/classes")
         cleanup()
         assert resp.status_code == 200
@@ -222,8 +192,8 @@ class TestClassPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_update_class_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_update_class_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.put(f"/api/v1/classes/{uuid.uuid4()}", json={"name": "3B"})
         cleanup()
         assert resp.status_code == 403
@@ -234,8 +204,8 @@ class TestClassPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_assign_students_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_assign_students_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.post(
             f"/api/v1/classes/{uuid.uuid4()}/students",
             json={"student_ids": [str(uuid.uuid4())]},
@@ -283,8 +253,8 @@ class TestTokenPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_reassign_token_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_reassign_token_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.post("/api/v1/tokens/reassign", json={
             "token_uid": "ST-001",
             "student_id": str(uuid.uuid4()),
@@ -301,8 +271,8 @@ class TestTokenPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_get_trip_assignments_as_observer(self, client):
-        override_auth(OBSERVER)
+    def test_get_trip_assignments_as_teacher(self, client):
+        override_auth(TEACHER)
         resp = client.get(f"/api/v1/trips/{uuid.uuid4()}/assignments")
         cleanup()
         assert resp.status_code != 403
@@ -313,8 +283,8 @@ class TestTokenPermissions:
         cleanup()
         assert resp.status_code != 403
 
-    def test_export_assignments_as_observer(self, client):
-        override_auth(OBSERVER)
+    def test_export_assignments_as_teacher(self, client):
+        override_auth(TEACHER)
         resp = client.get(f"/api/v1/trips/{uuid.uuid4()}/assignments/export")
         cleanup()
         assert resp.status_code != 403
@@ -334,26 +304,11 @@ class TestCheckpointPermissions:
         cleanup()
         assert resp.status_code != 403
 
-    def test_create_checkpoint_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
-        resp = client.post(
-            f"/api/v1/trips/{uuid.uuid4()}/checkpoints",
-            json={"name": "Checkpoint 1"},
-        )
-        cleanup()
-        assert resp.status_code == 403
-
     def test_close_checkpoint_as_teacher_ok(self, client):
         override_auth(TEACHER)
         resp = client.post(f"/api/v1/checkpoints/{uuid.uuid4()}/close")
         cleanup()
         assert resp.status_code != 403
-
-    def test_close_checkpoint_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
-        resp = client.post(f"/api/v1/checkpoints/{uuid.uuid4()}/close")
-        cleanup()
-        assert resp.status_code == 403
 
 
 # ============================================================
@@ -369,15 +324,6 @@ class TestSyncPermissions:
         })
         cleanup()
         assert resp.status_code != 403
-
-    def test_sync_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
-        resp = client.post("/api/sync/attendances", json={
-            "device_id": "test-device",
-            "scans": [],
-        })
-        cleanup()
-        assert resp.status_code == 403
 
 
 # ============================================================
@@ -413,16 +359,6 @@ class TestRegisterPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_register_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
-        resp = client.post("/api/v1/auth/register", json={
-            "email": "new@test.be",
-            "password": "ValidPass1!",
-            "role": "TEACHER",
-        })
-        cleanup()
-        assert resp.status_code == 403
-
     def test_register_no_auth_forbidden(self, client):
         """Sans authentification, register retourne 403."""
         app.dependency_overrides.pop(get_current_user, None)
@@ -436,18 +372,18 @@ class TestRegisterPermissions:
 
 # ============================================================
 # Users management — admin only (already tested in test_api_users)
-# Quick sanity check for OBSERVER
+# Quick sanity check for TEACHER
 # ============================================================
 
 class TestUsersPermissions:
-    def test_list_users_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_list_users_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.get("/api/v1/users")
         cleanup()
         assert resp.status_code == 403
 
-    def test_create_user_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_create_user_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.post("/api/v1/users", json={
             "email": "new@test.be",
             "password": "ValidPass1!",
@@ -456,8 +392,8 @@ class TestUsersPermissions:
         cleanup()
         assert resp.status_code == 403
 
-    def test_delete_user_as_observer_forbidden(self, client):
-        override_auth(OBSERVER)
+    def test_delete_user_as_teacher_forbidden(self, client):
+        override_auth(TEACHER)
         resp = client.delete(f"/api/v1/users/{uuid.uuid4()}")
         cleanup()
         assert resp.status_code == 403
@@ -482,7 +418,7 @@ class TestRequireRoleFactory:
         from fastapi import HTTPException
         from app.dependencies import require_role
         checker = require_role("DIRECTION")
-        user = make_user("OBSERVER")
+        user = make_user("TEACHER")
         with pytest.raises(HTTPException) as exc_info:
             checker(current_user=user)
         assert exc_info.value.status_code == 403

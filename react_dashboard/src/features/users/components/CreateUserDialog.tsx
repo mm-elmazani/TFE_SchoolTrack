@@ -34,7 +34,7 @@ const userSchema = z.object({
     .regex(/[A-Z]/, 'Au moins une majuscule')
     .regex(/\d/, 'Au moins un chiffre')
     .regex(/[^A-Za-z0-9]/, 'Au moins un caractère spécial'),
-  role: z.enum(['DIRECTION', 'TEACHER', 'OBSERVER', 'ADMIN_TECH']),
+  role: z.enum(['DIRECTION', 'TEACHER', 'ADMIN_TECH']),
 });
 
 type UserForm = z.infer<typeof userSchema>;
@@ -191,7 +191,6 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <SelectContent className="rounded-xl border-slate-200 shadow-xl">
                   <SelectItem value="DIRECTION" className="font-sans">Direction (Admin complet)</SelectItem>
                   <SelectItem value="TEACHER" className="font-sans">Enseignant (Gestion voyages/élèves)</SelectItem>
-                  <SelectItem value="OBSERVER" className="font-sans">Observateur (Lecture seule)</SelectItem>
                   <SelectItem value="ADMIN_TECH" className="font-sans">Admin Tech (Maintenance)</SelectItem>
                 </SelectContent>
               </Select>

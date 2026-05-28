@@ -21,7 +21,7 @@ class User(Base):
     first_name = Column(EncryptedString(), nullable=True)
     last_name = Column(EncryptedString(), nullable=True)
     school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=False)
-    role = Column(String(50), nullable=False)  # DIRECTION, TEACHER, OBSERVER, ADMIN_TECH
+    role = Column(String(50), nullable=False)  # DIRECTION, TEACHER, ADMIN_TECH
     totp_secret = Column(EncryptedString(), nullable=True)
     is_2fa_enabled = Column(Boolean, default=False)
     two_fa_method = Column(String(10), nullable=True)  # 'APP' ou 'EMAIL'

@@ -142,7 +142,7 @@ pour l'ouvrir. Compatible avec 7-Zip, WinRAR, et les outils ZIP standard.
 | JWT | Tokens signes HS256, expiration 30 min (access) / 24h (refresh) |
 | 2FA | TOTP (Google Authenticator, Authy) -- optionnel par utilisateur |
 | Verrouillage | Compte bloque 15 min apres 5 tentatives echouees |
-| Roles | DIRECTION, TEACHER, OBSERVER, ADMIN_TECH -- acces controle par endpoint |
+| Roles | DIRECTION, TEACHER, ADMIN_TECH -- acces controle par endpoint |
 | Audit | Chaque action sensible est enregistree (qui, quoi, quand, IP) |
 
 ---

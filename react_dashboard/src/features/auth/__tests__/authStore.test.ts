@@ -60,11 +60,6 @@ describe('Auth Store', () => {
     expect(useAuthStore.getState().getIsAdmin()).toBe(false);
   });
 
-  it('getIsObserver should return true for OBSERVER', () => {
-    useAuthStore.getState().setAuth('t', 'r', { id: '1', email: 'test@test.com', role: 'OBSERVER' });
-    expect(useAuthStore.getState().getIsObserver()).toBe(true);
-  });
-
   it('getCanManageStudents should include TEACHER', () => {
     useAuthStore.getState().setAuth('t', 'r', { id: '1', email: 'test@test.com', role: 'TEACHER' });
     expect(useAuthStore.getState().getCanManageStudents()).toBe(true);

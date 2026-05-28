@@ -92,16 +92,6 @@ def teacher_client():
 
 
 @pytest.fixture
-def observer_client():
-    mock_db = MagicMock()
-    app.dependency_overrides[get_db] = lambda: mock_db
-    app.dependency_overrides[get_current_user] = lambda: _make_user("OBSERVER")
-    with TestClient(app) as c:
-        yield c, mock_db
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
 def no_auth_client():
     mock_db = MagicMock()
     app.dependency_overrides[get_db] = lambda: mock_db
@@ -128,11 +118,6 @@ class TestAuditPermissions:
 
     def test_teacher_forbidden(self, teacher_client):
         client, _ = teacher_client
-        resp = client.get("/api/v1/audit/logs")
-        assert resp.status_code == 403
-
-    def test_observer_forbidden(self, observer_client):
-        client, _ = observer_client
         resp = client.get("/api/v1/audit/logs")
         assert resp.status_code == 403
 
@@ -304,11 +289,6 @@ class TestAuditExport:
 
     def test_export_forbidden_teacher(self, teacher_client):
         client, _ = teacher_client
-        resp = client.get("/api/v1/audit/logs/export")
-        assert resp.status_code == 403
-
-    def test_export_forbidden_observer(self, observer_client):
-        client, _ = observer_client
         resp = client.get("/api/v1/audit/logs/export")
         assert resp.status_code == 403
 

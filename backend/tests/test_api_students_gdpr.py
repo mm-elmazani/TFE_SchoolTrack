@@ -101,17 +101,6 @@ class TestGdprExportPermissions:
 
         assert r.status_code == 403
 
-    def test_observer_forbidden(self):
-        sid = uuid.uuid4()
-        app.dependency_overrides[get_current_user] = lambda: _make_user("OBSERVER")
-
-        with TestClient(app) as c:
-            r = c.get(f"/api/v1/students/{sid}/data-export")
-        app.dependency_overrides.clear()
-
-        assert r.status_code == 403
-
-
 # ============================================================
 # Reponses
 # ============================================================

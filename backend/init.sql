@@ -62,7 +62,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,    -- Bcrypt hash (coût 12)
     first_name TEXT,                        -- Chiffre AES-256-GCM (US 6.3)
     last_name TEXT,                         -- Chiffre AES-256-GCM (US 6.3)
-    role VARCHAR(50) NOT NULL,              -- DIRECTION, TEACHER, OBSERVER, ADMIN_TECH
+    role VARCHAR(50) NOT NULL,              -- DIRECTION, TEACHER, ADMIN_TECH
     totp_secret TEXT,                       -- Chiffre AES-256-GCM (US 6.3)
     is_2fa_enabled BOOLEAN DEFAULT FALSE,
     two_fa_method VARCHAR(10),             -- 'APP' ou 'EMAIL'

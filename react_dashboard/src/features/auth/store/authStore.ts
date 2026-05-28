@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export interface User {
   id: string;
   email: string;
-  role: 'DIRECTION' | 'TEACHER' | 'OBSERVER' | 'ADMIN_TECH';
+  role: 'DIRECTION' | 'TEACHER' | 'ADMIN_TECH';
   first_name?: string;
   last_name?: string;
   is_2fa_enabled?: boolean;
@@ -23,7 +23,6 @@ interface AuthState {
   logout: () => void;
   getIsAdmin: () => boolean;
   getCanManageStudents: () => boolean;
-  getIsObserver: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -43,9 +42,6 @@ export const useAuthStore = create<AuthState>()(
       getCanManageStudents: () => {
         const role = get().user?.role;
         return role === 'DIRECTION' || role === 'ADMIN_TECH' || role === 'TEACHER';
-      },
-      getIsObserver: () => {
-        return get().user?.role === 'OBSERVER';
       },
     }),
     {
