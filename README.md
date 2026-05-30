@@ -10,7 +10,7 @@
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql)
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?logo=docker)
-![Tests](https://img.shields.io/badge/Tests-481%20React%20%2B%2011%20Flutter-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-610%20backend%20%2B%20503%20React%20%2B%20225%20Flutter-brightgreen)
 ![License](https://img.shields.io/badge/Licence-MIT-lightgrey)
 
 ---
@@ -112,10 +112,11 @@ Variables clés du fichier `.env` :
 | `POSTGRES_DB` | `schooltrack` | Nom de la base PostgreSQL |
 | `POSTGRES_USER` | `schooltrack` | Utilisateur PostgreSQL |
 | `POSTGRES_PASSWORD` | `admin` | Mot de passe PostgreSQL |
-| `SECRET_KEY` | *(à changer)* | Clé de signature JWT — **obligatoirement longue et aléatoire en prod** |
+| `SECRET_KEY` | *(à changer en prod)* | Clé de signature JWT — **obligatoirement longue et aléatoire en prod** |
+| `ENCRYPTION_KEY` | *(à changer en prod)* | Clé AES-256 pour le chiffrement des données personnelles en base — **irrémédiable si perdue en prod** |
 | `ALGORITHM` | `HS256` | Algorithme JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Durée de validité du token d'accès |
-| `DATABASE_URL` | `postgresql://schooltrack:...` | URL complète de connexion à PostgreSQL |
+| `DATABASE_URL` | `postgresql://schooltrack:admin@localhost:5432/schooltrack` | URL de connexion utilisée uniquement hors Docker (pytest local). En Docker, l'API se connecte au service `postgres`. |
 
 Pour le dashboard React, créer `react_dashboard/.env.local` :
 
@@ -131,6 +132,10 @@ docker compose up -d
 
 L'API est disponible sur `http://localhost:8000`.  
 La documentation Swagger est accessible sur [`http://localhost:8000/api/docs`](http://localhost:8000/api/docs).
+
+> Au premier démarrage, PostgreSQL exécute automatiquement [`backend/init.sql`](backend/init.sql) qui crée le schéma complet (20 tables) **et** seed l'école `dev`, l'utilisateur `admin@schooltrack.be` et `teacher@schooltrack.be`. Aucune migration manuelle n'est nécessaire.
+>
+> Pour repartir d'une base vide : `docker compose down -v && docker compose up -d` (⚠️ supprime toutes les données).
 
 ### 4. Démarrer le dashboard React (dev)
 
@@ -166,18 +171,22 @@ flutter run                   # sur émulateur ou appareil connecté
 
 ```bash
 cd react_dashboard
-npm test                      # run + watch
+npm install                   # premiere fois uniquement
+npx vitest run                # run unique
 npm run coverage              # rapport HTML dans coverage/
 ```
 
-Couverture actuelle : **80.26 % (481 tests, 0 failures)**
+État actuel : **503 tests, 0 failure** — couverture lignes 80,26 %.
 
 ### Tests unitaires — Flutter
 
 ```bash
 cd flutter_teacher_app
-flutter test test/
+flutter pub get               # premiere fois uniquement
+flutter test
 ```
+
+État actuel : **225 tests, 0 failure**.
 
 ### Tests d'intégration offline — Flutter (US 7.2)
 
@@ -196,8 +205,15 @@ flutter test integration_test/offline_sync_test.dart -d <device-id>
 
 ```bash
 cd backend
+python -m venv .venv && .venv\Scripts\activate          # Windows
+# (Linux/macOS : python -m venv .venv && source .venv/bin/activate)
+pip install -r requirements.txt
 pytest --cov=app --cov-report=html
+# Rapport HTML annexable :
+pytest --html=test_report.html --self-contained-html --tb=no -q
 ```
+
+État actuel : **610 tests, 0 failure**.
 
 ### Tests de charge (Locust)
 
@@ -252,12 +268,13 @@ Voir [`docs/DEPLOY-PRODUCTION.md`](docs/DEPLOY-PRODUCTION.md) pour la procédure
 | Document | Description |
 |----------|-------------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Diagrammes de séquence — scan offline, sync, tokens |
-| [`docs/DEPLOY-PRODUCTION.md`](docs/DEPLOY-PRODUCTION.md) | Guide de déploiement VPS complet |
+| [`docs/DEPLOY-PRODUCTION.md`](docs/DEPLOY-PRODUCTION.md) | Guide de déploiement VPS complet (Traefik, Let's Encrypt, SMTP, monitoring) |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Architecture de sécurité et chiffrement |
+| [`docs/BACKUP.md`](docs/BACKUP.md) | Procédure de sauvegarde et restauration |
 | [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) | Rapport tests de charge Locust |
 | [`docs/PRIVACY-POLICY.md`](docs/PRIVACY-POLICY.md) | Politique de confidentialité RGPD |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guide de contribution et conventions |
-| [Swagger `/api/docs`](http://localhost:8000/api/docs) | Documentation API interactive |
+| [Swagger `/api/docs`](http://localhost:8000/api/docs) | Documentation API interactive (une fois l'API démarrée) |
+| [Schéma ER de la base](docs/schémas/DB_Entity-Relationship_schooltrack.png) | Modèle relationnel complet |
 
 ---
 

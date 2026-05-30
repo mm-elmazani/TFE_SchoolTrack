@@ -44,6 +44,6 @@ node_modules/
 Thumbs.db
 
 # docs
-
-/docs/DEPLOY-PRODUCTION.md
+# DEPLOY-PRODUCTION.md est public : il ne contient que des placeholders, pas de
+# vraies cles ni IPs. SECURITY-KEYS.md reste prive car il liste les cles reelles.
 /docs/SECURITY-KEYS.md
