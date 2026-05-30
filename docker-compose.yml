@@ -1,8 +1,12 @@
 services:
   # ---------- Reverse proxy TLS (US 6.3) ----------
+  # Optionnel en dev : lancer avec `docker compose --profile proxy up -d`
+  # pour tester le routage TLS + Let's Encrypt en local. En prod, c'est le
+  # Traefik de docker-compose.prod.yml qui prend le relais.
   traefik:
     image: traefik:v3.3
     container_name: schooltrack_traefik
+    profiles: ["proxy"]
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
@@ -38,6 +42,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-schooltrack}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-schooltrack}
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-dev-encryption-key-change-in-production!}
+    ports:
+      - "8000:8000"   # Accessible directement sur http://localhost:8000 (sans Traefik en dev)
     volumes:
       - media_data:/app/media
     depends_on:
