@@ -178,6 +178,22 @@ CREATE INDEX idx_trip_students_student ON trip_students(student_id);
 
 
 -- ----------------------------------------------------------------------------
+-- TABLE: classes - Classes de l'école (declarée ici car trip_classes la référence)
+-- ----------------------------------------------------------------------------
+CREATE TABLE classes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    school_id UUID NOT NULL REFERENCES schools(id),
+    name VARCHAR(100) NOT NULL,            -- Ex: "6ème A", "TI-2024-BAC3"
+    year VARCHAR(20),                       -- Ex: "2025-2026"
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    CONSTRAINT uq_classes_name_school UNIQUE (name, school_id)
+);
+
+CREATE INDEX idx_classes_school ON classes(school_id);
+
+
+-- ----------------------------------------------------------------------------
 -- TABLE: trip_classes - Association voyage ↔ classes sélectionnées
 -- ----------------------------------------------------------------------------
 CREATE TABLE trip_classes (
@@ -314,22 +330,6 @@ CREATE TABLE attendance_history (
 
 CREATE INDEX idx_att_history_student_trip ON attendance_history(student_id, trip_id);
 CREATE INDEX idx_att_history_sync_session ON attendance_history(sync_session_id);
-
-
--- ----------------------------------------------------------------------------
--- TABLE: classes - Classes de l'école
--- ----------------------------------------------------------------------------
-CREATE TABLE classes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    school_id UUID NOT NULL REFERENCES schools(id),
-    name VARCHAR(100) NOT NULL,            -- Ex: "6ème A", "TI-2024-BAC3"
-    year VARCHAR(20),                       -- Ex: "2025-2026"
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    CONSTRAINT uq_classes_name_school UNIQUE (name, school_id)
-);
-
-CREATE INDEX idx_classes_school ON classes(school_id);
 
 
 -- ----------------------------------------------------------------------------
