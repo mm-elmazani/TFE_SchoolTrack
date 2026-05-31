@@ -61,9 +61,7 @@ export default function AppScaffold() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
       <div className="p-6 flex items-center gap-3 border-b border-slate-50">
-        <div className="w-10 h-10 bg-schooltrack-primary rounded-xl flex items-center justify-center text-white shadow-lg">
-          <LayoutDashboard className="w-6 h-6" />
-        </div>
+        <img src="/logo.png" alt="SchoolTrack" className="w-10 h-10 object-contain" />
         <div className="flex flex-col">
           <span className="text-xl font-bold text-schooltrack-primary tracking-tight font-heading">SchoolTrack</span>
           {user?.school_name && (
