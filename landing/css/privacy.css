@@ -52,13 +52,9 @@ button { font-family: inherit; cursor: pointer; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
 .brand:hover { text-decoration: none; }
 .mark {
-  width: 28px; height: 28px; border-radius: 7px; background: var(--blue);
-  display: grid; place-items: center;
-  box-shadow: 0 1px 0 rgba(11,20,55,.08), inset 0 -2px 0 rgba(0,0,0,.06);
-}
-.mark::before {
-  content: ""; width: 12px; height: 12px; border-radius: 50%;
-  border: 2px solid #fff;
+  width: 32px; height: 32px;
+  object-fit: contain;
+  display: block;
 }
 .back-link {
   display: inline-flex; align-items: center; gap: 8px;
