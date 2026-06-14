@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Erreur serveur — SchoolTrack</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" type="image/png" href="/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --ink:        #0f1929;
+  --blue:       #1f6fdc;
+  --paper:      #f6f8fb;
+  --line:       #dde3ec;
+  --text:       #4b5568;
+  --muted:      #7a8194;
+  --orange:     #ea580c;
+  --orange-soft:#fff3ed;
+  --r:          10px;
+  --fs-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --fs-sans:    "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--fs-sans);
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img, svg { display: block; }
+a { color: inherit; text-decoration: none; }
+
+/* ─── Nav ──────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 40;
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  background: rgba(246,248,251,0.88);
+  border-bottom: 1px solid rgba(221,227,236,0.7);
+}
+.nav {
+  max-width: 1200px; margin: 0 auto; padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 68px;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 800; font-size: 16px; letter-spacing: -0.01em;
+}
+.brand-logo {
+  width: 32px; height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--fs-sans);
+  font-weight: 600; font-size: 14px;
+  padding: 9px 16px; border-radius: var(--r);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background .15s, transform .15s, border-color .15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-primary:hover { background: var(--blue); transform: translateY(-1px); }
+.btn-outline { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn-outline:hover { background: #fff; border-color: var(--ink); transform: translateY(-1px); }
+.btn-lg { padding: 13px 22px; font-size: 15px; }
+.arrow { transition: transform .15s; display: inline-block; }
+.btn:hover .arrow { transform: translateX(2px); }
+
+/* ─── Main ─────────────────────────────────────────────── */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 28px 80px;
+}
+.card {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+.error-code {
+  font-family: var(--fs-mono);
+  font-size: clamp(88px, 18vw, 148px);
+  font-weight: 600;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--line);
+  letter-spacing: -0.03em;
+  margin: 0 0 28px;
+  user-select: none;
+}
+.icon-wrap {
+  width: 72px; height: 72px;
+  background: var(--orange-soft);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 28px;
+  position: relative;
+}
+.icon-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--orange-soft);
+  animation: pulse 2.4s ease-out infinite;
+}
+@keyframes pulse {
+  0%   { opacity: 1; transform: scale(1); }
+  70%  { opacity: 0; transform: scale(1.4); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+.error-title {
+  font-size: clamp(22px, 4vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+.error-msg {
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.65;
+  margin: 0 0 36px;
+}
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ─── Footer ────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 20px 28px;
+}
+.foot {
+  max-width: 1200px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px;
+}
+.foot-copy { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+@media (max-width: 480px) {
+  .error-code { -webkit-text-stroke: 1.5px var(--line); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="/" class="brand">
+      <img src="/logo.png" alt="" class="brand-logo" aria-hidden="true" />
+      SchoolTrack
+    </a>
+    <button class="btn btn-outline" onclick="window.location.reload()" type="button">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Rafraîchir
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <div class="error-code" aria-hidden="true">5··</div>
+
+    <div class="icon-wrap" aria-hidden="true">
+      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+
+    <h1 class="error-title">Erreur serveur</h1>
+    <p class="error-msg">
+      Le dashboard rencontre une difficulté temporaire.<br>
+      Nos équipes en sont informées. Réessayez dans quelques instants.
+    </p>
+
+    <div class="actions">
+      <button class="btn btn-primary btn-lg" onclick="window.location.reload()" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+        Rafraîchir la page
+      </button>
+      <a href="/" class="btn btn-outline btn-lg">
+        Accueil <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="foot">
+    <span class="foot-copy">SchoolTrack — TFE Bachelier IT EPHEC · © 2026 Mohamed El Mazani</span>
+  </div>
+</footer>
+
+</body>
+</html>
