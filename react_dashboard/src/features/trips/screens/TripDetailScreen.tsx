@@ -58,7 +58,7 @@ export default function TripDetailScreen() {
     queryKey: ['trips', id, 'checkpoints-summary'],
     queryFn: () => tripApi.getCheckpointsSummary(id!),
     enabled: !!id,
-    refetchOnWindowFocus: false,
+    refetchInterval: 30_000,
   });
 
   if (isLoading) return (

@@ -59,6 +59,7 @@ def get_offline_data(
         select(Student)
         .join(TripStudent, TripStudent.student_id == Student.id)
         .where(TripStudent.trip_id == trip_id)
+        .where(Student.is_deleted == False)  # noqa: E712
     ).scalars().all()
 
     assignments = db.execute(

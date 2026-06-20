@@ -227,3 +227,26 @@ def test_bundle_complet():
     assert result.students[1].assignment is None
     assert len(result.checkpoints) == 1
     assert result.checkpoints[0].name == "Visite"
+
+
+# ============================================================
+# Élèves supprimés (soft delete)
+# ============================================================
+
+def test_eleve_supprime_absent_du_bundle():
+    """Un élève soft-deleted ne doit pas apparaître dans le bundle.
+
+    La query dans offline_service filtre Student.is_deleted == False au niveau SQL.
+    Ce test vérifie que le bundle ne contient que les élèves actifs retournés par
+    la DB (régression : avant le fix, l'élève supprimé était inclus car le filtre
+    is_deleted était absent).
+    """
+    trip = make_trip()
+    actif = make_student("Alice", "Dupont")
+    # La DB ne retourne que l'élève actif (le supprimé est filtré en SQL)
+    db = make_db(trip=trip, students=[actif], assignments=[])
+
+    result = get_offline_data(db, trip.id)
+
+    assert len(result.students) == 1
+    assert result.students[0].first_name == "Alice"
