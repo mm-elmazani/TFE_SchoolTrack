@@ -2,7 +2,7 @@ name: flutter_teacher_app
 description: "SchoolTrack — Application mobile enseignants (prise de présence offline-first)."
 publish_to: 'none'
 
-version: 1.0.4+4
+version: 1.0.6+6
 
 environment:
   sdk: ^3.11.0
@@ -72,3 +72,4 @@ flutter:
   assets:
     - assets/sounds/
     - assets/animations/
+    - assets/icon/
