@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck, GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
 import { getApiError } from '@/lib/utils';
 
 const loginSchema = z.object({
@@ -78,7 +78,7 @@ export default function LoginScreen() {
       <Card className="w-full max-w-[420px] shadow-md border-slate-200 overflow-hidden rounded-2xl">
         <div className="h-1.5 bg-schooltrack-primary w-full" />
         <CardHeader className="space-y-1 pb-6 pt-8 items-center text-center">
-          <GraduationCap className="h-12 w-12 text-schooltrack-primary mb-2" />
+          <img src="/logo.png" alt="SchoolTrack" className="h-16 w-16 mb-2 object-contain" />
           <CardTitle className="text-2xl font-bold tracking-tight text-schooltrack-primary">SchoolTrack</CardTitle>
           <CardDescription className="text-slate-500 text-sm">
             {needs2FA
